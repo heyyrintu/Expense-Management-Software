@@ -1,0 +1,91 @@
+// Receipt upload (route handlers are reserved for uploads/webhooks/exports).
+// POST /api/receipts  — multipart form: expenseId + files[]
+// Rules: session user's OWN DRAFT expense only; JPG/PNG/PDF ≤ 10 MB each.
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSessionCtx } from "@/lib/auth/guard";
+import { logAudit } from "@/lib/domain/audit";
+import { scopedDb } from "@/lib/db/scoped";
+import { userErrors } from "@/lib/errors";
+import { validateReceiptFile } from "@/lib/schemas/receipt";
+import { buildReceiptKey, putReceiptObject } from "@/lib/storage/receipts";
+
+export const runtime = "nodejs";
+
+const paramsSchema = z.object({ expenseId: z.string().uuid() });
+
+export async function POST(request: Request): Promise<NextResponse> {
+  const ctx = await getSessionCtx();
+  if (!ctx) {
+    return NextResponse.json(
+      { ok: false, error: userErrors.notAuthenticated },
+      { status: 401 }
+    );
+  }
+
+  const form = await request.formData();
+  const parsed = paramsSchema.safeParse({ expenseId: form.get("expenseId") });
+  const files = form
+    .getAll("files")
+    .filter((f): f is File => f instanceof File);
+  if (!parsed.success || files.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: userErrors.validation },
+      { status: 400 }
+    );
+  }
+
+  const db = scopedDb(ctx.orgId);
+  // own draft expense only — anyone else's id (or another org's) is a 404
+  const expense = await db.expense.findUnique({
+    where: { id: parsed.data.expenseId, userId: ctx.userId, status: "draft" },
+    select: { id: true },
+  });
+  if (!expense) {
+    return NextResponse.json(
+      { ok: false, error: "Receipts can only be added to your draft expenses." },
+      { status: 404 }
+    );
+  }
+
+  for (const file of files) {
+    const invalid = validateReceiptFile({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+    });
+    if (invalid) {
+      return NextResponse.json({ ok: false, error: invalid }, { status: 400 });
+    }
+  }
+
+  const created: string[] = [];
+  for (const file of files) {
+    const key = buildReceiptKey(ctx.orgId, expense.id, file.name);
+    await putReceiptObject({
+      key,
+      body: Buffer.from(await file.arrayBuffer()),
+      contentType: file.type,
+      fileName: file.name,
+    });
+    const receipt = await db.receipt.create({
+      data: {
+        orgId: ctx.orgId,
+        expenseId: expense.id,
+        storageKey: key,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      },
+    });
+    created.push(receipt.id);
+    await logAudit(db, ctx, {
+      entity: "Receipt",
+      entityId: receipt.id,
+      action: "receipt.uploaded",
+      meta: { expenseId: expense.id, fileName: file.name, sizeBytes: file.size },
+    });
+  }
+
+  return NextResponse.json({ ok: true, data: { ids: created } });
+}

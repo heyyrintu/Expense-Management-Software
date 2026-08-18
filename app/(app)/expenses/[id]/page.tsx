@@ -12,8 +12,11 @@ import { isExpenseEditable, type ExpenseStatus } from "@/lib/domain/expense";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatDate, toDateInputValue } from "@/lib/format";
 import { formatMoney, toDecimalString } from "@/lib/money";
+import { signedReceiptUrl } from "@/lib/storage/receipts";
 import type { Option } from "../expense-form";
 import { EditExpenseWrapper } from "./edit-wrapper";
+import { ReceiptUploader } from "./receipt-uploader";
+import type { ReceiptView } from "./receipt-types";
 
 export default async function ExpenseDetailPage({
   params,
@@ -26,9 +29,27 @@ export default async function ExpenseDetailPage({
   // own expenses only — someone else's id (or another org's) is a 404
   const expense = await db.expense.findUnique({
     where: { id, userId: ctx.userId },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      receipts: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, fileName: true, mimeType: true, storageKey: true },
+      },
+    },
   });
   if (!expense) notFound();
+
+  // signed URLs only for receipts fetched through the org-scoped query above
+  const receiptViews: ReceiptView[] = await Promise.all(
+    expense.receipts.map(
+      async (r: { id: string; fileName: string; mimeType: string; storageKey: string }) => ({
+        id: r.id,
+        fileName: r.fileName,
+        mimeType: r.mimeType,
+        url: await signedReceiptUrl(r),
+      })
+    )
+  );
 
   if (isExpenseEditable(expense.status as ExpenseStatus)) {
     const [categories, projects] = await Promise.all([
@@ -55,6 +76,13 @@ export default async function ExpenseDetailPage({
           projects={projects as Option[]}
           currency={expense.currency}
         />
+        <div className="max-w-md border-t pt-4">
+          <ReceiptUploader
+            expenseId={expense.id}
+            receipts={receiptViews}
+            readOnly={false}
+          />
+        </div>
       </section>
     );
   }
@@ -79,6 +107,11 @@ export default async function ExpenseDetailPage({
           </p>
         </CardContent>
       </Card>
+      <ReceiptUploader
+        expenseId={expense.id}
+        receipts={receiptViews}
+        readOnly
+      />
     </section>
   );
 }

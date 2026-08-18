@@ -14,7 +14,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 
 - [x] **1.1 Categories & org settings**: finance_admin CRUD for categories (limits, receipt threshold), org settings (currency, mileage rate). 
 - [x] **1.2 Expense CRUD**: create/edit/delete Draft expenses (amount, date, merchant, category, project, purpose); money as minor units; list + detail views.
-- [ ] **1.3 Receipt upload**: drag-and-drop JPG/PNG/PDF ≤10 MB → MinIO under org prefix; inline preview via signed URL; multiple receipts per expense.
+- [x] **1.3 Receipt upload**: drag-and-drop JPG/PNG/PDF ≤10 MB → MinIO under org prefix; inline preview via signed URL; multiple receipts per expense.
 - [ ] **1.4 OCR autofill**: `lib/ocr` interface + Tesseract.js impl; prefill merchant/date/amount with "review extracted values" UI; graceful failure.
 - [ ] **1.5 Mileage expenses**: type=mileage, distance × org rate auto-amount.
 
