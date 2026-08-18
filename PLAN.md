@@ -55,7 +55,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 - [x] **6.4 Multi-currency**: expense in foreign currency with FX rate (manual entry + daily-rate API stub) converted to org base currency; both amounts stored; reports total in base currency.
 - [x] **6.5 Recurring & delegate**: recurring expense templates (e.g., monthly internet) auto-draft on schedule; delegate access — assistant submits on behalf of an executive (acts-as banner, both identities in AuditLog).
 - [x] **6.6 Email receipt ingestion**: per-org inbound address (receipts+{orgslug}@domain) via webhook (e.g., SES/Mailgun stub) → attachment becomes Draft expense with OCR autofill.
-- [ ] **6.7 Analytics upgrade**: spend trends over time, policy-violation leaderboard, approval-bottleneck view (avg time per approver), budget vs. actual; scheduled monthly PDF/CSV summary email to finance.
+- [x] **6.7 Analytics upgrade**: spend trends over time, policy-violation leaderboard, approval-bottleneck view (avg time per approver), budget vs. actual; scheduled monthly PDF/CSV summary email to finance.
 
 ## Milestone 7 — Ledger, reconciliation & complaints (requires 6.1)
 

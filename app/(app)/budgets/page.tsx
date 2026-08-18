@@ -4,33 +4,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { computeBudgetUtilization } from "@/lib/analytics/budgets";
 import { requireRole } from "@/lib/auth/guard";
-import {
-  alertLevel,
-  periodWindow,
-  utilizationPct,
-  SPENT_STATUSES,
-  type BudgetPeriod,
-  type BudgetScopeType,
-} from "@/lib/domain/budget";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatMoney } from "@/lib/money";
 import { BudgetsPanel, type BudgetView } from "./budgets-panel";
 
-type BudgetRow = {
-  id: string;
-  scopeType: BudgetScopeType;
-  scopeId: string;
-  period: BudgetPeriod;
-  amount: number;
-};
+
 
 export default async function BudgetsPage() {
   const ctx = await requireRole("finance_admin");
   const db = scopedDb(ctx.orgId);
-  const [org, budgets, departments, projects, categories] = await Promise.all([
+  const [org, utilizations, departments, projects, categories] = await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
-    db.budget.findMany({ orderBy: { createdAt: "asc" } }) as Promise<BudgetRow[]>,
+    computeBudgetUtilization(db, new Date()),
     db.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -42,46 +29,16 @@ export default async function BudgetsPage() {
     category: new Map<string, string>(categories.map((c: { id: string; name: string }) => [c.id, c.name])),
   };
 
-  const now = new Date();
-  const views: BudgetView[] = [];
-  for (const b of budgets) {
-    const window = periodWindow(b.period, now);
-    let spent = 0;
-    if (b.scopeType === "department") {
-      const agg = await db.expense.aggregate({
-        where: {
-          status: { in: [...SPENT_STATUSES] },
-          date: { gte: window.start, lt: window.end },
-          user: { departmentId: b.scopeId },
-        },
-        _sum: { baseAmount: true },
-      });
-      spent = agg._sum.baseAmount ?? 0;
-    } else {
-      const agg = await db.expense.aggregate({
-        where: {
-          status: { in: [...SPENT_STATUSES] },
-          date: { gte: window.start, lt: window.end },
-          ...(b.scopeType === "category"
-            ? { categoryId: b.scopeId }
-            : { projectId: b.scopeId }),
-        },
-        _sum: { baseAmount: true },
-      });
-      spent = agg._sum.baseAmount ?? 0;
-    }
-    const pct = utilizationPct(spent, b.amount);
-    views.push({
-      id: b.id,
-      scopeType: b.scopeType,
-      label: names[b.scopeType].get(b.scopeId) ?? "(deleted)",
-      period: b.period,
-      amountFormatted: formatMoney(b.amount, org.currency),
-      spentFormatted: formatMoney(spent, org.currency),
-      pct,
-      level: alertLevel(pct),
-    });
-  }
+  const views: BudgetView[] = utilizations.map((b) => ({
+    id: b.id,
+    scopeType: b.scopeType,
+    label: names[b.scopeType].get(b.scopeId) ?? "(deleted)",
+    period: b.period,
+    amountFormatted: formatMoney(b.amount, org.currency),
+    spentFormatted: formatMoney(b.spent, org.currency),
+    pct: b.pct,
+    level: b.level,
+  }));
 
   return (
     <section className="grid gap-4">

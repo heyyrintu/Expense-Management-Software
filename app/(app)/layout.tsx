@@ -78,6 +78,12 @@ export default async function AppLayout({
                 >
                   Cards
                 </Link>
+                <Link
+                  href="/analytics"
+                  className="text-muted-foreground text-sm hover:underline"
+                >
+                  Analytics
+                </Link>
               </>
             ) : null}
             {roleAtLeast(ctx.role, "finance_admin") ? (
