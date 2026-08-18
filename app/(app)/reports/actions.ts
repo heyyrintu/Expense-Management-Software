@@ -20,6 +20,8 @@ import {
 } from "@/lib/domain/report-workflow";
 import { scopedDb, type ScopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
+import { formatMoney } from "@/lib/money";
+import { notify } from "@/lib/notifications";
 import {
   reportCreateSchema,
   reportExpenseSchema,
@@ -207,6 +209,24 @@ export async function submitReportAction(input: unknown): Promise<Result> {
       action: "report.submitted",
       meta: { total, expenseCount: report.expenses.length, from: report.status },
     });
+
+    // notify the assigned approver (2.3)
+    const me = await db.user.findUniqueOrThrow({
+      where: { id: ctx.userId },
+      select: {
+        name: true,
+        approver: { select: { id: true, email: true } },
+      },
+    });
+    if (me.approver) {
+      const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+      await notify(db, ctx.orgId, [me.approver], "report.submitted", {
+        reportId: report.id,
+        reportTitle: report.title,
+        actorName: me.name,
+        totalFormatted: formatMoney(total, org.currency),
+      });
+    }
     revalidatePath("/reports");
     revalidatePath(`/reports/${report.id}`);
     return ok(undefined);

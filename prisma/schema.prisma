@@ -117,6 +117,7 @@ model Organization {
   approvals      Approval[]
   reimbursements Reimbursement[]
   auditLogs      AuditLog[]
+  notifications  Notification[]
 
   @@map("organizations")
 }
@@ -153,6 +154,7 @@ model User {
   reports        ExpenseReport[]
   approvals      Approval[]      @relation("ApprovalApprover")
   reimbursements Reimbursement[] @relation("ReimbursementPaidBy")
+  notifications  Notification[]
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -334,4 +336,25 @@ model AuditLog {
   @@index([orgId, entity, entityId])
   @@index([orgId, timestamp])
   @@map("audit_logs")
+}
+
+// In-app notification (2.3). Recipient-targeted; reads are pinned to the
+// session user on top of org scoping.
+model Notification {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  orgId     String    @map("org_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String // e.g. "report.submitted"
+  title     String
+  body      String    @default("")
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([orgId, userId, readAt])
+  @@index([orgId, userId, createdAt])
+  @@map("notifications")
 }

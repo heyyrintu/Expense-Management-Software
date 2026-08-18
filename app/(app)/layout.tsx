@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
+import { scopedDb } from "@/lib/db/scoped";
 import { logoutAction } from "@/app/(auth)/actions";
 
 export default async function AppLayout({
@@ -11,6 +12,9 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const ctx = await getSessionCtx();
   if (!ctx) redirect("/login");
+  const unread = await scopedDb(ctx.orgId).notification.count({
+    where: { userId: ctx.userId, readAt: null },
+  });
 
   return (
     <div className="min-h-screen">
@@ -51,6 +55,18 @@ export default async function AppLayout({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/notifications"
+              aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
+              className="text-muted-foreground relative text-sm hover:underline"
+            >
+              Inbox
+              {unread > 0 ? (
+                <span className="absolute -top-2 -right-3 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              ) : null}
+            </Link>
             <span className="text-muted-foreground hidden text-sm sm:inline">
               {ctx.role.replace("_", " ")}
             </span>

@@ -29,6 +29,8 @@ import {
 } from "@/lib/domain/report-workflow";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
+import { formatMoney } from "@/lib/money";
+import { notify } from "@/lib/notifications";
 import { bulkApproveSchema, decisionSchema } from "@/lib/schemas/approval";
 
 const NOT_ELIGIBLE = "This report isn't awaiting your decision.";
@@ -43,10 +45,16 @@ function guardError(e: unknown): Result | null {
 type LoadedReport = {
   id: string;
   userId: string;
+  title: string;
   status: string;
   total: number;
   submittedAt: Date | null;
-  user: { approverId: string | null };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    approverId: string | null;
+  };
   approvals: ApprovalRow[];
   expenses: { flags: unknown }[];
 };
@@ -60,7 +68,9 @@ async function decideOne(
   const report = (await db.expenseReport.findUnique({
     where: { id: input.reportId },
     include: {
-      user: { select: { approverId: true } },
+      user: {
+        select: { id: true, name: true, email: true, approverId: true },
+      },
       approvals: {
         select: { level: true, action: true, approverId: true, actedAt: true },
       },
@@ -125,12 +135,33 @@ async function decideOne(
   const intermediateApproval =
     input.action === "approve" && level === 1 && required === 2;
 
+  const actor = await db.user.findUniqueOrThrow({
+    where: { id: ctx.userId },
+    select: { name: true },
+  });
+  const totalFormatted = formatMoney(report.total, org.currency);
+
   if (intermediateApproval) {
     await logAudit(db, ctx, {
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.approved_level1",
       meta: { total: report.total, awaiting: "level2" },
+    });
+    // tell eligible finance admins a second approval is waiting (2.3)
+    const financeAdmins = (await db.user.findMany({
+      where: {
+        status: "active",
+        role: { in: ["finance_admin", "org_admin"] },
+        id: { notIn: [report.userId, ctx.userId] },
+      },
+      select: { id: true, email: true },
+    })) as Array<{ id: string; email: string }>;
+    await notify(db, ctx.orgId, financeAdmins, "report.approved_level1", {
+      reportId: report.id,
+      reportTitle: report.title,
+      actorName: actor.name,
+      totalFormatted,
     });
   } else {
     const to = nextStatus(report.status as ReportStatus, workflowAction);
@@ -156,6 +187,26 @@ async function decideOne(
       action: `report.${approvalAction}`,
       meta: { level, reason: input.reason ?? null, total: report.total },
     });
+    // tell the owner what happened (2.3)
+    const event =
+      input.action === "approve"
+        ? ("report.approved" as const)
+        : input.action === "reject"
+          ? ("report.rejected" as const)
+          : ("report.sent_back" as const);
+    await notify(
+      db,
+      ctx.orgId,
+      [{ id: report.user.id, email: report.user.email }],
+      event,
+      {
+        reportId: report.id,
+        reportTitle: report.title,
+        actorName: actor.name,
+        reason: input.reason,
+        totalFormatted,
+      }
+    );
   }
 
   revalidatePath("/approvals");
