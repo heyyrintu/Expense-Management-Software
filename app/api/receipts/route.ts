@@ -7,6 +7,7 @@ import { getSessionCtx } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors } from "@/lib/errors";
+import { extractReceipt } from "@/lib/ocr";
 import { validateReceiptFile } from "@/lib/schemas/receipt";
 import { buildReceiptKey, putReceiptObject } from "@/lib/storage/receipts";
 
@@ -61,13 +62,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const created: string[] = [];
   for (const file of files) {
+    const body = Buffer.from(await file.arrayBuffer());
     const key = buildReceiptKey(ctx.orgId, expense.id, file.name);
     await putReceiptObject({
       key,
-      body: Buffer.from(await file.arrayBuffer()),
+      body,
       contentType: file.type,
       fileName: file.name,
     });
+    // best-effort OCR (images only; resolves to {} on failure/timeout —
+    // never blocks the upload)
+    const ocr = await extractReceipt({ buffer: body, mimeType: file.type });
+    const hasOcr = Object.keys(ocr).length > 0;
     const receipt = await db.receipt.create({
       data: {
         orgId: ctx.orgId,
@@ -76,6 +82,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         fileName: file.name,
         mimeType: file.type,
         sizeBytes: file.size,
+        ...(hasOcr ? { ocrData: ocr } : {}),
       },
     });
     created.push(receipt.id);

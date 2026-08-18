@@ -24,6 +24,14 @@ import { deleteExpenseAction } from "./actions";
 
 export type Option = { id: string; name: string };
 
+export type OcrSuggestion = {
+  merchant?: string;
+  /** yyyy-mm-dd */
+  date?: string;
+  /** decimal string, e.g. "500.00" */
+  amount?: string;
+};
+
 export function ExpenseForm({
   defaults,
   categories,
@@ -31,6 +39,7 @@ export function ExpenseForm({
   currency,
   action,
   expenseId,
+  ocr,
 }: {
   defaults: ExpenseInput;
   categories: Option[];
@@ -38,6 +47,7 @@ export function ExpenseForm({
   currency: string;
   action: (input: ExpenseInput) => Promise<Result | Result<{ id: string }>>;
   expenseId?: string;
+  ocr?: OcrSuggestion;
 }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -74,12 +84,58 @@ export function ExpenseForm({
     });
   }
 
+  const hasOcr = !!ocr && (ocr.merchant || ocr.date || ocr.amount);
+
+  function applyOcr(field: "merchant" | "date" | "amount") {
+    if (!ocr) return;
+    const value = ocr[field];
+    if (value) form.setValue(field, value, { shouldValidate: true, shouldDirty: true });
+  }
+
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
         className="grid max-w-md gap-4"
       >
+        {hasOcr ? (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+            <p className="mb-2 font-medium text-blue-900">
+              Review values read from your receipt
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ocr?.amount ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("amount")}>
+                  Amount: {ocr.amount}
+                </Button>
+              ) : null}
+              {ocr?.date ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("date")}>
+                  Date: {ocr.date}
+                </Button>
+              ) : null}
+              {ocr?.merchant ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("merchant")}>
+                  Merchant: {ocr.merchant}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  applyOcr("amount");
+                  applyOcr("date");
+                  applyOcr("merchant");
+                }}
+              >
+                Apply all
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-blue-900/70">
+              Best-effort extraction — check each value before saving.
+            </p>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}

@@ -33,11 +33,34 @@ export default async function ExpenseDetailPage({
       category: { select: { id: true, name: true } },
       receipts: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, fileName: true, mimeType: true, storageKey: true },
+        select: {
+          id: true,
+          fileName: true,
+          mimeType: true,
+          storageKey: true,
+          ocrData: true,
+        },
       },
     },
   });
   if (!expense) notFound();
+
+  // most recent receipt with extracted values drives the review panel
+  type OcrData = { merchant?: string; date?: string; amount?: number } | null;
+  const latestOcr = [...expense.receipts]
+    .reverse()
+    .map((r: { ocrData: unknown }) => r.ocrData as OcrData)
+    .find((o: OcrData) => o && (o.merchant || o.date || o.amount));
+  const ocrSuggestion = latestOcr
+    ? {
+        merchant: latestOcr.merchant,
+        date: latestOcr.date,
+        amount:
+          latestOcr.amount !== undefined
+            ? toDecimalString(latestOcr.amount)
+            : undefined,
+      }
+    : undefined;
 
   // signed URLs only for receipts fetched through the org-scoped query above
   const receiptViews: ReceiptView[] = await Promise.all(
@@ -75,6 +98,7 @@ export default async function ExpenseDetailPage({
           categories={categories as Option[]}
           projects={projects as Option[]}
           currency={expense.currency}
+          ocr={ocrSuggestion}
         />
         <div className="max-w-md border-t pt-4">
           <ReceiptUploader
