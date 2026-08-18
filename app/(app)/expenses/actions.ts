@@ -11,6 +11,7 @@ import {
 } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
 import { toExpenseData, toMileageData } from "@/lib/domain/expense";
+import { computeExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
 import {
@@ -56,19 +57,31 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
     }
     const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
 
+    // policy check runs inline at entry time — flags, never blocks (PRD 6.5)
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: null,
+      userId: ctx.userId,
+      amount: data.amount,
+      date: data.date,
+      merchant: data.merchant,
+      categoryId: data.categoryId,
+      receiptCount: 0,
+    });
+
     const expense = await db.expense.create({
       data: {
         orgId: ctx.orgId,
         userId: ctx.userId,
         currency: org.currency,
         ...data,
+        flags,
       },
     });
     await logAudit(db, ctx, {
       entity: "Expense",
       entityId: expense.id,
       action: "expense.created",
-      meta: { amount: data.amount, merchant: data.merchant },
+      meta: { amount: data.amount, merchant: data.merchant, flagCount: flags.length },
     });
     revalidatePath("/expenses");
     return ok({ id: expense.id });
@@ -96,10 +109,21 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
       if (!project) return err("Pick a valid project.");
     }
 
+    const receiptCount = await db.receipt.count({ where: { expenseId: id } });
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: id,
+      userId: ctx.userId,
+      amount: data.amount,
+      date: data.date,
+      merchant: data.merchant,
+      categoryId: data.categoryId,
+      receiptCount,
+    });
+
     // update pinned to owner + draft — non-drafts and others' expenses 404
     const res = await db.expense.updateMany({
       where: { id, userId: ctx.userId, status: "draft" },
-      data,
+      data: { ...data, flags },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
 
@@ -169,19 +193,29 @@ export async function createMileageExpenseAction(
       if (!project) return err("Pick a valid project.");
     }
 
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: null,
+      userId: ctx.userId,
+      amount: data.amount,
+      date: data.date,
+      merchant: data.merchant,
+      categoryId: data.categoryId,
+      receiptCount: 0,
+    });
     const expense = await db.expense.create({
       data: {
         orgId: ctx.orgId,
         userId: ctx.userId,
         currency: org.currency,
         ...data,
+        flags,
       },
     });
     await logAudit(db, ctx, {
       entity: "Expense",
       entityId: expense.id,
       action: "expense.created",
-      meta: { type: "mileage", distanceKm: data.distanceKm, amount: data.amount },
+      meta: { type: "mileage", distanceKm: data.distanceKm, amount: data.amount, flagCount: flags.length },
     });
     revalidatePath("/expenses");
     return ok({ id: expense.id });
@@ -211,11 +245,22 @@ export async function updateMileageExpenseAction(input: unknown): Promise<Result
       if (!project) return err("Pick a valid project.");
     }
 
+    const receiptCount = await db.receipt.count({ where: { expenseId: id } });
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: id,
+      userId: ctx.userId,
+      amount: data.amount,
+      date: data.date,
+      merchant: data.merchant,
+      categoryId: data.categoryId,
+      receiptCount,
+    });
+
     // pinned to owner + draft + mileage type — a regular expense can never
     // silently become a mileage one (or vice versa)
     const res = await db.expense.updateMany({
       where: { id, userId: ctx.userId, status: "draft", type: "mileage" },
-      data,
+      data: { ...data, flags },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
 

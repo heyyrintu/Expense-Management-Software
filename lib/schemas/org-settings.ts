@@ -12,5 +12,10 @@ export const orgSettingsSchema = z.object({
   mileageRate: moneyString,
   // reports above this need a second approval; empty = single-level
   secondApprovalAbove: optionalMoneyString,
+  // flag expenses older than N days; empty = rule disabled
+  expenseAgeLimitDays: z.union([
+    z.literal(""),
+    z.string().regex(/^[1-9]\d{0,3}$/, "Whole days, e.g. 90"),
+  ]),
 });
 export type OrgSettingsInput = z.infer<typeof orgSettingsSchema>;

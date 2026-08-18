@@ -27,7 +27,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 
 ## Milestone 3 — Policy engine (PRD 6.5)
 
-- [ ] **3.1 Rule engine**: `lib/domain/policy.ts` — per-expense & monthly category limits, receipt-required threshold, expense age, duplicate detection; pure functions + unit tests.
+- [x] **3.1 Rule engine**: `lib/domain/policy.ts` — per-expense & monthly category limits, receipt-required threshold, expense age, duplicate detection; pure functions + unit tests.
 - [ ] **3.2 Flag surfacing**: inline warnings at entry time; flag badges in approval queue; approve-with-justification (logged).
 
 ## Milestone 4 — Reimbursement & dashboards (PRD 6.6–6.7)

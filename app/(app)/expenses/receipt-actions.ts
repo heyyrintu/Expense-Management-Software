@@ -7,6 +7,7 @@ import {
   requireRole,
 } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
+import { refreshExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
 import { z } from "zod";
@@ -42,6 +43,7 @@ export async function deleteReceiptAction(input: unknown): Promise<Result> {
       action: "receipt.deleted",
       meta: { expenseId: receipt.expense.id },
     });
+    await refreshExpenseFlags(db, ctx.orgId, receipt.expense.id);
     revalidatePath(`/expenses/${receipt.expense.id}`);
     return ok(undefined);
   } catch (e) {

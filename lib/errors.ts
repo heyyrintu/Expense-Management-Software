@@ -20,3 +20,17 @@ export const userErrors = {
   validation: "Please correct the highlighted fields.",
   unknown: "Something went wrong. Please try again.",
 } as const;
+
+/** Policy flag copy — violations FLAG, never block (CLAUDE.md). */
+export const policyMessages = {
+  per_expense_limit: (limit: string) =>
+    `Above the per-expense limit for this category (${limit}).`,
+  monthly_limit: (limit: string) =>
+    `This puts your monthly total for the category above its limit (${limit}).`,
+  receipt_required: (threshold: string) =>
+    `A receipt is required for amounts above ${threshold}.`,
+  expense_age: (days: number) =>
+    `This expense is older than ${days} days.`,
+  duplicate: (merchant: string) =>
+    `Looks like a duplicate: same amount, date, and merchant (${merchant}).`,
+} as const;

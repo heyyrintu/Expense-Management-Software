@@ -23,7 +23,7 @@ async function seedOrg(slug: string, name: string) {
       name,
       currency: "INR",
       mileageRate: 1200, // ₹12.00 per km, minor units
-      settings: {},
+      settings: { secondApprovalAbove: 5000000, expenseAgeLimitDays: 90 },
     },
   });
 

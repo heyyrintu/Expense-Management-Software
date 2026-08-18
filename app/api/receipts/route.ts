@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
+import { refreshExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors } from "@/lib/errors";
 import { extractReceipt } from "@/lib/ocr";
@@ -93,6 +94,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       meta: { expenseId: expense.id, fileName: file.name, sizeBytes: file.size },
     });
   }
+
+  await refreshExpenseFlags(db, ctx.orgId, expense.id);
 
   return NextResponse.json({ ok: true, data: { ids: created } });
 }

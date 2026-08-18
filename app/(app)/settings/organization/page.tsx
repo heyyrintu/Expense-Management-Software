@@ -1,6 +1,9 @@
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { secondApprovalThreshold } from "@/lib/domain/org-settings";
+import {
+  expenseAgeLimitDays,
+  secondApprovalThreshold,
+} from "@/lib/domain/org-settings";
 import { toDecimalString } from "@/lib/money";
 import { OrgSettingsForm } from "./org-settings-form";
 
@@ -26,6 +29,10 @@ export default async function OrgSettingsPage() {
           secondApprovalAbove: (() => {
             const t = secondApprovalThreshold(org.settings);
             return t === null ? "" : toDecimalString(t);
+          })(),
+          expenseAgeLimitDays: (() => {
+            const d = expenseAgeLimitDays(org.settings);
+            return d === null ? "" : String(d);
           })(),
         }}
       />

@@ -16,6 +16,7 @@ export function OrgSettingsForm({ defaults }: { defaults: OrgSettingsInput }) {
         { name: "currency", label: "Currency", placeholder: "INR", description: "3-letter ISO code" },
         { name: "mileageRate", label: "Mileage rate", placeholder: "12.00", description: "Amount per km, in your currency" },
         { name: "secondApprovalAbove", label: "Second approval above", placeholder: "50000.00", description: "Reports above this total need a second (finance) approval — leave empty for single-level" },
+        { name: "expenseAgeLimitDays", label: "Expense age limit (days)", placeholder: "90", description: "Flag expenses older than this — leave empty to disable" },
       ]}
     />
   );

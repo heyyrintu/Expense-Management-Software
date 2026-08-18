@@ -143,6 +143,10 @@ export async function updateOrgSettingsAction(input: unknown): Promise<Result> {
     const settings = {
       ...((org.settings as Record<string, unknown>) ?? {}),
       secondApprovalAbove,
+      expenseAgeLimitDays:
+        parsed.data.expenseAgeLimitDays === ""
+          ? null
+          : Number.parseInt(parsed.data.expenseAgeLimitDays, 10),
     };
     await db.organization.update({
       where: { id: ctx.orgId },
@@ -157,7 +161,7 @@ export async function updateOrgSettingsAction(input: unknown): Promise<Result> {
       entity: "Organization",
       entityId: ctx.orgId,
       action: "org.settings_updated",
-      meta: { currency: parsed.data.currency, mileageRate, secondApprovalAbove },
+      meta: { currency: parsed.data.currency, mileageRate, secondApprovalAbove, expenseAgeLimitDays: settings.expenseAgeLimitDays },
     });
     revalidatePath("/settings/organization");
     revalidatePath("/dashboard");

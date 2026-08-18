@@ -45,12 +45,12 @@ describe("categoryInputSchema", () => {
 
 describe("orgSettingsSchema", () => {
   it("normalizes currency to uppercase", () => {
-    const r = orgSettingsSchema.safeParse({ name: "Acme", currency: "inr", mileageRate: "12.00", secondApprovalAbove: "" });
+    const r = orgSettingsSchema.safeParse({ name: "Acme", currency: "inr", mileageRate: "12.00", secondApprovalAbove: "", expenseAgeLimitDays: "" });
     expect(r.success && r.data.currency).toBe("INR");
   });
   it("rejects non-ISO currency and bad rates", () => {
-    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "RUPEES", mileageRate: "1", secondApprovalAbove: "" }).success).toBe(false);
-    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "-1", secondApprovalAbove: "" }).success).toBe(false);
-    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "1", secondApprovalAbove: "500.00" }).success).toBe(true);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "RUPEES", mileageRate: "1", secondApprovalAbove: "", expenseAgeLimitDays: "" }).success).toBe(false);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "-1", secondApprovalAbove: "", expenseAgeLimitDays: "" }).success).toBe(false);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "1", secondApprovalAbove: "500.00", expenseAgeLimitDays: "90" }).success).toBe(true);
   });
 });
