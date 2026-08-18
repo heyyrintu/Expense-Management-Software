@@ -9,6 +9,7 @@ import { refreshExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors } from "@/lib/errors";
 import { extractReceipt } from "@/lib/ocr";
+import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
 import { validateReceiptFile } from "@/lib/schemas/receipt";
 import { buildReceiptKey, putReceiptObject } from "@/lib/storage/receipts";
 
@@ -22,6 +23,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(
       { ok: false, error: userErrors.notAuthenticated },
       { status: 401 }
+    );
+  }
+
+  if (!checkRateLimit("upload", ctx.orgId)) {
+    return NextResponse.json(
+      { ok: false, error: rateLimitedMessage },
+      { status: 429 }
     );
   }
 

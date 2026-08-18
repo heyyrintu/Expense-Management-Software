@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/lib/auth";
 import { verifyInviteToken } from "@/lib/auth/invite-token";
@@ -12,10 +13,23 @@ import {
   loginSchema,
   signupSchema,
 } from "@/lib/schemas/auth";
+import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return (
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    h.get("x-real-ip") ??
+    "local"
+  );
+}
 
 export async function loginAction(input: unknown): Promise<Result> {
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) return err(userErrors.validation);
+  if (!checkRateLimit("login", `${parsed.data.slug}:${await clientIp()}`)) {
+    return err(rateLimitedMessage);
+  }
   try {
     await signIn("credentials", {
       ...parsed.data,
@@ -31,6 +45,9 @@ export async function loginAction(input: unknown): Promise<Result> {
 export async function signupAction(input: unknown): Promise<Result> {
   const parsed = signupSchema.safeParse(input);
   if (!parsed.success) return err(userErrors.validation);
+  if (!checkRateLimit("signup", await clientIp())) {
+    return err(rateLimitedMessage);
+  }
   const { orgName, slug, name, email, password } = parsed.data;
 
   const created = await createOrgWithAdmin({
@@ -72,6 +89,16 @@ export async function acceptInviteAction(input: unknown): Promise<Result> {
     data: {
       passwordHash: await hashPassword(parsed.data.password),
       status: "active",
+    },
+  });
+  await db.auditLog.create({
+    data: {
+      orgId: claims.orgId,
+      entity: "User",
+      entityId: claims.userId,
+      actorId: claims.userId,
+      action: "user.activated",
+      meta: {},
     },
   });
   return ok(undefined);

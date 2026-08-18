@@ -8,6 +8,7 @@ import { buildExpenseWhere } from "@/lib/domain/expense-query";
 import { resolveExpenseScope } from "@/lib/domain/expense-scope";
 import { scopedDb } from "@/lib/db/scoped";
 import { toDecimalString } from "@/lib/money";
+import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
 import { parseFilters } from "@/lib/schemas/dashboard";
 
 export const runtime = "nodejs";
@@ -30,6 +31,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   const ctx = await getSessionCtx();
   if (!ctx) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!checkRateLimit("export", ctx.orgId)) {
+    return new NextResponse(rateLimitedMessage, { status: 429 });
   }
 
   const url = new URL(request.url);

@@ -33,7 +33,7 @@ export async function createOrgWithAdmin(input: {
         select: { id: true },
       });
       await tx.$executeRaw`SELECT set_config('app.current_org_id', ${org.id}, TRUE)`;
-      await tx.user.create({
+      const admin = await tx.user.create({
         data: {
           orgId: org.id,
           name: input.adminName,
@@ -41,6 +41,16 @@ export async function createOrgWithAdmin(input: {
           passwordHash: input.passwordHash,
           role: "org_admin",
           status: "active",
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          orgId: org.id,
+          entity: "Organization",
+          entityId: org.id,
+          actorId: admin.id,
+          action: "org.created",
+          meta: { slug: input.slug },
         },
       });
       return org.id;

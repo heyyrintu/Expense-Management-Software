@@ -9,7 +9,8 @@
     "lint": "eslint . && tsc --noEmit",
     "test": "vitest run",
     "seed": "tsx prisma/seed.ts",
-    "test:isolation": "vitest run --config vitest.isolation.config.ts"
+    "test:isolation": "vitest run --config vitest.isolation.config.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1112.0",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "^24.2.1",
     "@types/nodemailer": "^8.0.1",

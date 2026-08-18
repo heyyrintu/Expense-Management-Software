@@ -34,7 +34,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 
 - [x] **4.1 Finance queue**: approved reports list; mark reimbursed (single/batch) with payment date + reference; employee status view.
 - [x] **4.2 Dashboards**: employee (my spend/pending), approver (team by month/category), finance (org-wide by category/department/project/user/month, top merchants, violations, avg approval time). Charts: Recharts. Filters + CSV export; numbers must reconcile with filtered lists.
-- [ ] **4.3 Hardening pass**: e2e happy path (signup → submit → approve → reimburse) in Playwright; empty states; error pages; rate limiting per org; audit review.
+- [x] **4.3 Hardening pass**: e2e happy path (signup → submit → approve → reimburse) in Playwright; empty states; error pages; rate limiting per org; audit review.
 
 **→ MVP complete. Demo with both seed orgs.**
 

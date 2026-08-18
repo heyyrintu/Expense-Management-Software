@@ -17,6 +17,12 @@ export default async function NewExpensePage() {
   return (
     <section className="grid gap-4">
       <h1 className="text-xl font-semibold">Add expense</h1>
+      {categories.length === 0 ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Your organization has no expense categories yet — a finance admin
+          needs to add one in Settings before expenses can be filed.
+        </p>
+      ) : null}
       <NewExpenseSwitcher
         regularDefaults={{
           amount: "",

@@ -37,6 +37,7 @@ npm run build          # production build — must pass before any commit
 npm run lint           # eslint + tsc --noEmit
 npm run test           # vitest unit tests
 npm run test:isolation # cross-tenant isolation suite (needs docker compose up -d + migrate)
+npm run test:e2e       # Playwright happy path (needs docker compose up -d + migrate; first run: npx playwright install chromium)
 ```
 
 ```bash
@@ -48,8 +49,6 @@ npm run seed             # seed demo orgs acme + globex (4 roles each)
 Demo logins after seeding: `employee@acme.test`, `approver@acme.test`, `finance_admin@acme.test`, `org_admin@acme.test` (same for `globex`), password `Password123!`.
 
 **DB roles**: the app connects as `expense_app` (non-superuser — RLS enforced); `expense` (superuser) is for migrations/seed only via `DIRECT_DATABASE_URL`. If your Postgres volume predates this, recreate it (`docker compose down -v && docker compose up -d`) so the init script creates the role.
-
-Coming in later milestones (see PLAN.md): `npm run test:e2e`.
 
 ## Non-negotiables (see CLAUDE.md)
 
