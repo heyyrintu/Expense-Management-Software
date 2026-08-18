@@ -12,15 +12,26 @@ export default async function SettingsLayout({
   // UI gate only — every action re-checks with requireRole("finance_admin").
   if (!roleAtLeast(ctx.role, "finance_admin")) redirect("/dashboard");
 
+  const admin = roleAtLeast(ctx.role, "org_admin");
   return (
     <div className="grid gap-6">
-      <nav className="flex gap-4 border-b pb-2 text-sm">
+      <nav className="flex flex-wrap gap-4 border-b pb-2 text-sm">
         <Link href="/settings/organization" className="hover:underline">
           Organization
         </Link>
         <Link href="/settings/categories" className="hover:underline">
           Categories
         </Link>
+        {admin ? (
+          <>
+            <Link href="/settings/users" className="hover:underline">
+              Users
+            </Link>
+            <Link href="/settings/departments" className="hover:underline">
+              Departments
+            </Link>
+          </>
+        ) : null}
       </nav>
       {children}
     </div>
