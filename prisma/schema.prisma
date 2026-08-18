@@ -139,6 +139,8 @@ model Organization {
   recurringTemplates RecurringTemplate[]
   delegations    Delegation[]
   inboundEmailFailures InboundEmailFailure[]
+  bankImports    BankStatementImport[]
+  bankLines      BankStatementLine[]
 
   @@map("organizations")
 }
@@ -187,6 +189,7 @@ model User {
   recurringTemplates RecurringTemplate[]
   delegationsAsDelegate  Delegation[] @relation("DelegationDelegate")
   delegationsAsPrincipal Delegation[] @relation("DelegationPrincipal")
+  bankImports    BankStatementImport[] @relation("BankImportImportedBy")
   notifications  Notification[]
   reportComments ReportComment[]
 
@@ -369,6 +372,7 @@ model Reimbursement {
   report       ExpenseReport @relation(fields: [reportId], references: [id])
   batch        PaymentBatch? @relation(fields: [batchId], references: [id])
   paidBy       User          @relation("ReimbursementPaidBy", fields: [paidById], references: [id])
+  bankLine     BankStatementLine?
 
   @@index([orgId, reportId])
   @@index([orgId, paidAt])
@@ -678,4 +682,53 @@ model InboundEmailFailure {
 
   @@index([orgId, createdAt])
   @@map("inbound_email_failures")
+}
+
+enum BankMatchType {
+  auto
+  manual
+
+  @@map("bank_match_type")
+}
+
+// Bank statement import batch (PLAN 7.2). column_mapping records which
+// statement columns were used; locked_at freezes the reconciled period.
+model BankStatementImport {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  filename     String
+  columnMapping Json     @map("column_mapping")
+  periodStart  DateTime  @map("period_start") @db.Date
+  periodEnd    DateTime  @map("period_end") @db.Date
+  lockedAt     DateTime? @map("locked_at")
+  importedById String    @map("imported_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  importedBy   User                @relation("BankImportImportedBy", fields: [importedById], references: [id])
+  lines        BankStatementLine[]
+
+  @@index([orgId, createdAt])
+  @@map("bank_statement_imports")
+}
+
+// One statement debit line. A reimbursement reconciles with at most ONE
+// line (unique) and vice versa.
+model BankStatementLine {
+  id                     String         @id @default(uuid(7)) @db.Uuid
+  orgId                  String         @map("org_id") @db.Uuid
+  importId               String         @map("import_id") @db.Uuid
+  date                   DateTime       @db.Date
+  amount                 Int // minor units, org base currency
+  reference              String
+  matchedReimbursementId String?        @unique @map("matched_reimbursement_id") @db.Uuid
+  matchType              BankMatchType? @map("match_type")
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  import       BankStatementImport @relation(fields: [importId], references: [id])
+  matchedReimbursement Reimbursement? @relation(fields: [matchedReimbursementId], references: [id])
+
+  @@index([orgId, importId])
+  @@index([orgId, date])
+  @@map("bank_statement_lines")
 }

@@ -90,6 +90,12 @@ export default async function AppLayout({
                 >
                   Analytics
                 </Link>
+                <Link
+                  href="/bank-recon"
+                  className="text-muted-foreground text-sm hover:underline"
+                >
+                  Bank
+                </Link>
               </>
             ) : null}
             {roleAtLeast(ctx.role, "finance_admin") ? (

@@ -29,6 +29,8 @@ export const TENANT_MODELS = [
   "RecurringTemplate",
   "Delegation",
   "InboundEmailFailure",
+  "BankStatementImport",
+  "BankStatementLine",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

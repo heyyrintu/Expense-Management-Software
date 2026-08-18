@@ -23,7 +23,8 @@ export type AuditEntry = {
     | "Advance"
     | "Client"
     | "RecurringTemplate"
-    | "Delegation";
+    | "Delegation"
+    | "BankStatementImport";
   entityId: string;
   action: string; // dot-namespaced, e.g. "category.created"
   meta?: Record<string, unknown>;
