@@ -33,6 +33,14 @@ export default async function AppLayout({
             >
               Reports
             </Link>
+            {roleAtLeast(ctx.role, "approver") ? (
+              <Link
+                href="/approvals"
+                className="text-muted-foreground text-sm hover:underline"
+              >
+                Approvals
+              </Link>
+            ) : null}
             {roleAtLeast(ctx.role, "finance_admin") ? (
               <Link
                 href="/settings"

@@ -15,6 +15,7 @@ export function OrgSettingsForm({ defaults }: { defaults: OrgSettingsInput }) {
         { name: "name", label: "Organization name" },
         { name: "currency", label: "Currency", placeholder: "INR", description: "3-letter ISO code" },
         { name: "mileageRate", label: "Mileage rate", placeholder: "12.00", description: "Amount per km, in your currency" },
+        { name: "secondApprovalAbove", label: "Second approval above", placeholder: "50000.00", description: "Reports above this total need a second (finance) approval — leave empty for single-level" },
       ]}
     />
   );

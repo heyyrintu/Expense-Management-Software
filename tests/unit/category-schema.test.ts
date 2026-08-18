@@ -45,11 +45,12 @@ describe("categoryInputSchema", () => {
 
 describe("orgSettingsSchema", () => {
   it("normalizes currency to uppercase", () => {
-    const r = orgSettingsSchema.safeParse({ name: "Acme", currency: "inr", mileageRate: "12.00" });
+    const r = orgSettingsSchema.safeParse({ name: "Acme", currency: "inr", mileageRate: "12.00", secondApprovalAbove: "" });
     expect(r.success && r.data.currency).toBe("INR");
   });
   it("rejects non-ISO currency and bad rates", () => {
-    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "RUPEES", mileageRate: "1" }).success).toBe(false);
-    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "-1" }).success).toBe(false);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "RUPEES", mileageRate: "1", secondApprovalAbove: "" }).success).toBe(false);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "-1", secondApprovalAbove: "" }).success).toBe(false);
+    expect(orgSettingsSchema.safeParse({ name: "Acme", currency: "INR", mileageRate: "1", secondApprovalAbove: "500.00" }).success).toBe(true);
   });
 });

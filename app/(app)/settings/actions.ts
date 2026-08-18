@@ -133,21 +133,31 @@ export async function updateOrgSettingsAction(input: unknown): Promise<Result> {
     if (!parsed.success) return err(userErrors.validation);
     const mileageRate = parseToMinorUnits(parsed.data.mileageRate);
     if (mileageRate === null) return err(userErrors.validation);
+    const secondApprovalAbove =
+      parsed.data.secondApprovalAbove === ""
+        ? null
+        : parseToMinorUnits(parsed.data.secondApprovalAbove);
 
     const db = scopedDb(ctx.orgId);
+    const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+    const settings = {
+      ...((org.settings as Record<string, unknown>) ?? {}),
+      secondApprovalAbove,
+    };
     await db.organization.update({
       where: { id: ctx.orgId },
       data: {
         name: parsed.data.name,
         currency: parsed.data.currency,
         mileageRate,
+        settings,
       },
     });
     await logAudit(db, ctx, {
       entity: "Organization",
       entityId: ctx.orgId,
       action: "org.settings_updated",
-      meta: { currency: parsed.data.currency, mileageRate },
+      meta: { currency: parsed.data.currency, mileageRate, secondApprovalAbove },
     });
     revalidatePath("/settings/organization");
     revalidatePath("/dashboard");
