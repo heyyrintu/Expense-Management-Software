@@ -50,6 +50,14 @@ Demo logins after seeding: `employee@acme.test`, `approver@acme.test`, `finance_
 
 **DB roles**: the app connects as `expense_app` (non-superuser — RLS enforced); `expense` (superuser) is for migrations/seed only via `DIRECT_DATABASE_URL`. If your Postgres volume predates this, recreate it (`docker compose down -v && docker compose up -d`) so the init script creates the role.
 
+## Scheduled jobs
+
+Daily pending-approvals digest (5.6) — schedule with any cron:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/jobs/approval-digest
+```
+
 ## Non-negotiables (see CLAUDE.md)
 
 - Every table has `org_id`; all DB access via `scopedDb(orgId)`; RLS as defense-in-depth

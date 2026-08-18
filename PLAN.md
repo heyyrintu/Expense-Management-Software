@@ -45,7 +45,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 - [x] **5.3 Report comments** (approver ? employee thread).
 - [x] **5.4 Custom approval chains** by department/amount.
 - [x] **5.5 Super Admin panel**: org list, suspend, usage metrics.
-- [ ] **5.6 Email digests** for pending approvals.
+- [x] **5.6 Email digests** for pending approvals.
 
 ## Session protocol (every Claude Code session)
 

@@ -9,6 +9,7 @@
 //     the user lookup itself still goes through scopedDb; super-admin auth)
 //   - app/super/* (platform panel: cross-org AGGREGATES + org status only —
 //     never tenant expense data; every support write is audit-logged)
+//   - app/api/jobs/* (cron: org-ID iteration only; per-org work via scopedDb)
 //   - prisma/seed.ts and test harnesses
 import { PrismaClient } from "@prisma/client";
 
