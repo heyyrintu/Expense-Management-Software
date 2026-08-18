@@ -1,4 +1,6 @@
 import type { Role } from "@/lib/auth/roles";
+
+type SessionRole = Role | "super_admin";
 import "next-auth";
 import "next-auth/jwt";
 
@@ -7,12 +9,12 @@ declare module "next-auth" {
     userId: string;
     orgId: string;
     orgSlug: string;
-    role: Role;
+    role: SessionRole;
   }
   interface User {
     orgId: string;
     orgSlug: string;
-    role: Role;
+    role: SessionRole;
   }
 }
 
@@ -21,6 +23,6 @@ declare module "next-auth/jwt" {
     userId: string;
     orgId: string;
     orgSlug: string;
-    role: Role;
+    role: SessionRole;
   }
 }

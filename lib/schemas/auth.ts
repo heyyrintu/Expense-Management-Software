@@ -31,3 +31,8 @@ export const acceptInviteSchema = z.object({
   password: z.string().min(8, "At least 8 characters"),
 });
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
+
+export const superLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1, "Password is required"),
+});

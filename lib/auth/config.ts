@@ -2,7 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db/client";
 import { scopedDb } from "@/lib/db/scoped";
-import { loginSchema } from "@/lib/schemas/auth";
+import { loginSchema, superLoginSchema } from "@/lib/schemas/auth";
 import { verifyPassword } from "./password";
 import { isRole } from "./roles";
 
@@ -11,6 +11,30 @@ export const authConfig = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   providers: [
+    // Platform operators (PRD 6.1b) — separate table, no org, no tenant data.
+    Credentials({
+      id: "super-credentials",
+      credentials: { email: {}, password: {} },
+      async authorize(credentials) {
+        const parsed = superLoginSchema.safeParse(credentials);
+        if (!parsed.success) return null;
+        const admin = await prisma.superAdmin.findUnique({
+          where: { email: parsed.data.email.toLowerCase() },
+        });
+        if (!admin) return null;
+        if (!(await verifyPassword(parsed.data.password, admin.passwordHash))) {
+          return null;
+        }
+        return {
+          id: admin.id,
+          name: "Super Admin",
+          email: admin.email,
+          orgId: "",
+          orgSlug: "",
+          role: "super_admin" as const,
+        };
+      },
+    }),
     Credentials({
       credentials: {
         slug: {},

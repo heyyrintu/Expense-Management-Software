@@ -6,7 +6,9 @@
 //   - lib/db/scoped.ts
 //   - org-lifecycle flows that predate a session (org signup, in lib/db/)
 //   - lib/auth/config.ts (slug -> org resolution before a session exists;
-//     the user lookup itself still goes through scopedDb)
+//     the user lookup itself still goes through scopedDb; super-admin auth)
+//   - app/super/* (platform panel: cross-org AGGREGATES + org status only —
+//     never tenant expense data; every support write is audit-logged)
 //   - prisma/seed.ts and test harnesses
 import { PrismaClient } from "@prisma/client";
 

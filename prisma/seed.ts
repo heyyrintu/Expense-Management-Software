@@ -137,6 +137,14 @@ async function seedOrg(slug: string, name: string) {
 }
 
 async function main() {
+  await prisma.superAdmin.upsert({
+    where: { email: "superadmin@platform.test" },
+    update: {},
+    create: {
+      email: "superadmin@platform.test",
+      passwordHash: await bcrypt.hash(DEMO_PASSWORD, 10),
+    },
+  });
   await seedOrg("acme", "Acme");
   await seedOrg("globex", "Globex");
   console.log(`demo login password: ${DEMO_PASSWORD}`);
