@@ -36,6 +36,7 @@ npm run dev            # dev server (docker compose up -d first)
 npm run build          # production build — must pass before any commit
 npm run lint           # eslint + tsc --noEmit
 npm run test           # vitest unit tests
+npm run test:isolation # cross-tenant isolation suite (needs docker compose up -d + migrate)
 ```
 
 ```bash
@@ -48,7 +49,7 @@ Demo logins after seeding: `employee@acme.test`, `approver@acme.test`, `finance_
 
 **DB roles**: the app connects as `expense_app` (non-superuser — RLS enforced); `expense` (superuser) is for migrations/seed only via `DIRECT_DATABASE_URL`. If your Postgres volume predates this, recreate it (`docker compose down -v && docker compose up -d`) so the init script creates the role.
 
-Coming in later milestones (see PLAN.md): `npm run test:isolation`, `npm run test:e2e`, `npm run seed`.
+Coming in later milestones (see PLAN.md): `npm run test:e2e`.
 
 ## Non-negotiables (see CLAUDE.md)
 

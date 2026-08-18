@@ -8,7 +8,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 - [x] **0.2 Schema v1**: Prisma models — Organization, User, Department, Project, Category, Expense, Receipt, ExpenseReport, Approval, Reimbursement, AuditLog (all with `org_id`, per PRD §7). Migration + ERD comment block.
 - [x] **0.3 Tenancy core**: `scopedDb(orgId)` wrapper; Postgres RLS policies on all tenant tables; `app.current_org_id` set per transaction; seed script (2 orgs × 4 roles).
 - [x] **0.4 Auth**: Auth.js credentials login; org signup flow (create org + first user = org_admin, slug `app.com/{slug}`); session carries userId/orgId/role; `requireRole()` guards; login/logout/invite-accept pages.
-- [ ] **0.5 Isolation test harness**: `tests/isolation/` pattern + CI script (`npm run test:isolation`); failing cross-tenant access = red build. GitHub Actions workflow: lint, build, test, isolation.
+- [x] **0.5 Isolation test harness**: `tests/isolation/` pattern + CI script (`npm run test:isolation`); failing cross-tenant access = red build. GitHub Actions workflow: lint, build, test, isolation.
 
 ## Milestone 1 — Expense capture (PRD 6.2)
 

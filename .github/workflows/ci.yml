@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: expense
+          POSTGRES_PASSWORD: expense
+          POSTGRES_DB: expense_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U expense -d expense_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # app role — RLS enforced (created below); used by the isolation suite
+      DATABASE_URL: postgresql://expense_app:expense_app@localhost:5432/expense_dev?schema=public
+      # owner — migrations + fixture provisioning
+      DIRECT_DATABASE_URL: postgresql://expense:expense@localhost:5432/expense_dev?schema=public
+      AUTH_SECRET: ci-only-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Lint (eslint + tsc)
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Migrate
+        run: npx prisma migrate deploy
+
+      - name: Create app role (RLS-enforced, non-superuser)
+        run: PGPASSWORD=expense psql -h localhost -U expense -d expense_dev -f docker/postgres-init/01-app-role.sql
+
+      - name: Tenant isolation suite (red build on any cross-tenant access)
+        run: npm run test:isolation
