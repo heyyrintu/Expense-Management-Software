@@ -32,12 +32,13 @@ export default async function SuperPanelPage() {
         _count: { select: { users: true, expenses: true, reports: true } },
       },
     }) as Promise<OrgWithCounts[]>,
-    prisma.receipt.groupBy({
-      by: ["orgId"],
-      _sum: { sizeBytes: true },
-    }) as Promise<Array<{ orgId: string; _sum: { sizeBytes: number | null } }>>,
+    prisma.$queryRaw<Array<{ org_id: string; total: bigint }>>`
+      SELECT org_id, COALESCE(SUM(size_bytes), 0) AS total
+      FROM receipts GROUP BY org_id`,
   ]);
-  const storageByOrg = new Map(storage.map((s) => [s.orgId, s._sum.sizeBytes ?? 0]));
+  const storageByOrg = new Map<string, number>(
+    storage.map((s: { org_id: string; total: bigint }) => [s.org_id, Number(s.total)])
+  );
 
   return (
     <main className="min-h-screen bg-zinc-950 p-6 text-zinc-100">
