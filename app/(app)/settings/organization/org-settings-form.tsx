@@ -17,6 +17,8 @@ export function OrgSettingsForm({ defaults }: { defaults: OrgSettingsInput }) {
         { name: "mileageRate", label: "Mileage rate", placeholder: "12.00", description: "Amount per km, in your currency" },
         { name: "secondApprovalAbove", label: "Second approval above", placeholder: "50000.00", description: "Reports above this total need a second (finance) approval — leave empty for single-level" },
         { name: "expenseAgeLimitDays", label: "Expense age limit (days)", placeholder: "90", description: "Flag expenses older than this — leave empty to disable" },
+        { name: "tallyExpenseLedger", label: "Tally expense ledger", placeholder: "Expense Reimbursements", description: "Ledger name used in Tally XML exports" },
+        { name: "tallyBankLedger", label: "Tally bank ledger", placeholder: "Bank", description: "Bank ledger name for payment vouchers" },
       ]}
     />
   );

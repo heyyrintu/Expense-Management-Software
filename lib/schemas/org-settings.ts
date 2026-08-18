@@ -17,5 +17,8 @@ export const orgSettingsSchema = z.object({
     z.literal(""),
     z.string().regex(/^[1-9]\d{0,3}$/, "Whole days, e.g. 90"),
   ]),
+  // Tally export ledger names (7.1)
+  tallyExpenseLedger: z.string().trim().max(60).default(""),
+  tallyBankLedger: z.string().trim().max(60).default(""),
 });
 export type OrgSettingsInput = z.infer<typeof orgSettingsSchema>;

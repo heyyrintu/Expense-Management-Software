@@ -4,6 +4,9 @@ export type OrgSettings = {
   secondApprovalAbove?: number | null;
   /** Flag expenses older than this many days; null disables the rule. */
   expenseAgeLimitDays?: number | null;
+  /** Tally export ledger names (7.1). */
+  tallyExpenseLedger?: string;
+  tallyBankLedger?: string;
 };
 
 export function parseOrgSettings(settings: unknown): OrgSettings {
@@ -20,6 +23,14 @@ export function parseOrgSettings(settings: unknown): OrgSettings {
       typeof age === "number" && Number.isSafeInteger(age) && age > 0 && age <= 3650
         ? age
         : null,
+    tallyExpenseLedger:
+      typeof s.tallyExpenseLedger === "string" && s.tallyExpenseLedger.trim() !== ""
+        ? s.tallyExpenseLedger
+        : "Expense Reimbursements",
+    tallyBankLedger:
+      typeof s.tallyBankLedger === "string" && s.tallyBankLedger.trim() !== ""
+        ? s.tallyBankLedger
+        : "Bank",
   };
 }
 

@@ -147,6 +147,8 @@ export async function updateOrgSettingsAction(input: unknown): Promise<Result> {
         parsed.data.expenseAgeLimitDays === ""
           ? null
           : Number.parseInt(parsed.data.expenseAgeLimitDays, 10),
+      tallyExpenseLedger: parsed.data.tallyExpenseLedger || undefined,
+      tallyBankLedger: parsed.data.tallyBankLedger || undefined,
     };
     await db.organization.update({
       where: { id: ctx.orgId },

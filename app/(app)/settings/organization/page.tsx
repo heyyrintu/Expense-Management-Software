@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import {
   expenseAgeLimitDays,
+  parseOrgSettings,
   secondApprovalThreshold,
 } from "@/lib/domain/org-settings";
 import { toDecimalString } from "@/lib/money";
@@ -34,6 +35,8 @@ export default async function OrgSettingsPage() {
             const d = expenseAgeLimitDays(org.settings);
             return d === null ? "" : String(d);
           })(),
+          tallyExpenseLedger: parseOrgSettings(org.settings).tallyExpenseLedger ?? "",
+          tallyBankLedger: parseOrgSettings(org.settings).tallyBankLedger ?? "",
         }}
       />
     </section>

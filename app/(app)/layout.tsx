@@ -25,7 +25,7 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen">
-      <header className="border-b">
+      <header className="border-b print:hidden">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
           <div className="flex items-baseline gap-3">
             <Link href="/dashboard" className="font-semibold">
@@ -49,6 +49,12 @@ export default async function AppLayout({
               className="text-muted-foreground text-sm hover:underline"
             >
               Advances
+            </Link>
+            <Link
+              href="/ledger"
+              className="text-muted-foreground text-sm hover:underline"
+            >
+              Ledger
             </Link>
             {roleAtLeast(ctx.role, "approver") ? (
               <Link
