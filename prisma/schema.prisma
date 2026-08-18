@@ -1,0 +1,336 @@
+// =====================================================================
+// ERD — Expense Management (multi-tenant, shared schema + RLS)
+//
+//   Organization 1─* User, Department, Project, Category, Expense,
+//                    Receipt, ExpenseReport, Approval, Reimbursement,
+//                    AuditLog          (every tenant table carries org_id)
+//   SuperAdmin              platform-level, NO org_id, no org data access
+//
+//   User        *─1 Department (optional)
+//   User        *─1 User (approver, self-relation, optional)
+//   Expense     *─1 User (owner) · *─1 Category · *─1 Project (optional)
+//   Expense     *─1 ExpenseReport (optional until added to a report)
+//   Receipt     *─1 Expense
+//   ExpenseReport *─1 User (owner)
+//   Approval    *─1 ExpenseReport · *─1 User (approver)
+//   Reimbursement 1─1 ExpenseReport · *─1 User (paid_by)
+//   AuditLog    → (entity, entity_id) polymorphic; actor_id = User
+//
+// Conventions (CLAUDE.md):
+//   - ids: UUIDv7 (client-generated via Prisma uuid(7))
+//   - money: Int, minor units (cents/paise) — never floats
+//   - org_id leads every composite index; no cross-org FKs
+//   - report state machine: Draft → Submitted → Approved|Rejected|SentBack
+//     → Reimbursed (transitions only via lib/domain/report-workflow.ts)
+//   - AuditLog is append-only; nothing hard-deleted after Draft
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  employee
+  approver
+  finance_admin
+  org_admin
+
+  @@map("role")
+}
+
+enum OrgStatus {
+  active
+  suspended
+
+  @@map("org_status")
+}
+
+enum UserStatus {
+  invited
+  active
+  deactivated
+
+  @@map("user_status")
+}
+
+enum ExpenseType {
+  regular
+  mileage
+
+  @@map("expense_type")
+}
+
+enum ExpenseStatus {
+  draft
+  submitted
+  approved
+  rejected
+  reimbursed
+
+  @@map("expense_status")
+}
+
+enum ReportStatus {
+  draft
+  submitted
+  approved
+  rejected
+  sent_back
+  reimbursed
+
+  @@map("report_status")
+}
+
+enum ApprovalAction {
+  approved
+  rejected
+  sent_back
+
+  @@map("approval_action")
+}
+
+model Organization {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  slug        String    @unique
+  name        String
+  currency    String    @default("INR") @db.Char(3)
+  mileageRate Int       @default(0) @map("mileage_rate") // minor units per km
+  plan        String    @default("free")
+  status      OrgStatus @default(active)
+  settings    Json      @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  users          User[]
+  departments    Department[]
+  projects       Project[]
+  categories     Category[]
+  expenses       Expense[]
+  receipts       Receipt[]
+  reports        ExpenseReport[]
+  approvals      Approval[]
+  reimbursements Reimbursement[]
+  auditLogs      AuditLog[]
+
+  @@map("organizations")
+}
+
+// Platform operator — deliberately has NO org_id and no org data relations.
+model SuperAdmin {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("super_admins")
+}
+
+model User {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  orgId        String     @map("org_id") @db.Uuid
+  name         String
+  email        String
+  passwordHash String?    @map("password_hash") // null until invite accepted
+  role         Role       @default(employee)
+  departmentId String?    @map("department_id") @db.Uuid
+  approverId   String?    @map("approver_id") @db.Uuid
+  status       UserStatus @default(invited)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  approver     User?        @relation("UserApprover", fields: [approverId], references: [id])
+  reportsTo    User[]       @relation("UserApprover")
+
+  expenses       Expense[]
+  reports        ExpenseReport[]
+  approvals      Approval[]      @relation("ApprovalApprover")
+  reimbursements Reimbursement[] @relation("ReimbursementPaidBy")
+
+  @@unique([orgId, email])
+  @@index([orgId, role])
+  @@index([orgId, departmentId])
+  @@map("users")
+}
+
+model Department {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  users        User[]
+
+  @@unique([orgId, name])
+  @@map("departments")
+}
+
+model Project {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  name      String
+  code      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expenses     Expense[]
+
+  @@unique([orgId, code])
+  @@index([orgId, name])
+  @@map("projects")
+}
+
+model Category {
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  orgId                String   @map("org_id") @db.Uuid
+  name                 String
+  perExpenseLimit      Int?     @map("per_expense_limit") // minor units
+  monthlyLimit         Int?     @map("monthly_limit") // minor units
+  receiptRequiredAbove Int?     @map("receipt_required_above") // minor units
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expenses     Expense[]
+
+  @@unique([orgId, name])
+  @@map("categories")
+}
+
+model Expense {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  orgId      String        @map("org_id") @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  reportId   String?       @map("report_id") @db.Uuid
+  type       ExpenseType   @default(regular)
+  amount     Int // minor units
+  currency   String        @db.Char(3)
+  date       DateTime      @db.Date
+  merchant   String
+  categoryId String        @map("category_id") @db.Uuid
+  projectId  String?       @map("project_id") @db.Uuid
+  purpose    String        @default("")
+  distanceKm Int?          @map("distance_km") // mileage type only
+  status     ExpenseStatus @default(draft)
+  flags      Json          @default("[]") // policy violation flags, never block
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+  report       ExpenseReport? @relation(fields: [reportId], references: [id])
+  category     Category       @relation(fields: [categoryId], references: [id])
+  project      Project?       @relation(fields: [projectId], references: [id])
+  receipts     Receipt[]
+
+  // duplicate detection probe: org + user + amount + date (+ merchant, compared case-insensitively in app)
+  @@index([orgId, userId, amount, date])
+  @@index([orgId, reportId])
+  @@index([orgId, categoryId, date])
+  @@index([orgId, status])
+  @@map("expenses")
+}
+
+model Receipt {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  orgId      String   @map("org_id") @db.Uuid
+  expenseId  String   @map("expense_id") @db.Uuid
+  storageKey String   @map("storage_key") // /{org_id}/receipts/{expense_id}/...
+  fileName   String   @map("file_name")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  ocrData    Json?    @map("ocr_data") // {merchant?, date?, amount?}
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expense      Expense      @relation(fields: [expenseId], references: [id])
+
+  @@index([orgId, expenseId])
+  @@map("receipts")
+}
+
+model ExpenseReport {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  orgId       String       @map("org_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  title       String
+  status      ReportStatus @default(draft)
+  submittedAt DateTime?    @map("submitted_at")
+  total       Int          @default(0) // minor units, derived from expenses
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [orgId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  expenses      Expense[]
+  approvals     Approval[]
+  reimbursement Reimbursement?
+
+  @@index([orgId, userId, status])
+  @@index([orgId, status, submittedAt])
+  @@map("expense_reports")
+}
+
+model Approval {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  orgId      String         @map("org_id") @db.Uuid
+  reportId   String         @map("report_id") @db.Uuid
+  approverId String         @map("approver_id") @db.Uuid
+  level      Int            @default(1)
+  action     ApprovalAction
+  reason     String? // required for reject/send_back (enforced in domain layer)
+  actedAt    DateTime       @default(now()) @map("acted_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  report       ExpenseReport @relation(fields: [reportId], references: [id])
+  approver     User          @relation("ApprovalApprover", fields: [approverId], references: [id])
+
+  @@index([orgId, reportId])
+  @@index([orgId, approverId, actedAt])
+  @@map("approvals")
+}
+
+model Reimbursement {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  reportId  String   @unique @map("report_id") @db.Uuid
+  amount    Int // minor units
+  paidAt    DateTime @map("paid_at")
+  reference String
+  paidById  String   @map("paid_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  report       ExpenseReport @relation(fields: [reportId], references: [id])
+  paidBy       User          @relation("ReimbursementPaidBy", fields: [paidById], references: [id])
+
+  @@index([orgId, paidAt])
+  @@map("reimbursements")
+}
+
+// Append-only. No updatedAt by design; rows are never modified or deleted.
+model AuditLog {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  entity    String // e.g. "ExpenseReport"
+  entityId  String   @map("entity_id") @db.Uuid
+  actorId   String?  @map("actor_id") @db.Uuid // null for system actions
+  action    String // e.g. "report.submitted"
+  meta      Json     @default("{}")
+  timestamp DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, entity, entityId])
+  @@index([orgId, timestamp])
+  @@map("audit_logs")
+}

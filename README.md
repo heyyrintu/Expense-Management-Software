@@ -37,7 +37,12 @@ npm run build          # production build — must pass before any commit
 npm run lint           # eslint + tsc --noEmit
 ```
 
-Coming in later milestones (see PLAN.md): `npm run test`, `npm run test:isolation`, `npm run test:e2e`, `npm run seed`, `npx prisma migrate dev`.
+```bash
+npx prisma migrate dev   # apply migrations (docker compose up -d first)
+npx prisma generate      # regenerate Prisma client
+```
+
+Coming in later milestones (see PLAN.md): `npm run test`, `npm run test:isolation`, `npm run test:e2e`, `npm run seed`.
 
 ## Non-negotiables (see CLAUDE.md)
 

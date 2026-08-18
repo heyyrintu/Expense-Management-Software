@@ -5,7 +5,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 ## Milestone 0 — Foundation
 
 - [x] **0.1 Scaffold**: Next.js 15 + TS strict + Tailwind + shadcn/ui + ESLint; docker-compose (postgres, minio); README run instructions.
-- [ ] **0.2 Schema v1**: Prisma models — Organization, User, Department, Project, Category, Expense, Receipt, ExpenseReport, Approval, Reimbursement, AuditLog (all with `org_id`, per PRD §7). Migration + ERD comment block.
+- [x] **0.2 Schema v1**: Prisma models — Organization, User, Department, Project, Category, Expense, Receipt, ExpenseReport, Approval, Reimbursement, AuditLog (all with `org_id`, per PRD §7). Migration + ERD comment block.
 - [ ] **0.3 Tenancy core**: `scopedDb(orgId)` wrapper; Postgres RLS policies on all tenant tables; `app.current_org_id` set per transaction; seed script (2 orgs × 4 roles).
 - [ ] **0.4 Auth**: Auth.js credentials login; org signup flow (create org + first user = org_admin, slug `app.com/{slug}`); session carries userId/orgId/role; `requireRole()` guards; login/logout/invite-accept pages.
 - [ ] **0.5 Isolation test harness**: `tests/isolation/` pattern + CI script (`npm run test:isolation`); failing cross-tenant access = red build. GitHub Actions workflow: lint, build, test, isolation.
