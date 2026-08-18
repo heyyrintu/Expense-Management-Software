@@ -40,7 +40,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 
 ## Milestone 5 — P1 features (post-MVP, in priority order)
 
-- [ ] **5.1 Budgets**: per dept/project/category per period; utilization bars; 80%/100% alerts.
+- [x] **5.1 Budgets**: per dept/project/category per period; utilization bars; 80%/100% alerts.
 - [ ] **5.2 Card CSV import + matching**: upload statement, auto-match amount+date ±2 days, unmatched worklist.
 - [ ] **5.3 Report comments** (approver ↔ employee thread).
 - [ ] **5.4 Custom approval chains** by department/amount.

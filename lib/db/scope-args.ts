@@ -18,6 +18,7 @@ export const TENANT_MODELS = [
   "Reimbursement",
   "AuditLog",
   "Notification",
+  "Budget",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

@@ -1,0 +1,230 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
+import {
+  createBudgetAction,
+  deleteBudgetAction,
+  updateBudgetAmountAction,
+} from "./actions";
+
+export type BudgetView = {
+  id: string;
+  scopeType: "department" | "project" | "category";
+  label: string;
+  period: "monthly" | "quarterly" | "yearly";
+  amountFormatted: string;
+  spentFormatted: string;
+  pct: number;
+  level: "ok" | "warn" | "over";
+};
+
+type Opt = { id: string; name: string };
+
+const BAR_COLORS = {
+  ok: "bg-green-500",
+  warn: "bg-amber-500",
+  over: "bg-red-500",
+};
+
+export function BudgetsPanel({
+  budgets,
+  departments,
+  projects,
+  categories,
+}: {
+  budgets: BudgetView[];
+  departments: Opt[];
+  projects: Opt[];
+  categories: Opt[];
+}) {
+  const router = useRouter();
+  const [scopeType, setScopeType] = React.useState<BudgetView["scopeType"]>("category");
+  const [scopeId, setScopeId] = React.useState("");
+  const [period, setPeriod] = React.useState<BudgetView["period"]>("monthly");
+  const [amount, setAmount] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, startTransition] = React.useTransition();
+
+  const options =
+    scopeType === "department" ? departments : scopeType === "project" ? projects : categories;
+
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+    setError(null);
+    startTransition(async () => {
+      const res = await fn();
+      if (!res.ok) {
+        setError(res.error ?? "Something went wrong.");
+      } else {
+        setAmount("");
+        setScopeId("");
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="grid gap-4">
+      {budgets.length > 0 ? (
+        <ul className="grid gap-3">
+          {budgets.map((b) => (
+            <li key={b.id} className="grid gap-2 rounded-lg border p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">
+                  {b.label}
+                  <span className="text-muted-foreground font-normal">
+                    {" "}· {b.scopeType} · {b.period}
+                  </span>
+                </span>
+                <span className="flex items-center gap-2">
+                  {b.level === "warn" ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      80% reached
+                    </span>
+                  ) : null}
+                  {b.level === "over" ? (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      Over budget
+                    </span>
+                  ) : null}
+                  <span>
+                    {b.spentFormatted} / <span className="font-semibold">{b.amountFormatted}</span>
+                  </span>
+                </span>
+              </div>
+              <div
+                role="progressbar"
+                aria-valuenow={Math.min(b.pct, 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${b.label} budget utilization ${b.pct}%`}
+                className="bg-muted h-2 w-full overflow-hidden rounded-full"
+              >
+                <div
+                  className={cn("h-full rounded-full transition-all", BAR_COLORS[b.level])}
+                  style={{ width: `${Math.min(b.pct, 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground text-xs">{b.pct}% used</span>
+                <span className="flex gap-2">
+                  <InlineAmount id={b.id} run={run} pending={pending} />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive"
+                    disabled={pending}
+                    onClick={() => run(() => deleteBudgetAction({ id: b.id }))}
+                  >
+                    Delete
+                  </Button>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <form
+        className="grid max-w-2xl gap-2 rounded-xl border p-4 sm:grid-cols-5 sm:items-end"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(() => createBudgetAction({ scopeType, scopeId, period, amount }));
+        }}
+      >
+        <div className="grid gap-1">
+          <label htmlFor="b-scope" className="text-muted-foreground text-xs">Scope</label>
+          <NativeSelect
+            id="b-scope"
+            value={scopeType}
+            onChange={(e) => {
+              setScopeType(e.target.value as BudgetView["scopeType"]);
+              setScopeId("");
+            }}
+          >
+            <option value="category">Category</option>
+            <option value="department">Department</option>
+            <option value="project">Project</option>
+          </NativeSelect>
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="b-target" className="text-muted-foreground text-xs">Target</label>
+          <NativeSelect id="b-target" value={scopeId} onChange={(e) => setScopeId(e.target.value)}>
+            <option value="">Select…</option>
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="b-period" className="text-muted-foreground text-xs">Period</label>
+          <NativeSelect id="b-period" value={period} onChange={(e) => setPeriod(e.target.value as BudgetView["period"])}>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </NativeSelect>
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="b-amount" className="text-muted-foreground text-xs">Amount</label>
+          <Input
+            id="b-amount"
+            inputMode="decimal"
+            placeholder="200000.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        <Button type="submit" disabled={pending || !scopeId || !amount}>
+          {pending ? "Saving…" : "Add budget"}
+        </Button>
+      </form>
+
+      {error ? (
+        <p role="alert" className="text-destructive text-sm">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function InlineAmount({
+  id,
+  run,
+  pending,
+}: {
+  id: string;
+  run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
+  pending: boolean;
+}) {
+  const [value, setValue] = React.useState("");
+  return (
+    <span className="flex items-center gap-1">
+      <label htmlFor={`amt-${id}`} className="sr-only">New amount</label>
+      <Input
+        id={`amt-${id}`}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="New amount"
+        className="h-8 w-28"
+        inputMode="decimal"
+      />
+      {value ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() => {
+            run(() => updateBudgetAmountAction({ id, amount: value }));
+            setValue("");
+          }}
+        >
+          Save
+        </Button>
+      ) : null}
+    </span>
+  );
+}

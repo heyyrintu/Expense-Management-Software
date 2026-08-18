@@ -10,6 +10,7 @@ import {
   requireRole,
 } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
+import { checkBudgetAlertsAfterSubmit } from "@/lib/domain/budget-alerts";
 import {
   computeReportTotal,
   expenseStatusFor,
@@ -227,6 +228,8 @@ export async function submitReportAction(input: unknown): Promise<Result> {
         totalFormatted: formatMoney(total, org.currency),
       });
     }
+    // budget 80%/100% alerts (5.1) — never blocks submission
+    await checkBudgetAlertsAfterSubmit(db, ctx.orgId, report.id);
     revalidatePath("/reports");
     revalidatePath(`/reports/${report.id}`);
     return ok(undefined);

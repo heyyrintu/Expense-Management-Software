@@ -118,6 +118,7 @@ model Organization {
   reimbursements Reimbursement[]
   auditLogs      AuditLog[]
   notifications  Notification[]
+  budgets        Budget[]
 
   @@map("organizations")
 }
@@ -357,4 +358,41 @@ model Notification {
   @@index([orgId, userId, readAt])
   @@index([orgId, userId, createdAt])
   @@map("notifications")
+}
+
+enum BudgetScope {
+  department
+  project
+  category
+
+  @@map("budget_scope")
+}
+
+enum BudgetPeriod {
+  monthly
+  quarterly
+  yearly
+
+  @@map("budget_period")
+}
+
+// Budget (P1, PLAN 5.1): amount per scope per recurring period. scope_id is
+// polymorphic (department/project/category id) — validated at the action
+// layer inside the same org scope; no cross-org FK is possible because
+// every lookup goes through scopedDb.
+model Budget {
+  id        String       @id @default(uuid(7)) @db.Uuid
+  orgId     String       @map("org_id") @db.Uuid
+  scopeType BudgetScope  @map("scope_type")
+  scopeId   String       @map("scope_id") @db.Uuid
+  period    BudgetPeriod @default(monthly)
+  amount    Int // minor units per period
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, scopeType, scopeId, period])
+  @@index([orgId, scopeType])
+  @@map("budgets")
 }

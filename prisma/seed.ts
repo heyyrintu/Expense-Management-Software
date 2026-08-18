@@ -82,6 +82,47 @@ async function seedOrg(slug: string, name: string) {
     });
   }
 
+  // sample budgets: monthly Travel category + Engineering department
+  const travel = await prisma.category.findUniqueOrThrow({
+    where: { orgId_name: { orgId: org.id, name: "Travel" } },
+  });
+  await prisma.budget.upsert({
+    where: {
+      orgId_scopeType_scopeId_period: {
+        orgId: org.id,
+        scopeType: "category",
+        scopeId: travel.id,
+        period: "monthly",
+      },
+    },
+    update: {},
+    create: {
+      orgId: org.id,
+      scopeType: "category",
+      scopeId: travel.id,
+      period: "monthly",
+      amount: 20000000, // ₹2,00,000
+    },
+  });
+  await prisma.budget.upsert({
+    where: {
+      orgId_scopeType_scopeId_period: {
+        orgId: org.id,
+        scopeType: "department",
+        scopeId: engineering.id,
+        period: "monthly",
+      },
+    },
+    update: {},
+    create: {
+      orgId: org.id,
+      scopeType: "department",
+      scopeId: engineering.id,
+      period: "monthly",
+      amount: 50000000, // ₹5,00,000
+    },
+  });
+
   // employee reports to approver; approver reports to finance_admin
   await prisma.user.update({
     where: { id: users.employee.id },
