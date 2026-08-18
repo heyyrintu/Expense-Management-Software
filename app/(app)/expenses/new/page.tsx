@@ -1,8 +1,8 @@
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { toDateInputValue } from "@/lib/format";
-import { createExpenseAction } from "../actions";
-import { ExpenseForm, type Option } from "../expense-form";
+import type { Option } from "../expense-form";
+import { NewExpenseSwitcher } from "./new-expense-switcher";
 
 export default async function NewExpensePage() {
   const ctx = await requireSession();
@@ -12,15 +12,23 @@ export default async function NewExpensePage() {
     db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
+  const today = toDateInputValue(new Date());
 
   return (
     <section className="grid gap-4">
       <h1 className="text-xl font-semibold">Add expense</h1>
-      <ExpenseForm
-        defaults={{
+      <NewExpenseSwitcher
+        regularDefaults={{
           amount: "",
-          date: toDateInputValue(new Date()),
+          date: today,
           merchant: "",
+          categoryId: "",
+          projectId: "",
+          purpose: "",
+        }}
+        mileageDefaults={{
+          distanceKm: "",
+          date: today,
           categoryId: "",
           projectId: "",
           purpose: "",
@@ -28,7 +36,7 @@ export default async function NewExpensePage() {
         categories={categories as Option[]}
         projects={projects as Option[]}
         currency={org.currency}
-        action={createExpenseAction}
+        ratePerKmMinor={org.mileageRate}
       />
     </section>
   );

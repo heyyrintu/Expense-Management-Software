@@ -1,5 +1,5 @@
 // Pure expense rules — unit-tested without a database.
-import { parseToMinorUnits } from "@/lib/money";
+import { assertMinorUnits, parseToMinorUnits } from "@/lib/money";
 import type { ExpenseInput } from "@/lib/schemas/expense";
 
 export type ExpenseStatus =
@@ -39,6 +39,53 @@ export function toExpenseData(input: ExpenseInput): {
     amount,
     date: new Date(`${input.date}T00:00:00.000Z`),
     merchant: input.merchant,
+    categoryId: input.categoryId,
+    projectId: input.projectId === "" ? null : input.projectId,
+    purpose: input.purpose,
+  };
+}
+
+export const MILEAGE_MERCHANT = "Mileage";
+
+/**
+ * distance (whole km) × org rate (minor units per km) — pure integer math.
+ * Throws on non-integer/negative inputs; returns null when the result is
+ * zero or unsafe (rate not configured, absurd distance).
+ */
+export function computeMileageAmount(
+  distanceKm: number,
+  ratePerKmMinor: number
+): number | null {
+  if (!Number.isSafeInteger(distanceKm) || distanceKm <= 0) return null;
+  assertMinorUnits(ratePerKmMinor);
+  if (ratePerKmMinor <= 0) return null;
+  const amount = distanceKm * ratePerKmMinor;
+  return Number.isSafeInteger(amount) ? amount : null;
+}
+
+/** Convert validated mileage input + org rate into persistable fields. */
+export function toMileageData(
+  input: { distanceKm: string; date: string; categoryId: string; projectId: string; purpose: string },
+  ratePerKmMinor: number
+): {
+  type: "mileage";
+  amount: number;
+  distanceKm: number;
+  date: Date;
+  merchant: string;
+  categoryId: string;
+  projectId: string | null;
+  purpose: string;
+} | null {
+  const distanceKm = Number.parseInt(input.distanceKm, 10);
+  const amount = computeMileageAmount(distanceKm, ratePerKmMinor);
+  if (amount === null) return null;
+  return {
+    type: "mileage",
+    amount,
+    distanceKm,
+    date: new Date(`${input.date}T00:00:00.000Z`),
+    merchant: MILEAGE_MERCHANT,
     categoryId: input.categoryId,
     projectId: input.projectId === "" ? null : input.projectId,
     purpose: input.purpose,

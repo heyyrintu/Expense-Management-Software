@@ -15,6 +15,7 @@ import { formatMoney, toDecimalString } from "@/lib/money";
 import { signedReceiptUrl } from "@/lib/storage/receipts";
 import type { Option } from "../expense-form";
 import { EditExpenseWrapper } from "./edit-wrapper";
+import { EditMileageWrapper } from "./edit-mileage-wrapper";
 import { ReceiptUploader } from "./receipt-uploader";
 import type { ReceiptView } from "./receipt-types";
 
@@ -79,6 +80,38 @@ export default async function ExpenseDetailPage({
       db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
       db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     ]);
+    if (expense.type === "mileage") {
+      const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+      return (
+        <section className="grid gap-4">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold">Edit mileage expense</h1>
+            <StatusBadge status={expense.status} />
+          </div>
+          <EditMileageWrapper
+            expenseId={expense.id}
+            defaults={{
+              distanceKm: String(expense.distanceKm ?? ""),
+              date: toDateInputValue(expense.date),
+              categoryId: expense.categoryId,
+              projectId: expense.projectId ?? "",
+              purpose: expense.purpose,
+            }}
+            categories={categories as Option[]}
+            projects={projects as Option[]}
+            currency={expense.currency}
+            ratePerKmMinor={org.mileageRate}
+          />
+          <div className="max-w-md border-t pt-4">
+            <ReceiptUploader
+              expenseId={expense.id}
+              receipts={receiptViews}
+              readOnly={false}
+            />
+          </div>
+        </section>
+      );
+    }
     return (
       <section className="grid gap-4">
         <div className="flex items-center gap-3">
