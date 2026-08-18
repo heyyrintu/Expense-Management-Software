@@ -21,6 +21,10 @@ type ExportRow = {
   status: string;
   purpose: string;
   flags: unknown;
+  billable: boolean;
+  taxAmount: number | null;
+  taxNumber: string | null;
+  client: { name: string } | null;
   user: { name: string; email: string; department: { name: string } | null };
   category: { name: string };
   project: { name: string } | null;
@@ -57,6 +61,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       category: { select: { name: true } },
       project: { select: { name: true } },
       report: { select: { title: true } },
+      client: { select: { name: true } },
     },
   })) as ExportRow[];
 
@@ -75,6 +80,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       "report",
       "purpose",
       "flags",
+      "billable",
+      "client",
+      "tax_amount",
+      "tax_number",
     ],
     rows.map((e) => [
       e.date.toISOString().slice(0, 10),
@@ -90,6 +99,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       e.report?.title ?? "",
       e.purpose,
       Array.isArray(e.flags) ? e.flags.length : 0,
+      e.billable ? "yes" : "no",
+      e.client?.name ?? "",
+      e.taxAmount !== null ? toDecimalString(e.taxAmount) : "",
+      e.taxNumber ?? "",
     ])
   );
 

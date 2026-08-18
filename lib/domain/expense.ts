@@ -32,9 +32,17 @@ export function toExpenseData(input: ExpenseInput): {
   categoryId: string;
   projectId: string | null;
   purpose: string;
+  billable: boolean;
+  clientId: string | null;
+  taxAmount: number | null;
+  taxNumber: string | null;
 } | null {
   const amount = parseToMinorUnits(input.amount);
   if (amount === null || amount === 0) return null; // zero-amount expenses are meaningless
+  const taxAmount =
+    input.taxAmount === "" ? null : parseToMinorUnits(input.taxAmount);
+  if (input.taxAmount !== "" && taxAmount === null) return null;
+  if (taxAmount !== null && taxAmount > amount) return null; // tax can't exceed the bill
   return {
     amount,
     date: new Date(`${input.date}T00:00:00.000Z`),
@@ -42,6 +50,10 @@ export function toExpenseData(input: ExpenseInput): {
     categoryId: input.categoryId,
     projectId: input.projectId === "" ? null : input.projectId,
     purpose: input.purpose,
+    billable: input.billable,
+    clientId: input.billable && input.clientId !== "" ? input.clientId : null,
+    taxAmount,
+    taxNumber: input.taxNumber === "" ? null : input.taxNumber,
   };
 }
 

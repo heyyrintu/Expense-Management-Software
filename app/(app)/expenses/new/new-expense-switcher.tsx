@@ -5,7 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import type { ExpenseInput, MileageInput } from "@/lib/schemas/expense";
 import { createExpenseAction, createMileageExpenseAction } from "../actions";
-import { ExpenseForm, type Option } from "../expense-form";
+import { ExpenseForm, type ClientOption, type Option } from "../expense-form";
 import { MileageForm } from "../mileage-form";
 
 export function NewExpenseSwitcher({
@@ -13,6 +13,7 @@ export function NewExpenseSwitcher({
   mileageDefaults,
   categories,
   projects,
+  clients,
   currency,
   ratePerKmMinor,
 }: {
@@ -20,6 +21,7 @@ export function NewExpenseSwitcher({
   mileageDefaults: MileageInput;
   categories: Option[];
   projects: Option[];
+  clients: ClientOption[];
   currency: string;
   ratePerKmMinor: number;
 }) {
@@ -52,6 +54,7 @@ export function NewExpenseSwitcher({
           defaults={regularDefaults}
           categories={categories}
           projects={projects}
+          clients={clients}
           currency={currency}
           action={createExpenseAction}
         />

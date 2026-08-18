@@ -142,3 +142,53 @@ export function monthWindow(date: Date): { start: Date; end: Date } {
   const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
   return { start, end };
 }
+
+export type SplitForPolicy = {
+  amount: number;
+  categoryId: string;
+};
+
+export type SplitCategoryContext = {
+  limits: CategoryLimits | null;
+  /** user's spend in this category this month, excluding this expense */
+  monthlySpent: number;
+  categoryName: string;
+};
+
+/**
+ * Per-split limit checks (6.3): each split is evaluated against ITS OWN
+ * category's per-expense and monthly limits. Receipt/age/duplicate rules
+ * stay at the expense level.
+ */
+export function evaluateSplitLimits(
+  splits: SplitForPolicy[],
+  contextByCategory: Map<string, SplitCategoryContext>,
+  formatAmount: (minor: number) => string
+): PolicyFlag[] {
+  const flags: PolicyFlag[] = [];
+  // aggregate split amounts per category first (two splits may share one)
+  const perCategory = new Map<string, number>();
+  for (const s of splits) {
+    perCategory.set(s.categoryId, (perCategory.get(s.categoryId) ?? 0) + s.amount);
+  }
+  for (const [categoryId, amount] of perCategory) {
+    const ctx = contextByCategory.get(categoryId);
+    if (!ctx?.limits) continue;
+    if (ctx.limits.perExpenseLimit != null && amount > ctx.limits.perExpenseLimit) {
+      flags.push({
+        rule: "per_expense_limit",
+        message: `${ctx.categoryName}: ${policyMessages.per_expense_limit(formatAmount(ctx.limits.perExpenseLimit))}`,
+      });
+    }
+    if (
+      ctx.limits.monthlyLimit != null &&
+      ctx.monthlySpent + amount > ctx.limits.monthlyLimit
+    ) {
+      flags.push({
+        rule: "monthly_limit",
+        message: `${ctx.categoryName}: ${policyMessages.monthly_limit(formatAmount(ctx.limits.monthlyLimit))}`,
+      });
+    }
+  }
+  return flags;
+}

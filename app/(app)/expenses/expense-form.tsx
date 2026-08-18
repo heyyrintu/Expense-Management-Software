@@ -5,7 +5,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type Resolver } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import { deleteExpenseAction } from "./actions";
 import { usePolicyPreview } from "./use-policy-preview";
 
 export type Option = { id: string; name: string };
+export type ClientOption = { id: string; name: string; code: string };
 
 export type OcrSuggestion = {
   merchant?: string;
@@ -38,6 +39,7 @@ export function ExpenseForm({
   defaults,
   categories,
   projects,
+  clients = [],
   currency,
   action,
   expenseId,
@@ -47,6 +49,7 @@ export function ExpenseForm({
   defaults: ExpenseInput;
   categories: Option[];
   projects: Option[];
+  clients?: ClientOption[];
   currency: string;
   action: (input: ExpenseInput) => Promise<Result | Result<{ id: string }>>;
   expenseId?: string;
@@ -87,6 +90,20 @@ export function ExpenseForm({
       }
     });
   }
+
+  const splitArray = useFieldArray({ control: form.control, name: "splits" });
+  const billable = form.watch("billable");
+  const watchedSplits = form.watch("splits");
+  const watchedAmount = form.watch("amount");
+  const splitTotal = (watchedSplits ?? []).reduce((sum, s) => {
+    const v = Number.parseFloat(s?.value || "0");
+    return sum + (Number.isFinite(v) ? Math.round(v * 100) : 0);
+  }, 0);
+  const amountMinor = (() => {
+    const v = Number.parseFloat(watchedAmount || "0");
+    return Number.isFinite(v) ? Math.round(v * 100) : 0;
+  })();
+  const splitsMatch = (watchedSplits?.length ?? 0) === 0 || splitTotal === amountMinor;
 
   const watched = form.watch(["amount", "date", "merchant", "categoryId"]);
   const liveFlags = usePolicyPreview({
@@ -231,6 +248,172 @@ export function ExpenseForm({
             </FormItem>
           )}
         />
+        {/* 6.3: billable + tax */}
+        <div className="grid gap-3 rounded-lg border p-3">
+          <FormField
+            control={form.control}
+            name="billable"
+            render={({ field }) => (
+              <FormItem>
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="size-4"
+                  />
+                  Billable to a client
+                </label>
+              </FormItem>
+            )}
+          />
+          {billable ? (
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client</FormLabel>
+                  <FormControl>
+                    <NativeSelect {...field}>
+                      <option value="">Select a client…</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.code})
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="taxAmount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tax amount (optional)</FormLabel>
+                  <FormControl>
+                    <Input inputMode="decimal" placeholder="18.00" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="taxNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GST/VAT number (optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="29AAACC1234F1Z5" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        {/* 6.3: splits */}
+        <div className="grid gap-2 rounded-lg border p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">
+              Split across categories
+              {splitArray.fields.length > 0
+                ? ` (${(splitTotal / 100).toFixed(2)} / ${(amountMinor / 100).toFixed(2)})`
+                : ""}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                splitArray.append(
+                  splitArray.fields.length === 0
+                    ? [
+                        { categoryId: "", projectId: "", value: "" },
+                        { categoryId: "", projectId: "", value: "" },
+                      ]
+                    : [{ categoryId: "", projectId: "", value: "" }]
+                )
+              }
+            >
+              {splitArray.fields.length === 0 ? "Split expense" : "Add line"}
+            </Button>
+          </div>
+          {splitArray.fields.map((f, idx) => (
+            <div key={f.id} className="flex flex-wrap items-end gap-2">
+              <FormField
+                control={form.control}
+                name={`splits.${idx}.categoryId`}
+                render={({ field }) => (
+                  <FormItem className="min-w-36 flex-1">
+                    <FormControl>
+                      <NativeSelect aria-label="Split category" {...field}>
+                        <option value="">Category…</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`splits.${idx}.projectId`}
+                render={({ field }) => (
+                  <FormItem className="min-w-32 flex-1">
+                    <FormControl>
+                      <NativeSelect aria-label="Split project" {...field}>
+                        <option value="">No project</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`splits.${idx}.value`}
+                render={({ field }) => (
+                  <FormItem className="w-28">
+                    <FormControl>
+                      <Input aria-label="Split amount" inputMode="decimal" placeholder="0.00" {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive"
+                onClick={() =>
+                  splitArray.fields.length <= 2
+                    ? splitArray.replace([]) // a split needs ≥2 lines — clear it
+                    : splitArray.remove(idx)
+                }
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
+          {splitArray.fields.length > 0 && !splitsMatch ? (
+            <p className="text-sm text-amber-800" aria-live="polite">
+              Split lines total {(splitTotal / 100).toFixed(2)} — they must equal the
+              expense amount {(amountMinor / 100).toFixed(2)}.
+            </p>
+          ) : null}
+        </div>
+
         <FormField
           control={form.control}
           name="purpose"

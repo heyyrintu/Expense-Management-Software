@@ -7,10 +7,11 @@ import { NewExpenseSwitcher } from "./new-expense-switcher";
 export default async function NewExpensePage() {
   const ctx = await requireSession();
   const db = scopedDb(ctx.orgId);
-  const [org, categories, projects] = await Promise.all([
+  const [org, categories, projects, clients] = await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
     db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, code: true } }),
   ]);
   const today = toDateInputValue(new Date());
 
@@ -31,6 +32,11 @@ export default async function NewExpensePage() {
           categoryId: "",
           projectId: "",
           purpose: "",
+          billable: false,
+          clientId: "",
+          taxAmount: "",
+          taxNumber: "",
+          splits: [],
         }}
         mileageDefaults={{
           distanceKm: "",
@@ -41,6 +47,7 @@ export default async function NewExpensePage() {
         }}
         categories={categories as Option[]}
         projects={projects as Option[]}
+        clients={clients as { id: string; name: string; code: string }[]}
         currency={org.currency}
         ratePerKmMinor={org.mileageRate}
       />

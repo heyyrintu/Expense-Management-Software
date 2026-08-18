@@ -1,8 +1,14 @@
 import { z } from "zod";
-import { moneyString } from "./category";
+import { moneyString, optionalMoneyString } from "./category";
 
 // Shared by the capture form and server actions (CLAUDE.md: one schema per
 // entity). Amount is a decimal string; actions convert to minor units.
+const splitRowSchema = z.object({
+  categoryId: z.string().uuid(),
+  projectId: z.union([z.literal(""), z.string().uuid()]),
+  value: moneyString, // amount mode; percent mode converts client-side
+});
+
 export const expenseInputSchema = z.object({
   amount: moneyString,
   date: z
@@ -13,6 +19,13 @@ export const expenseInputSchema = z.object({
   categoryId: z.string().uuid("Pick a category"),
   projectId: z.union([z.literal(""), z.string().uuid()]),
   purpose: z.string().trim().max(200),
+  // 6.3 billable + tax
+  billable: z.boolean().default(false),
+  clientId: z.union([z.literal(""), z.string().uuid()]).default(""),
+  taxAmount: optionalMoneyString.default(""),
+  taxNumber: z.string().trim().max(30).default(""),
+  // 6.3 splits (amount rows; empty = no split)
+  splits: z.array(splitRowSchema).max(10).default([]),
 });
 export type ExpenseInput = z.infer<typeof expenseInputSchema>;
 

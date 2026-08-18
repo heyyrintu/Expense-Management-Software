@@ -20,7 +20,8 @@ export type AuditEntry = {
     | "ReportComment"
     | "ApprovalRule"
     | "PaymentBatch"
-    | "Advance";
+    | "Advance"
+    | "Client";
   entityId: string;
   action: string; // dot-namespaced, e.g. "category.created"
   meta?: Record<string, unknown>;

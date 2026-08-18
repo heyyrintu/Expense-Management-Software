@@ -134,6 +134,8 @@ model Organization {
   approvalRules  ApprovalRule[]
   paymentBatches PaymentBatch[]
   advances       Advance[]
+  clients        Client[]
+  expenseSplits  ExpenseSplit[]
 
   @@map("organizations")
 }
@@ -212,6 +214,7 @@ model Project {
 
   organization Organization @relation(fields: [orgId], references: [id])
   expenses     Expense[]
+  splits       ExpenseSplit[]
 
   @@unique([orgId, code])
   @@index([orgId, name])
@@ -230,6 +233,7 @@ model Category {
 
   organization Organization @relation(fields: [orgId], references: [id])
   expenses     Expense[]
+  splits       ExpenseSplit[]
 
   @@unique([orgId, name])
   @@map("categories")
@@ -251,6 +255,10 @@ model Expense {
   distanceKm Int?          @map("distance_km") // mileage type only
   status     ExpenseStatus @default(draft)
   flags      Json          @default("[]") // policy violation flags, never block
+  billable   Boolean       @default(false)
+  clientId   String?       @map("client_id") @db.Uuid
+  taxAmount  Int?          @map("tax_amount") // minor units (GST/VAT portion)
+  taxNumber  String?       @map("tax_number") // GST/VAT registration on the bill
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
@@ -261,6 +269,8 @@ model Expense {
   project      Project?       @relation(fields: [projectId], references: [id])
   receipts     Receipt[]
   cardTransaction CardTransaction?
+  client       Client?        @relation(fields: [clientId], references: [id])
+  splits       ExpenseSplit[]
 
   // duplicate detection probe: org + user + amount + date (+ merchant, compared case-insensitively in app)
   @@index([orgId, userId, amount, date])
@@ -551,4 +561,43 @@ model Advance {
   @@index([orgId, userId, status])
   @@index([orgId, status])
   @@map("advances")
+}
+
+// Billing client (PLAN 6.3) — who an expense can be billed to.
+model Client {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  name      String
+  code      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expenses     Expense[]
+
+  @@unique([orgId, code])
+  @@unique([orgId, name])
+  @@map("clients")
+}
+
+// Expense split (PLAN 6.3): one expense allocated across categories /
+// projects. INVARIANT: a expense's splits sum EXACTLY to its amount
+// (integer minor units — enforced in lib/domain/expense-split.ts and the
+// actions; last split absorbs any percent-rounding remainder).
+model ExpenseSplit {
+  id         String  @id @default(uuid(7)) @db.Uuid
+  orgId      String  @map("org_id") @db.Uuid
+  expenseId  String  @map("expense_id") @db.Uuid
+  categoryId String  @map("category_id") @db.Uuid
+  projectId  String? @map("project_id") @db.Uuid
+  amount     Int // minor units
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expense      Expense      @relation(fields: [expenseId], references: [id])
+  category     Category     @relation(fields: [categoryId], references: [id])
+  project      Project?     @relation(fields: [projectId], references: [id])
+
+  @@index([orgId, expenseId])
+  @@index([orgId, categoryId])
+  @@map("expense_splits")
 }

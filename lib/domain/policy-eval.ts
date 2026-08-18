@@ -3,8 +3,11 @@
 import { expenseAgeLimitDays } from "@/lib/domain/org-settings";
 import {
   evaluateExpense,
+  evaluateSplitLimits,
   monthWindow,
   type PolicyFlag,
+  type SplitCategoryContext,
+  type SplitForPolicy,
 } from "@/lib/domain/policy";
 import type { ScopedDb } from "@/lib/db/scoped";
 import { formatMoney } from "@/lib/money";
@@ -18,6 +21,8 @@ export type EvalInput = {
   merchant: string;
   categoryId: string;
   receiptCount: number;
+  /** 6.3: when present, per-category limits run PER SPLIT instead */
+  splits?: SplitForPolicy[];
 };
 
 export async function computeExpenseFlags(
@@ -63,7 +68,10 @@ export async function computeExpenseFlags(
         }),
   ]);
 
-  return evaluateExpense(
+  const fmt = (minor: number) => formatMoney(minor, org.currency);
+  const hasSplits = (input.splits?.length ?? 0) > 0;
+
+  const baseFlags = evaluateExpense(
     {
       amount: input.amount,
       date: input.date,
@@ -71,14 +79,69 @@ export async function computeExpenseFlags(
       receiptCount: input.receiptCount,
     },
     {
-      category,
+      // with splits, per-category limits run per split below
+      category: hasSplits ? null : category,
       monthlySpent: monthlyAgg._sum.amount ?? 0,
       duplicateCandidates,
       maxAgeDays: expenseAgeLimitDays(org.settings),
       now: new Date(),
-      formatAmount: (minor) => formatMoney(minor, org.currency),
+      formatAmount: fmt,
     }
   );
+  // receipt-required stays expense-level even when split — use the primary category
+  if (
+    hasSplits &&
+    category?.receiptRequiredAbove != null &&
+    input.amount > category.receiptRequiredAbove &&
+    input.receiptCount === 0
+  ) {
+    baseFlags.push({
+      rule: "receipt_required",
+      message: `A receipt is required for amounts above ${fmt(category.receiptRequiredAbove)}.`,
+    });
+  }
+  if (!hasSplits) return baseFlags;
+
+  const splitCategoryIds = [...new Set(input.splits!.map((s) => s.categoryId))];
+  const { start: ws, end: we } = monthWindow(input.date);
+  const ctxByCategory = new Map<string, SplitCategoryContext>();
+  for (const categoryId of splitCategoryIds) {
+    const [cat, agg] = await Promise.all([
+      db.category.findUnique({
+        where: { id: categoryId },
+        select: {
+          name: true,
+          perExpenseLimit: true,
+          monthlyLimit: true,
+          receiptRequiredAbove: true,
+        },
+      }),
+      db.expense.aggregate({
+        where: {
+          userId: input.userId,
+          categoryId,
+          date: { gte: ws, lt: we },
+          ...(input.expenseId ? { id: { not: input.expenseId } } : {}),
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+    if (cat) {
+      ctxByCategory.set(categoryId, {
+        limits: {
+          perExpenseLimit: cat.perExpenseLimit,
+          monthlyLimit: cat.monthlyLimit,
+          receiptRequiredAbove: cat.receiptRequiredAbove,
+        },
+        monthlySpent: agg._sum.amount ?? 0,
+        categoryName: cat.name,
+      });
+    }
+  }
+  return [
+    ...baseFlags,
+    ...evaluateSplitLimits(input.splits!, ctxByCategory, fmt),
+  ];
 }
 
 /** Recompute + persist flags for an existing expense (receipt changes). */

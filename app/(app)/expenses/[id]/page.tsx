@@ -33,6 +33,9 @@ export default async function ExpenseDetailPage({
     where: { id, userId: ctx.userId },
     include: {
       category: { select: { id: true, name: true } },
+      splits: {
+        select: { categoryId: true, projectId: true, amount: true },
+      },
       receipts: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -77,9 +80,10 @@ export default async function ExpenseDetailPage({
   );
 
   if (isExpenseEditable(expense.status as ExpenseStatus)) {
-    const [categories, projects] = await Promise.all([
+    const [categories, projects, clients] = await Promise.all([
       db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
       db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+      db.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, code: true } }),
     ]);
     if (expense.type === "mileage") {
       const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
@@ -128,9 +132,22 @@ export default async function ExpenseDetailPage({
             categoryId: expense.categoryId,
             projectId: expense.projectId ?? "",
             purpose: expense.purpose,
+            billable: expense.billable,
+            clientId: expense.clientId ?? "",
+            taxAmount:
+              expense.taxAmount !== null ? toDecimalString(expense.taxAmount) : "",
+            taxNumber: expense.taxNumber ?? "",
+            splits: expense.splits.map(
+              (sp: { categoryId: string; projectId: string | null; amount: number }) => ({
+                categoryId: sp.categoryId,
+                projectId: sp.projectId ?? "",
+                value: toDecimalString(sp.amount),
+              })
+            ),
           }}
           categories={categories as Option[]}
           projects={projects as Option[]}
+          clients={clients as { id: string; name: string; code: string }[]}
           currency={expense.currency}
           ocr={ocrSuggestion}
           receiptCount={receiptViews.length}

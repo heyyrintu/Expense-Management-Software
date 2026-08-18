@@ -41,6 +41,9 @@ type DbExpenseRow = {
   projectId: string | null;
   userId: string;
   flags: unknown;
+  billable: boolean;
+  clientId: string | null;
+  client: { name: string } | null;
   user: { name: string; departmentId: string | null };
   category: { name: string };
   project: { name: string } | null;
@@ -86,6 +89,9 @@ export default async function DashboardPage({
         projectId: true,
         userId: true,
         flags: true,
+        billable: true,
+        clientId: true,
+        client: { select: { name: true } },
         user: { select: { name: true, departmentId: true } },
         category: { select: { name: true } },
         project: { select: { name: true } },
@@ -144,6 +150,26 @@ export default async function DashboardPage({
     ? totalsBy(rows, (r) => r.userId, (k) => labelOf.user.get(k) ?? "Unknown")
     : [];
   const merchants = isFinance ? topMerchants(rows, 8) : [];
+  const billableByClient = isFinance
+    ? (() => {
+        const map = new Map<string, { label: string; total: number; count: number }>();
+        for (const e of dbRows) {
+          if (!e.billable) continue;
+          const key = e.clientId ?? "—";
+          const entry = map.get(key) ?? {
+            label: e.client?.name ?? "No client set",
+            total: 0,
+            count: 0,
+          };
+          entry.total += e.amount;
+          entry.count += 1;
+          map.set(key, entry);
+        }
+        return [...map.entries()]
+          .map(([key, v]) => ({ key, ...v }))
+          .sort((a, b) => b.total - a.total);
+      })()
+    : [];
   const violations = isFinance ? countViolations(rows) : 0;
 
   let approvalTime: string | null = null;
@@ -335,7 +361,7 @@ export default async function DashboardPage({
       ) : null}
 
       {isFinance ? (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader><CardTitle>By department</CardTitle></CardHeader>
             <CardContent>
@@ -364,6 +390,22 @@ export default async function DashboardPage({
                 ))}
                 {byProject.length === 0 ? (
                   <li className="text-muted-foreground">Nothing to show.</li>
+                ) : null}
+              </ul>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Billable by client</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="grid gap-1 text-sm">
+                {billableByClient.slice(0, 8).map((c) => (
+                  <li key={c.key} className="flex justify-between gap-2">
+                    <span>{c.label} <span className="text-muted-foreground">({c.count})</span></span>
+                    <span className="font-medium">{fmt(c.total)}</span>
+                  </li>
+                ))}
+                {billableByClient.length === 0 ? (
+                  <li className="text-muted-foreground">No billable spend in scope.</li>
                 ) : null}
               </ul>
             </CardContent>

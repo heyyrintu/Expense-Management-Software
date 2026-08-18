@@ -22,6 +22,9 @@ export default async function SettingsLayout({
         <Link href="/settings/categories" className="hover:underline">
           Categories
         </Link>
+        <Link href="/settings/clients" className="hover:underline">
+          Clients
+        </Link>
         {admin ? (
           <>
             <Link href="/settings/users" className="hover:underline">

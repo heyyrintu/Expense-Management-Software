@@ -11,6 +11,11 @@ import {
 } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
 import { toExpenseData, toMileageData } from "@/lib/domain/expense";
+import {
+  splitsFromAmounts,
+  splitsSumExactly,
+  type SplitEntry,
+} from "@/lib/domain/expense-split";
 import { computeExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
@@ -42,6 +47,39 @@ function isPrismaCode(e: unknown, code: string): boolean {
 
 const NOT_EDITABLE = "Only draft expenses can be changed.";
 
+/** 6.3: validate refs + build split entries; error on failure. */
+async function resolveSplits(
+  db: ReturnType<typeof scopedDb>,
+  amount: number,
+  rows: Array<{ categoryId: string; projectId: string; value: string }>
+): Promise<{ splits: SplitEntry[] } | { error: string }> {
+  if (rows.length === 0) return { splits: [] };
+  const built = splitsFromAmounts(amount, rows);
+  if ("error" in built) return built;
+  if (!splitsSumExactly(amount, built.splits)) {
+    return { error: "Split lines must add up exactly to the expense amount." };
+  }
+  for (const s of built.splits) {
+    const cat = await db.category.findUnique({ where: { id: s.categoryId } });
+    if (!cat) return { error: "Every split line needs a valid category." };
+    if (s.projectId) {
+      const proj = await db.project.findUnique({ where: { id: s.projectId } });
+      if (!proj) return { error: "Every split line needs a valid project." };
+    }
+  }
+  return { splits: built.splits };
+}
+
+async function validateClient(
+  db: ReturnType<typeof scopedDb>,
+  clientId: string | null
+): Promise<string | null> {
+  if (!clientId) return null;
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  return client ? null : "Pick a valid client.";
+}
+
+
 export async function createExpenseAction(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const ctx = await requireRole("employee");
@@ -61,6 +99,11 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
     }
     const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
 
+    const clientErr = await validateClient(db, data.clientId);
+    if (clientErr) return err(clientErr);
+    const resolved = await resolveSplits(db, data.amount, parsed.data.splits);
+    if ("error" in resolved) return err(resolved.error);
+
     // policy check runs inline at entry time — flags, never blocks (PRD 6.5)
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: null,
@@ -70,6 +113,7 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
       merchant: data.merchant,
       categoryId: data.categoryId,
       receiptCount: 0,
+      splits: resolved.splits,
     });
 
     const expense = await db.expense.create({
@@ -81,6 +125,11 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
         flags,
       },
     });
+    for (const split of resolved.splits) {
+      await db.expenseSplit.create({
+        data: { orgId: ctx.orgId, expenseId: expense.id, ...split },
+      });
+    }
     await logAudit(db, ctx, {
       entity: "Expense",
       entityId: expense.id,
@@ -113,6 +162,11 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
       if (!project) return err("Pick a valid project.");
     }
 
+    const clientErr = await validateClient(db, data.clientId);
+    if (clientErr) return err(clientErr);
+    const resolved = await resolveSplits(db, data.amount, parsed.data.splits);
+    if ("error" in resolved) return err(resolved.error);
+
     const receiptCount = await db.receipt.count({ where: { expenseId: id } });
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: id,
@@ -122,6 +176,7 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
       merchant: data.merchant,
       categoryId: data.categoryId,
       receiptCount,
+      splits: resolved.splits,
     });
 
     // update pinned to owner + draft — non-drafts and others' expenses 404
@@ -130,6 +185,14 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
       data: { ...data, flags },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
+
+    // splits: replace wholesale (draft-only path)
+    await db.expenseSplit.deleteMany({ where: { expenseId: id } });
+    for (const split of resolved.splits) {
+      await db.expenseSplit.create({
+        data: { orgId: ctx.orgId, expenseId: id, ...split },
+      });
+    }
 
     await logAudit(db, ctx, {
       entity: "Expense",
@@ -155,6 +218,12 @@ export async function deleteExpenseAction(input: unknown): Promise<Result> {
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
+    const owned = await db.expense.findUnique({
+      where: { id: parsed.data.id, userId: ctx.userId, status: "draft" },
+      select: { id: true },
+    });
+    if (!owned) return err(NOT_EDITABLE);
+    await db.expenseSplit.deleteMany({ where: { expenseId: owned.id } });
     const res = await db.expense.deleteMany({
       where: { id: parsed.data.id, userId: ctx.userId, status: "draft" },
     });
