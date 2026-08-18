@@ -138,6 +138,7 @@ model Organization {
   expenseSplits  ExpenseSplit[]
   recurringTemplates RecurringTemplate[]
   delegations    Delegation[]
+  inboundEmailFailures InboundEmailFailure[]
 
   @@map("organizations")
 }
@@ -661,4 +662,20 @@ model Delegation {
   @@unique([orgId, delegateId, principalId])
   @@index([orgId, delegateId, active])
   @@map("delegations")
+}
+
+// Dead-letter list for email receipt ingestion (PLAN 6.6) — org_admin
+// reviews why an inbound email produced nothing.
+model InboundEmailFailure {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  fromEmail String   @map("from_email")
+  subject   String   @default("")
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@map("inbound_email_failures")
 }

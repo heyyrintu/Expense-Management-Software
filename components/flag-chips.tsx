@@ -9,6 +9,7 @@ const RULE_LABELS: Record<string, string> = {
   expense_age: "Too old",
   duplicate: "Possible duplicate",
   auto_created: "Auto-created",
+  email_ingested: "From email",
 };
 
 export function asFlags(value: unknown): FlagLike[] {

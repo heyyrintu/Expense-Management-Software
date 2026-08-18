@@ -39,6 +39,9 @@ export default async function SettingsLayout({
             <Link href="/settings/delegations" className="hover:underline">
               Delegations
             </Link>
+            <Link href="/settings/email-ingestion" className="hover:underline">
+              Email ingestion
+            </Link>
           </>
         ) : null}
       </nav>

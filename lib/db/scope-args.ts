@@ -28,6 +28,7 @@ export const TENANT_MODELS = [
   "ExpenseSplit",
   "RecurringTemplate",
   "Delegation",
+  "InboundEmailFailure",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

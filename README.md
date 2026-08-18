@@ -59,6 +59,15 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/j
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/recurring   # daily: drafts recurring expenses
 ```
 
+## Email receipt ingestion (6.6)
+
+Employees email receipts to `receipts+{orgslug}@$APP_MAIL_DOMAIN`. Configure a
+Mailgun receiving route (`match_recipient("receipts+.*@$APP_MAIL_DOMAIN")` →
+`forward("https://<host>/api/webhooks/inbound-email")`) and set
+`MAILGUN_WEBHOOK_SIGNING_KEY` + `APP_MAIL_DOMAIN`. Senders must match a
+verified active user email in that org; failures appear for org admins under
+Settings → Email ingestion.
+
 ## Non-negotiables (see CLAUDE.md)
 
 - Every table has `org_id`; all DB access via `scopedDb(orgId)`; RLS as defense-in-depth
