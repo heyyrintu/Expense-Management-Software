@@ -19,6 +19,10 @@ import {
   expenseInputSchema,
   mileageInputSchema,
 } from "@/lib/schemas/expense";
+import { moneyString } from "@/lib/schemas/category";
+import { parseToMinorUnits } from "@/lib/money";
+import { z } from "zod";
+import type { PolicyFlag } from "@/lib/domain/policy";
 
 function guardError(e: unknown): Result | null {
   if (e instanceof AuthenticationError || e instanceof AuthorizationError) {
@@ -276,6 +280,43 @@ export async function updateMileageExpenseAction(input: unknown): Promise<Result
   } catch (e) {
     const g = guardError(e);
     if (g) return g;
+    throw e;
+  }
+}
+
+const previewSchema = z.object({
+  amount: moneyString,
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  merchant: z.string().max(80),
+  categoryId: z.string().uuid(),
+  expenseId: z.union([z.literal(""), z.string().uuid()]),
+  receiptCount: z.number().int().min(0).max(100),
+});
+
+/** Inline policy check at entry time (3.2) — read-only, never blocks. */
+export async function previewExpenseFlagsAction(
+  input: unknown
+): Promise<Result<{ flags: PolicyFlag[] }>> {
+  try {
+    const ctx = await requireRole("employee");
+    const parsed = previewSchema.safeParse(input);
+    if (!parsed.success) return ok({ flags: [] }); // incomplete form — no noise
+    const amount = parseToMinorUnits(parsed.data.amount);
+    if (amount === null || amount === 0) return ok({ flags: [] });
+
+    const flags = await computeExpenseFlags(scopedDb(ctx.orgId), ctx.orgId, {
+      expenseId: parsed.data.expenseId === "" ? null : parsed.data.expenseId,
+      userId: ctx.userId,
+      amount,
+      date: new Date(`${parsed.data.date}T00:00:00.000Z`),
+      merchant: parsed.data.merchant,
+      categoryId: parsed.data.categoryId,
+      receiptCount: parsed.data.receiptCount,
+    });
+    return ok({ flags });
+  } catch (e) {
+    const g = guardError(e);
+    if (g) return g as Result<{ flags: PolicyFlag[] }>;
     throw e;
   }
 }

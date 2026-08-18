@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireSession } from "@/lib/auth/guard";
 import {
@@ -26,6 +27,7 @@ type ExpenseRow = {
   currency: string;
   date: Date;
   merchant: string;
+  flags: unknown;
   category: { name: string };
 };
 
@@ -103,13 +105,14 @@ export default async function ReportDetailPage({
                   key={e.id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm"
                 >
-                  <span className="grid">
+                  <span className="grid gap-1">
                     <Link href={`/expenses/${e.id}`} className="font-medium hover:underline">
                       {e.merchant}
                     </Link>
                     <span className="text-muted-foreground">
                       {formatDate(e.date)} · {e.category.name}
                     </span>
+                    <FlagChips flags={asFlags(e.flags)} />
                   </span>
                   <span className="flex items-center gap-3">
                     <span className="font-semibold">

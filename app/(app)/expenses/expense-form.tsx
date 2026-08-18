@@ -18,9 +18,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { FlagChips } from "@/components/flag-chips";
 import type { Result } from "@/lib/errors";
 import { expenseInputSchema, type ExpenseInput } from "@/lib/schemas/expense";
 import { deleteExpenseAction } from "./actions";
+import { usePolicyPreview } from "./use-policy-preview";
 
 export type Option = { id: string; name: string };
 
@@ -40,6 +42,7 @@ export function ExpenseForm({
   action,
   expenseId,
   ocr,
+  receiptCount = 0,
 }: {
   defaults: ExpenseInput;
   categories: Option[];
@@ -48,6 +51,7 @@ export function ExpenseForm({
   action: (input: ExpenseInput) => Promise<Result | Result<{ id: string }>>;
   expenseId?: string;
   ocr?: OcrSuggestion;
+  receiptCount?: number;
 }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
@@ -83,6 +87,16 @@ export function ExpenseForm({
       }
     });
   }
+
+  const watched = form.watch(["amount", "date", "merchant", "categoryId"]);
+  const liveFlags = usePolicyPreview({
+    amount: watched[0],
+    date: watched[1],
+    merchant: watched[2],
+    categoryId: watched[3],
+    expenseId,
+    receiptCount,
+  });
 
   const hasOcr = !!ocr && (ocr.merchant || ocr.date || ocr.amount);
 
@@ -230,6 +244,14 @@ export function ExpenseForm({
             </FormItem>
           )}
         />
+        {liveFlags.length > 0 ? (
+          <div aria-live="polite" className="grid gap-1 rounded-lg border border-amber-200 bg-amber-50 p-2">
+            <FlagChips flags={liveFlags} />
+            <p className="text-xs text-amber-800/80">
+              Policy warnings — you can still save and submit.
+            </p>
+          </div>
+        ) : null}
         {serverError ? (
           <p role="alert" className="text-destructive text-sm">
             {serverError}

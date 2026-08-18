@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
@@ -20,6 +21,7 @@ type ExpenseRow = {
   date: Date;
   merchant: string;
   status: string;
+  flags: unknown;
   category: { name: string };
 };
 
@@ -73,9 +75,10 @@ export default async function ExpensesPage() {
                           {formatMoney(e.amount, e.currency)}
                         </span>
                       </div>
-                      <CardDescription className="flex items-center gap-2">
+                      <CardDescription className="flex flex-wrap items-center gap-2">
                         {formatDate(e.date)} · {e.category.name}
                         <StatusBadge status={e.status} />
+                        <FlagChips flags={asFlags(e.flags)} />
                       </CardDescription>
                     </CardHeader>
                   </Card>
@@ -106,7 +109,10 @@ export default async function ExpensesPage() {
                       {formatMoney(e.amount, e.currency)}
                     </td>
                     <td className="p-3">
-                      <StatusBadge status={e.status} />
+                      <span className="flex flex-wrap items-center gap-1">
+                        <StatusBadge status={e.status} />
+                        <FlagChips flags={asFlags(e.flags)} />
+                      </span>
                     </td>
                     <td className="p-3 text-right">
                       <Button asChild variant="outline" size="sm">

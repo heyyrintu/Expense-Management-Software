@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireSession } from "@/lib/auth/guard";
 import { isExpenseEditable, type ExpenseStatus } from "@/lib/domain/expense";
@@ -132,6 +133,7 @@ export default async function ExpenseDetailPage({
           projects={projects as Option[]}
           currency={expense.currency}
           ocr={ocrSuggestion}
+          receiptCount={receiptViews.length}
         />
         <div className="max-w-md border-t pt-4">
           <ReceiptUploader
@@ -156,6 +158,7 @@ export default async function ExpenseDetailPage({
           <CardTitle>{formatMoney(expense.amount, expense.currency)}</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground grid gap-1 text-sm">
+          <FlagChips flags={asFlags(expense.flags)} />
           <p>Date: {formatDate(expense.date)}</p>
           <p>Category: {expense.category.name}</p>
           {expense.purpose ? <p>Purpose: {expense.purpose}</p> : null}

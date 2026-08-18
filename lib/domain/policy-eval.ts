@@ -48,17 +48,19 @@ export async function computeExpenseFlags(
       },
       _sum: { amount: true },
     }),
-    db.expense.findMany({
-      where: {
-        userId: input.userId,
-        amount: input.amount,
-        date: input.date,
-        merchant: { equals: input.merchant, mode: "insensitive" },
-        ...(input.expenseId ? { id: { not: input.expenseId } } : {}),
-      },
-      select: { amount: true, date: true, merchant: true },
-      take: 5,
-    }),
+    input.merchant.trim() === ""
+      ? Promise.resolve([])
+      : db.expense.findMany({
+          where: {
+            userId: input.userId,
+            amount: input.amount,
+            date: input.date,
+            merchant: { equals: input.merchant, mode: "insensitive" },
+            ...(input.expenseId ? { id: { not: input.expenseId } } : {}),
+          },
+          select: { amount: true, date: true, merchant: true },
+          take: 5,
+        }),
   ]);
 
   return evaluateExpense(

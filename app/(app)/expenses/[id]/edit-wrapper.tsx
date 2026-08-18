@@ -11,6 +11,7 @@ export function EditExpenseWrapper({
   projects,
   currency,
   ocr,
+  receiptCount,
 }: {
   expenseId: string;
   defaults: ExpenseInput;
@@ -18,6 +19,7 @@ export function EditExpenseWrapper({
   projects: Option[];
   currency: string;
   ocr?: OcrSuggestion;
+  receiptCount?: number;
 }) {
   return (
     <ExpenseForm
@@ -27,6 +29,7 @@ export function EditExpenseWrapper({
       currency={currency}
       expenseId={expenseId}
       ocr={ocr}
+      receiptCount={receiptCount}
       action={(input) => updateExpenseAction({ id: expenseId, ...input })}
     />
   );

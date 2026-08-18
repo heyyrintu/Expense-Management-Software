@@ -11,10 +11,12 @@ export function DecisionPanel({
   reportId,
   level,
   required,
+  flagged,
 }: {
   reportId: string;
   level: 1 | 2;
   required: 1 | 2;
+  flagged: boolean;
 }) {
   const router = useRouter();
   const [reason, setReason] = React.useState("");
@@ -25,6 +27,10 @@ export function DecisionPanel({
     setError(null);
     if ((action === "reject" || action === "send_back") && reason.trim() === "") {
       setError("A reason is required to reject or send back.");
+      return;
+    }
+    if (action === "approve" && flagged && reason.trim() === "") {
+      setError("This report has policy flags — add a justification to approve.");
       return;
     }
     startTransition(async () => {
@@ -48,9 +54,18 @@ export function DecisionPanel({
         Your decision
         {required === 2 ? ` (level ${level} of 2)` : ""}
       </h2>
+      {flagged ? (
+        <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+          This report has policy flags. You may still approve it, but a written
+          justification is required and will be logged.
+        </p>
+      ) : null}
       <div className="grid gap-1">
         <label htmlFor="decision-reason" className="text-sm">
-          Reason <span className="text-muted-foreground">(required for reject / send back)</span>
+          Reason{" "}
+          <span className="text-muted-foreground">
+            (required for reject / send back{flagged ? " — and to approve a flagged report" : ""})
+          </span>
         </label>
         <Textarea
           id="decision-reason"

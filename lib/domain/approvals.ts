@@ -83,3 +83,24 @@ export function isReportFlagged(expenseFlags: unknown[]): boolean {
     (f) => Array.isArray(f) && f.length > 0
   );
 }
+
+/**
+ * Reason/justification requirements for a decision (3.2):
+ * - reject / send_back always need a reason (PRD 6.4)
+ * - approving a FLAGGED report needs a justification (PRD 6.5, logged)
+ * Returns a user-facing error, or null when the decision may proceed.
+ */
+export function validateDecisionReason(
+  action: "approve" | "reject" | "send_back",
+  reportFlagged: boolean,
+  reason: string | undefined
+): string | null {
+  const has = typeof reason === "string" && reason.trim().length > 0;
+  if (action !== "approve") {
+    return has ? null : "A reason is required.";
+  }
+  if (reportFlagged && !has) {
+    return "This report has policy flags — add a justification to approve.";
+  }
+  return null;
+}

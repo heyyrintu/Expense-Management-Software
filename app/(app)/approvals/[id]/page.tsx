@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireRole } from "@/lib/auth/guard";
 import {
@@ -107,7 +108,7 @@ export default async function ApprovalReviewPage({
         <CardContent>
           <ul className="grid gap-2">
             {(report.expenses as ExpenseRow[]).map((e) => {
-              const flagged = Array.isArray(e.flags) && e.flags.length > 0;
+              const flags = asFlags(e.flags);
               return (
                 <li
                   key={e.id}
@@ -122,12 +123,7 @@ export default async function ApprovalReviewPage({
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
-                    {flagged ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                        {(e.flags as unknown[]).length} flag
-                        {(e.flags as unknown[]).length === 1 ? "" : "s"}
-                      </span>
-                    ) : null}
+                    <FlagChips flags={flags} />
                     <span className="font-semibold">
                       {formatMoney(e.amount, e.currency)}
                     </span>
@@ -174,7 +170,14 @@ export default async function ApprovalReviewPage({
       ) : null}
 
       {canDecide && level ? (
-        <DecisionPanel reportId={report.id} level={level} required={required} />
+        <DecisionPanel
+          reportId={report.id}
+          level={level}
+          required={required}
+          flagged={(report.expenses as ExpenseRow[]).some(
+            (e) => asFlags(e.flags).length > 0
+          )}
+        />
       ) : (
         <p className="text-muted-foreground text-sm">
           {report.status === "submitted"

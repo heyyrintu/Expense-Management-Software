@@ -16,6 +16,7 @@ import {
   isReportFlagged,
   pendingLevel,
   requiredLevels,
+  validateDecisionReason,
   type ApprovalRow,
 } from "@/lib/domain/approvals";
 import { logAudit } from "@/lib/domain/audit";
@@ -24,7 +25,6 @@ import {
   detachExpensesOnReject,
   expenseStatusFor,
   nextStatus,
-  requiresReason,
   type ReportStatus,
 } from "@/lib/domain/report-workflow";
 import { scopedDb } from "@/lib/db/scoped";
@@ -102,17 +102,14 @@ async function decideOne(
     return err(NOT_ELIGIBLE);
   }
 
-  if (
-    opts?.requireUnflagged &&
-    isReportFlagged(report.expenses.map((e) => e.flags))
-  ) {
+  const flagged = isReportFlagged(report.expenses.map((e) => e.flags));
+  if (opts?.requireUnflagged && flagged) {
     return err("Flagged reports need individual review.");
   }
 
   const workflowAction = input.action === "approve" ? "approve" : input.action;
-  if (requiresReason(workflowAction) && !input.reason) {
-    return err("A reason is required.");
-  }
+  const reasonError = validateDecisionReason(input.action, flagged, input.reason);
+  if (reasonError) return err(reasonError);
 
   const approvalAction =
     input.action === "approve"
@@ -185,7 +182,15 @@ async function decideOne(
       entity: "ExpenseReport",
       entityId: report.id,
       action: `report.${approvalAction}`,
-      meta: { level, reason: input.reason ?? null, total: report.total },
+      meta: {
+        level,
+        reason: input.reason ?? null,
+        total: report.total,
+        flagged,
+        ...(input.action === "approve" && flagged
+          ? { justification: input.reason }
+          : {}),
+      },
     });
     // tell the owner what happened (2.3)
     const event =

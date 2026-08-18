@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canDecideAtLevel,
+  validateDecisionReason,
   currentSubmissionApprovals,
   isReportFlagged,
   pendingLevel,
@@ -98,5 +99,21 @@ describe("org settings parsing", () => {
     expect(secondApprovalThreshold({})).toBeNull();
     expect(secondApprovalThreshold(null)).toBeNull();
     expect(parseOrgSettings({ secondApprovalAbove: -5 }).secondApprovalAbove).toBeNull();
+  });
+});
+
+describe("validateDecisionReason (3.2)", () => {
+  it("reject/send_back always need a reason", () => {
+    for (const action of ["reject", "send_back"] as const) {
+      expect(validateDecisionReason(action, false, undefined)).not.toBeNull();
+      expect(validateDecisionReason(action, false, "   ")).not.toBeNull();
+      expect(validateDecisionReason(action, true, "too old")).toBeNull();
+    }
+  });
+  it("approve needs a justification only when flagged", () => {
+    expect(validateDecisionReason("approve", false, undefined)).toBeNull();
+    expect(validateDecisionReason("approve", true, undefined)).not.toBeNull();
+    expect(validateDecisionReason("approve", true, "  ")).not.toBeNull();
+    expect(validateDecisionReason("approve", true, "client emergency travel")).toBeNull();
   });
 });
