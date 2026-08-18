@@ -1,0 +1,28 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { getSessionCtx } from "@/lib/auth/guard";
+import { roleAtLeast } from "@/lib/auth/roles";
+
+export default async function SettingsLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  const ctx = await getSessionCtx();
+  if (!ctx) redirect("/login");
+  // UI gate only — every action re-checks with requireRole("finance_admin").
+  if (!roleAtLeast(ctx.role, "finance_admin")) redirect("/dashboard");
+
+  return (
+    <div className="grid gap-6">
+      <nav className="flex gap-4 border-b pb-2 text-sm">
+        <Link href="/settings/organization" className="hover:underline">
+          Organization
+        </Link>
+        <Link href="/settings/categories" className="hover:underline">
+          Categories
+        </Link>
+      </nav>
+      {children}
+    </div>
+  );
+}

@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { getSessionCtx } from "@/lib/auth/guard";
+import { roleAtLeast } from "@/lib/auth/roles";
 import { logoutAction } from "@/app/(auth)/actions";
 
 export default async function AppLayout({
@@ -15,8 +17,18 @@ export default async function AppLayout({
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
           <div className="flex items-baseline gap-3">
-            <span className="font-semibold">Expense Management</span>
+            <Link href="/dashboard" className="font-semibold">
+              Expense Management
+            </Link>
             <span className="text-muted-foreground text-sm">/{ctx.orgSlug}</span>
+            {roleAtLeast(ctx.role, "finance_admin") ? (
+              <Link
+                href="/settings"
+                className="text-muted-foreground text-sm hover:underline"
+              >
+                Settings
+              </Link>
+            ) : null}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-muted-foreground hidden text-sm sm:inline">
