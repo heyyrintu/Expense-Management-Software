@@ -5,6 +5,8 @@
 // (lib/db/scoped.ts). The only legitimate direct consumers are:
 //   - lib/db/scoped.ts
 //   - org-lifecycle flows that predate a session (org signup, in lib/db/)
+//   - lib/auth/config.ts (slug -> org resolution before a session exists;
+//     the user lookup itself still goes through scopedDb)
 //   - prisma/seed.ts and test harnesses
 import { PrismaClient } from "@prisma/client";
 
