@@ -141,6 +141,8 @@ model Organization {
   inboundEmailFailures InboundEmailFailure[]
   bankImports    BankStatementImport[]
   bankLines      BankStatementLine[]
+  complaints     Complaint[]
+  complaintMessages ComplaintMessage[]
 
   @@map("organizations")
 }
@@ -192,6 +194,9 @@ model User {
   bankImports    BankStatementImport[] @relation("BankImportImportedBy")
   notifications  Notification[]
   reportComments ReportComment[]
+  complaintsRaised   Complaint[] @relation("ComplaintRaisedBy")
+  complaintsAssigned Complaint[] @relation("ComplaintAssignedTo")
+  complaintMessages  ComplaintMessage[] @relation("ComplaintMessageAuthor")
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -327,6 +332,7 @@ model ExpenseReport {
   approvals      Approval[]
   reimbursements Reimbursement[]
   comments       ReportComment[]
+  complaints     Complaint[]
 
   @@index([orgId, userId, status])
   @@index([orgId, status, submittedAt])
@@ -373,6 +379,7 @@ model Reimbursement {
   batch        PaymentBatch? @relation(fields: [batchId], references: [id])
   paidBy       User          @relation("ReimbursementPaidBy", fields: [paidById], references: [id])
   bankLine     BankStatementLine?
+  complaints   Complaint[]
 
   @@index([orgId, reportId])
   @@index([orgId, paidAt])
@@ -731,4 +738,73 @@ model BankStatementLine {
   @@index([orgId, importId])
   @@index([orgId, date])
   @@map("bank_statement_lines")
+}
+
+enum ComplaintType {
+  wrong_amount
+  unfair_rejection
+  payment_not_received
+  other
+
+  @@map("complaint_type")
+}
+
+enum ComplaintStatus {
+  open
+  in_review
+  resolved
+  wont_fix
+
+  @@map("complaint_status")
+}
+
+// Expense-linked dispute (PLAN 7.3). Exactly one of reportId / reimbursementId
+// is set — enforced by a DB CHECK constraint (see migration) and by
+// lib/domain/complaint.ts. Routing never assigns the complaint to the approver
+// whose decision is being disputed (canAssignComplaint). Once resolved the
+// record is immutable except for the message thread.
+model Complaint {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  orgId           String          @map("org_id") @db.Uuid
+  raisedById      String          @map("raised_by_id") @db.Uuid
+  reportId        String?         @map("report_id") @db.Uuid
+  reimbursementId String?         @map("reimbursement_id") @db.Uuid
+  type            ComplaintType
+  description     String
+  attachmentKey   String?         @map("attachment_key") // /{orgId}/complaints/...
+  status          ComplaintStatus @default(open)
+  assignedToId    String?         @map("assigned_to_id") @db.Uuid
+  resolutionNote  String?         @map("resolution_note")
+  resolvedAt      DateTime?       @map("resolved_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [orgId], references: [id])
+  raisedBy      User               @relation("ComplaintRaisedBy", fields: [raisedById], references: [id])
+  assignedTo    User?              @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id])
+  report        ExpenseReport?     @relation(fields: [reportId], references: [id])
+  reimbursement Reimbursement?     @relation(fields: [reimbursementId], references: [id])
+  messages      ComplaintMessage[]
+
+  @@index([orgId, status, createdAt])
+  @@index([orgId, raisedById, createdAt])
+  @@index([orgId, assignedToId, status])
+  @@map("complaints")
+}
+
+// Complaint thread message. Appendable even after the complaint is resolved.
+model ComplaintMessage {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  complaintId String   @map("complaint_id") @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  body        String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  complaint    Complaint    @relation(fields: [complaintId], references: [id])
+  author       User         @relation("ComplaintMessageAuthor", fields: [authorId], references: [id])
+
+  @@index([orgId, complaintId, createdAt])
+  @@map("complaint_messages")
 }

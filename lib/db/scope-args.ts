@@ -31,6 +31,8 @@ export const TENANT_MODELS = [
   "InboundEmailFailure",
   "BankStatementImport",
   "BankStatementLine",
+  "Complaint",
+  "ComplaintMessage",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

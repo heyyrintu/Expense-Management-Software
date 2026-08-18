@@ -21,6 +21,7 @@ import { scopedDb } from "@/lib/db/scoped";
 import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
+import { RaiseComplaint } from "../../complaints/raise-complaint";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { ReportControls } from "./report-controls";
@@ -80,6 +81,7 @@ export default async function ReportDetailPage({
     method: string;
     reference: string;
     proofUrl: string | null;
+    hasProof: boolean;
   };
   const paymentViews: PaymentView[] = await Promise.all(
     report.reimbursements.map(
@@ -97,6 +99,7 @@ export default async function ReportDetailPage({
         method: p.method.replace("_", " "),
         reference: p.reference,
         proofUrl: p.proofKey ? await signedProofUrl({ proofKey: p.proofKey }) : null,
+        hasProof: Boolean(p.proofKey),
       })
     )
   );
@@ -112,6 +115,10 @@ export default async function ReportDetailPage({
   );
 
   const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+  // Complaints (7.3) are raised by the person the report belongs to, once the
+  // report has left Draft and there is a decision or a payment to dispute.
+  const isOwner = report.userId === ctx.userId;
+  const complaintableReport = report.status !== "draft";
   const editable = isReportEditable(report.status as ReportStatus);
   const attached: ExpenseRow[] = report.expenses;
   const runningTotal = computeReportTotal(attached.map((e) => e.baseAmount));
@@ -175,9 +182,30 @@ export default async function ReportDetailPage({
                     View proof
                   </a>
                 ) : null}
+                {isOwner ? (
+                  <RaiseComplaint
+                    reimbursementId={p.id}
+                    types={["payment_not_received", "wrong_amount", "other"]}
+                    label="Something wrong?"
+                    hasPaymentProof={p.hasProof}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {isOwner && complaintableReport ? (
+        <div className="grid gap-2">
+          <RaiseComplaint
+            reportId={report.id}
+            types={
+              report.status === "rejected"
+                ? ["unfair_rejection", "wrong_amount", "other"]
+                : ["wrong_amount", "other"]
+            }
+          />
         </div>
       ) : null}
 

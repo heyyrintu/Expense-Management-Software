@@ -26,6 +26,7 @@ import {
   type ExpenseAggRow,
 } from "@/lib/domain/dashboard";
 import { outstandingAdvance } from "@/lib/domain/advance";
+import { complaintSummary } from "@/lib/complaints/queries";
 import { buildExpenseWhere } from "@/lib/domain/expense-query";
 import { resolveExpenseScope } from "@/lib/domain/expense-scope";
 import { scopedDb } from "@/lib/db/scoped";
@@ -203,6 +204,13 @@ export default async function DashboardPage({
     where: { userId: ctx.userId, status: { in: ["disbursed", "partially_settled"] } },
     select: { amount: true, settledAmount: true },
   })) as Array<{ amount: number; settledAmount: number }>;
+  // Complaints widget (7.3): finance sees the org-wide queue, everyone else
+  // sees their own open disputes. Same query module as /complaints.
+  const complaints = await complaintSummary(
+    db,
+    isFinance ? {} : { raisedById: ctx.userId }
+  );
+
   const advanceBalance = myOpenAdvances.reduce(
     (sum, a) => sum + outstandingAdvance(a.amount, a.settledAmount),
     0
@@ -297,6 +305,40 @@ export default async function DashboardPage({
         <Stat label="Awaiting approval" value={fmt(pending)} hint="submitted expenses" />
         <Stat label="Reimbursed" value={fmt(reimbursed)} hint="in current scope/filters" />
       </div>
+
+      {complaints.open > 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {isFinance ? "Open complaints" : "My open complaints"}
+            </CardTitle>
+            <CardDescription>
+              {isFinance
+                ? "Disputes waiting on finance — 5 business-day target."
+                : "Disputes you've raised that are still being looked at."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-4">
+            <Stat label="Open" value={String(complaints.open)} />
+            <Stat label="In review" value={String(complaints.inReview)} />
+            <Stat
+              label="Past SLA"
+              value={String(complaints.breached)}
+              hint={complaints.breached > 0 ? "needs attention today" : undefined}
+            />
+            <Stat
+              label="Oldest"
+              value={`${complaints.oldestOpenDays}d`}
+              hint="business days"
+            />
+            <div className="sm:col-span-4">
+              <Link href="/complaints" className="text-sm underline">
+                {isFinance ? "Open the complaints inbox" : "View my complaints"}
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {advanceBalance > 0 ? (
         <div className="grid gap-4 sm:grid-cols-3">

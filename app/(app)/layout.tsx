@@ -56,6 +56,12 @@ export default async function AppLayout({
             >
               Ledger
             </Link>
+            <Link
+              href="/complaints"
+              className="text-muted-foreground text-sm hover:underline"
+            >
+              Complaints
+            </Link>
             {roleAtLeast(ctx.role, "approver") ? (
               <Link
                 href="/approvals"
