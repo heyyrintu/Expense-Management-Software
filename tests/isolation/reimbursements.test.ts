@@ -41,6 +41,7 @@ describe("cross-org reimbursement", () => {
           orgId: B.orgId,
           reportId: A.reportId, // FK target invisible under B's RLS
           amount: 12345,
+          amountPaid: 12345,
           paidAt: new Date(),
           reference: "hijack-ref",
           paidById: B.users.finance_admin,
@@ -52,29 +53,33 @@ describe("cross-org reimbursement", () => {
     expect(fresh?.status).toBe("approved"); // untouched
   });
 
-  it("A's own scope can reimburse (control) and double-payment is blocked by the unique constraint", async () => {
+  it("A's own scope can record payments — multiple partials stack (6.1)", async () => {
     const db = scopedDb(A.orgId);
     await db.reimbursement.create({
       data: {
         orgId: A.orgId,
         reportId: A.reportId,
         amount: 12345,
+        amountPaid: 5000,
         paidAt: new Date(),
-        reference: "BATCH-1",
+        reference: "PART-1",
         paidById: A.users.finance_admin,
       },
     });
-    await expect(
-      db.reimbursement.create({
-        data: {
-          orgId: A.orgId,
-          reportId: A.reportId,
-          amount: 12345,
-          paidAt: new Date(),
-          reference: "BATCH-2",
-          paidById: A.users.finance_admin,
-        },
-      })
-    ).rejects.toThrow(); // @unique reportId
+    await db.reimbursement.create({
+      data: {
+        orgId: A.orgId,
+        reportId: A.reportId,
+        amount: 12345,
+        amountPaid: 7345,
+        paidAt: new Date(),
+        reference: "PART-2",
+        paidById: A.users.finance_admin,
+      },
+    });
+    const payments = await db.reimbursement.findMany({
+      where: { reportId: A.reportId },
+    });
+    expect(payments).toHaveLength(2);
   });
 });

@@ -8,6 +8,7 @@ const STYLES: Record<string, string> = {
   approved: "bg-green-100 text-green-700",
   rejected: "bg-red-100 text-red-700",
   sent_back: "bg-amber-100 text-amber-800",
+  partially_reimbursed: "bg-teal-100 text-teal-700",
   reimbursed: "bg-violet-100 text-violet-700",
 };
 
@@ -17,6 +18,7 @@ const LABELS: Record<string, string> = {
   approved: "Approved",
   rejected: "Rejected",
   sent_back: "Sent back",
+  partially_reimbursed: "Partially reimbursed",
   reimbursed: "Reimbursed",
 };
 

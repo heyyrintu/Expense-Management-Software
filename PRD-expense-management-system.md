@@ -113,6 +113,7 @@ We will build a web-based expense management system that automates receipt captu
 - Finance queue of Approved reports; mark reimbursed (single or batch) with payment date + reference number.
 - Employee sees reimbursement status and history.
 - AC: Reimbursed is terminal; amounts roll up correctly to totals.
+- **v1.2 upgrade (see PLAN 6.1)**: payment method, UTR/reference, **payment-proof attachment** (photo/PDF of bank transfer confirmation, stored per-org, visible to employee), batch payment runs, partial reimbursement with balance tracking, employee bank details on profile.
 
 **6.7 Dashboards & Reporting**
 - Employee: my spend summary, pending amounts.
@@ -129,6 +130,16 @@ We will build a web-based expense management system that automates receipt captu
 - **Comments** on reports (approver ↔ employee thread).
 - **Per-diem** expense type with configurable daily rates.
 - **Scheduled email digests**: pending-approvals reminder to approvers.
+- **Reimbursement upgrade**: payment proof upload, batch payment runs, partial payments (PLAN 6.1).
+- **Cash advances & trip pre-approval** with settlement against reports (PLAN 6.2).
+- **Billable/client expenses, expense splitting, tax fields** (PLAN 6.3).
+- **Multi-currency** with FX conversion to base currency (PLAN 6.4).
+- **Recurring expenses & delegate submission** (PLAN 6.5).
+- **Email receipt ingestion** via per-org inbound address (PLAN 6.6).
+- **Reimbursement ledger (Tally-style)**: per-user/project/department dated debit-credit ledger with running balance and requested/approved/paid/outstanding totals; employee sees own, finance sees all; CSV + Tally XML voucher export (PLAN 7.1).
+- **Bank statement reconciliation**: statement import with column mapping, auto-match to reimbursements (UTR, then amount+date), buckets for missing-in-bank and missing-in-app with one-click record, period locking (PLAN 7.2).
+- **Complaints**: expense-linked disputes (wrong amount, unfair rejection, payment not received) routed to finance, SLA-tracked, threaded, audit-logged (PLAN 7.3).
+- **WhatsApp integration** (Meta Business Cloud API): OTP number linking; send receipt photo → OCR → draft expense with confirm buttons; template notifications (submit/approve/reject/payment+UTR); approver quick-approve via reply buttons — all through the same guards, state machine, and AuditLog (PLAN 8.1–8.3).
 
 ### P2 — Future
 
@@ -162,6 +173,14 @@ Budget (id, scope{dept|project|category}, period, amount)         -- P1
 CardTransaction (id, imported_batch, date, amount, merchant,
                  matched_expense_id?)                              -- P1
 AuditLog (id, entity, entity_id, actor_id, action, timestamp, meta)
+Complaint (id, org_id, raised_by, report_id|reimbursement_id, type, description,
+           status, assigned_to, resolution_note, resolved_at)            -- 7.3
+BankStatementImport (id, org_id, filename, column_mapping, period,
+                     locked_at, imported_by)                             -- 7.2
+BankStatementLine (id, import_id, date, amount, reference,
+                   matched_reimbursement_id?, match_type[auto|manual])   -- 7.2
+-- Ledger (7.1) is a derived view over ExpenseReport/Reimbursement/Advance,
+-- not a stored table — single source of truth, no sync drift.
 ```
 
 ## 8. Key Flows

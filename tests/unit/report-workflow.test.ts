@@ -23,6 +23,9 @@ const LEGAL: Array<[ReportStatus, ReportAction, ReportStatus]> = [
   ["submitted", "send_back", "sent_back"],
   ["sent_back", "submit", "submitted"],
   ["approved", "reimburse", "reimbursed"],
+  ["approved", "reimburse_partial", "partially_reimbursed"],
+  ["partially_reimbursed", "reimburse", "reimbursed"],
+  ["partially_reimbursed", "reimburse_partial", "partially_reimbursed"],
 ];
 
 describe("state machine — exhaustive matrix", () => {
@@ -78,6 +81,7 @@ describe("workflow rules", () => {
     expect(expenseStatusFor("sent_back")).toBe("draft");
     expect(expenseStatusFor("submitted")).toBe("submitted");
     expect(expenseStatusFor("approved")).toBe("approved");
+    expect(expenseStatusFor("partially_reimbursed")).toBe("approved");
     expect(expenseStatusFor("rejected")).toBe("rejected");
     expect(expenseStatusFor("reimbursed")).toBe("reimbursed");
   });

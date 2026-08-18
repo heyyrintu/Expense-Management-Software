@@ -11,6 +11,7 @@ export const REPORT_STATUSES = [
   "approved",
   "rejected",
   "sent_back",
+  "partially_reimbursed",
   "reimbursed",
 ] as const;
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
@@ -22,6 +23,7 @@ export const REPORT_ACTIONS = [
   "reject",
   "send_back",
   "reimburse",
+  "reimburse_partial",
 ] as const;
 export type ReportAction = (typeof REPORT_ACTIONS)[number];
 
@@ -34,7 +36,14 @@ const TRANSITIONS: Record<ReportStatus, Partial<Record<ReportAction, ReportStatu
     send_back: "sent_back",
   },
   sent_back: { submit: "submitted" }, // employee fixes and resubmits
-  approved: { reimburse: "reimbursed" },
+  approved: {
+    reimburse: "reimbursed",
+    reimburse_partial: "partially_reimbursed",
+  },
+  partially_reimbursed: {
+    reimburse: "reimbursed", // final payment clears the balance
+    reimburse_partial: "partially_reimbursed", // further partial payments
+  },
   rejected: {}, // terminal
   reimbursed: {}, // terminal
 };
@@ -77,7 +86,8 @@ export function expenseStatusFor(
     case "submitted":
       return "submitted";
     case "approved":
-      return "approved";
+    case "partially_reimbursed":
+      return "approved"; // money still owed — expenses stay approved
     case "rejected":
       return "rejected";
     case "reimbursed":

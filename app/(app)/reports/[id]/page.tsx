@@ -18,6 +18,8 @@ import {
 } from "@/lib/domain/report-workflow";
 import { scopedDb } from "@/lib/db/scoped";
 import { CommentThread, type CommentView } from "@/components/comment-thread";
+import { outstandingBalance } from "@/lib/domain/reimbursement";
+import { signedProofUrl } from "@/lib/storage/payment-proofs";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { ReportControls } from "./report-controls";
@@ -48,7 +50,17 @@ export default async function ReportDetailPage({
         orderBy: { date: "desc" },
         include: { category: { select: { name: true } } },
       },
-      reimbursement: { select: { paidAt: true, reference: true, amount: true } },
+      reimbursements: {
+        orderBy: { paidAt: "asc" },
+        select: {
+          id: true,
+          amountPaid: true,
+          method: true,
+          paidAt: true,
+          reference: true,
+          proofKey: true,
+        },
+      },
       comments: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { name: true } } },
@@ -56,6 +68,34 @@ export default async function ReportDetailPage({
     },
   });
   if (!report) notFound();
+
+  type PaymentView = {
+    id: string;
+    when: string;
+    amount: string;
+    method: string;
+    reference: string;
+    proofUrl: string | null;
+  };
+  const paymentViews: PaymentView[] = await Promise.all(
+    report.reimbursements.map(
+      async (p: {
+        id: string;
+        amountPaid: number;
+        method: string;
+        paidAt: Date;
+        reference: string;
+        proofKey: string | null;
+      }) => ({
+        id: p.id,
+        when: formatDate(p.paidAt),
+        amount: formatMoney(p.amountPaid, report.expenses[0]?.currency ?? "INR"),
+        method: p.method.replace("_", " "),
+        reference: p.reference,
+        proofUrl: p.proofKey ? await signedProofUrl({ proofKey: p.proofKey }) : null,
+      })
+    )
+  );
 
   const commentViews: CommentView[] = report.comments.map(
     (c: { id: string; body: string; createdAt: Date; authorId: string; author: { name: string } }) => ({
@@ -102,13 +142,37 @@ export default async function ReportDetailPage({
         </p>
       ) : null}
 
-      {report.reimbursement ? (
-        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
-          Reimbursed {formatDate(report.reimbursement.paidAt)} · ref{" "}
-          <span className="font-medium">{report.reimbursement.reference}</span>
-          {currency
-            ? ` · ${formatMoney(report.reimbursement.amount, currency)}`
-            : ""}
+      {report.reimbursements.length > 0 ? (
+        <div className="grid gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
+          <p className="font-medium">
+            Payments
+            {currency && report.status === "partially_reimbursed"
+              ? ` — outstanding ${formatMoney(
+                  outstandingBalance(report.total, report.reimbursements),
+                  currency
+                )}`
+              : ""}
+          </p>
+          <ul className="grid gap-1">
+            {paymentViews.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-2">
+                <span>{p.when}</span>
+                <span className="font-medium">{p.amount}</span>
+                <span>{p.method}</span>
+                <span className="text-violet-900/70">ref {p.reference}</span>
+                {p.proofUrl ? (
+                  <a
+                    href={p.proofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    View proof
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

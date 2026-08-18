@@ -82,9 +82,19 @@ enum ReportStatus {
   approved
   rejected
   sent_back
+  partially_reimbursed
   reimbursed
 
   @@map("report_status")
+}
+
+enum PaymentMethod {
+  bank_transfer
+  upi
+  cash
+  payroll
+
+  @@map("payment_method")
 }
 
 enum ApprovalAction {
@@ -122,6 +132,7 @@ model Organization {
   cardTransactions CardTransaction[]
   reportComments ReportComment[]
   approvalRules  ApprovalRule[]
+  paymentBatches PaymentBatch[]
 
   @@map("organizations")
 }
@@ -146,6 +157,12 @@ model User {
   departmentId String?    @map("department_id") @db.Uuid
   approverId   String?    @map("approver_id") @db.Uuid
   status       UserStatus @default(invited)
+  // bank details for reimbursement (6.1) — account number is stored in full
+  // but NEVER leaves the server unmasked (lib/domain/reimbursement.ts)
+  bankAccountName   String? @map("bank_account_name")
+  bankAccountNumber String? @map("bank_account_number")
+  bankIfsc          String? @map("bank_ifsc")
+  upiId             String? @map("upi_id")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
@@ -158,6 +175,7 @@ model User {
   reports        ExpenseReport[]
   approvals      Approval[]      @relation("ApprovalApprover")
   reimbursements Reimbursement[] @relation("ReimbursementPaidBy")
+  paymentBatches PaymentBatch[]  @relation("PaymentBatchCreatedBy")
   notifications  Notification[]
   reportComments ReportComment[]
 
@@ -280,10 +298,10 @@ model ExpenseReport {
 
   organization  Organization   @relation(fields: [orgId], references: [id])
   user          User           @relation(fields: [userId], references: [id])
-  expenses      Expense[]
-  approvals     Approval[]
-  reimbursement Reimbursement?
-  comments      ReportComment[]
+  expenses       Expense[]
+  approvals      Approval[]
+  reimbursements Reimbursement[]
+  comments       ReportComment[]
 
   @@index([orgId, userId, status])
   @@index([orgId, status, submittedAt])
@@ -309,22 +327,49 @@ model Approval {
   @@map("approvals")
 }
 
+// Payment record (6.1): a report may have MANY (partial payments).
+// amount = report total at payment time; amountPaid = money moved.
 model Reimbursement {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  orgId     String   @map("org_id") @db.Uuid
-  reportId  String   @unique @map("report_id") @db.Uuid
-  amount    Int // minor units
-  paidAt    DateTime @map("paid_at")
-  reference String
-  paidById  String   @map("paid_by_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String        @id @default(uuid(7)) @db.Uuid
+  orgId      String        @map("org_id") @db.Uuid
+  reportId   String        @map("report_id") @db.Uuid
+  amount     Int // minor units — report total at payment time
+  amountPaid Int           @map("amount_paid") // minor units — this payment
+  method     PaymentMethod @default(bank_transfer)
+  paidAt     DateTime      @map("paid_at")
+  reference  String // UTR / cheque / payroll run id
+  batchId    String?       @map("batch_id") @db.Uuid
+  proofKey   String?       @map("proof_key") // /{orgId}/payment-proofs/...
+  paidById   String        @map("paid_by_id") @db.Uuid
+  createdAt  DateTime      @default(now()) @map("created_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
   report       ExpenseReport @relation(fields: [reportId], references: [id])
+  batch        PaymentBatch? @relation(fields: [batchId], references: [id])
   paidBy       User          @relation("ReimbursementPaidBy", fields: [paidById], references: [id])
 
+  @@index([orgId, reportId])
   @@index([orgId, paidAt])
+  @@index([orgId, batchId])
   @@map("reimbursements")
+}
+
+// One finance payment run (6.1) grouping many report payments.
+model PaymentBatch {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  orgId       String        @map("org_id") @db.Uuid
+  createdById String        @map("created_by_id") @db.Uuid
+  method      PaymentMethod @default(bank_transfer)
+  paidAt      DateTime      @map("paid_at")
+  notes       String        @default("")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  organization Organization    @relation(fields: [orgId], references: [id])
+  createdBy    User            @relation("PaymentBatchCreatedBy", fields: [createdById], references: [id])
+  payments     Reimbursement[]
+
+  @@index([orgId, paidAt])
+  @@map("payment_batches")
 }
 
 // Append-only. No updatedAt by design; rows are never modified or deleted.

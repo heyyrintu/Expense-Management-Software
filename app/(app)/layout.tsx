@@ -89,9 +89,12 @@ export default async function AppLayout({
                 </span>
               ) : null}
             </Link>
-            <span className="text-muted-foreground hidden text-sm sm:inline">
+            <Link
+              href="/profile"
+              className="text-muted-foreground hidden text-sm hover:underline sm:inline"
+            >
               {ctx.role.replace("_", " ")}
-            </span>
+            </Link>
             <form action={logoutAction}>
               <Button variant="outline" size="sm" type="submit">
                 Sign out
