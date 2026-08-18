@@ -3,6 +3,7 @@
 // Rules: session user's OWN DRAFT expense only; JPG/PNG/PDF ≤ 10 MB each.
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { resolveActing } from "@/lib/auth/acting";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { logAudit } from "@/lib/domain/audit";
 import { refreshExpenseFlags } from "@/lib/domain/policy-eval";
@@ -46,9 +47,14 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const db = scopedDb(ctx.orgId);
-  // own draft expense only — anyone else's id (or another org's) is a 404
+  const acting = await resolveActing(ctx);
+  // owner's draft expense only (principal's when acting) — else 404
   const expense = await db.expense.findUnique({
-    where: { id: parsed.data.expenseId, userId: ctx.userId, status: "draft" },
+    where: {
+      id: parsed.data.expenseId,
+      userId: acting.effectiveUserId,
+      status: "draft",
+    },
     select: { id: true },
   });
   if (!expense) {

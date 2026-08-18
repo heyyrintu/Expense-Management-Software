@@ -136,6 +136,8 @@ model Organization {
   advances       Advance[]
   clients        Client[]
   expenseSplits  ExpenseSplit[]
+  recurringTemplates RecurringTemplate[]
+  delegations    Delegation[]
 
   @@map("organizations")
 }
@@ -181,6 +183,9 @@ model User {
   paymentBatches PaymentBatch[]  @relation("PaymentBatchCreatedBy")
   advances       Advance[]       @relation("AdvanceOwner")
   advancesApproved Advance[]     @relation("AdvanceApprovedBy")
+  recurringTemplates RecurringTemplate[]
+  delegationsAsDelegate  Delegation[] @relation("DelegationDelegate")
+  delegationsAsPrincipal Delegation[] @relation("DelegationPrincipal")
   notifications  Notification[]
   reportComments ReportComment[]
 
@@ -234,6 +239,7 @@ model Category {
   organization Organization @relation(fields: [orgId], references: [id])
   expenses     Expense[]
   splits       ExpenseSplit[]
+  recurringTemplates RecurringTemplate[]
 
   @@unique([orgId, name])
   @@map("categories")
@@ -602,4 +608,57 @@ model ExpenseSplit {
   @@index([orgId, expenseId])
   @@index([orgId, categoryId])
   @@map("expense_splits")
+}
+
+enum RecurringCadence {
+  monthly
+  weekly
+
+  @@map("recurring_cadence")
+}
+
+// Recurring expense template (PLAN 6.5). The cron job drafts an expense on
+// schedule; last_run_at makes drafting duplicate-safe.
+model RecurringTemplate {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  orgId      String           @map("org_id") @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  cadence    RecurringCadence
+  // monthly: day of month 1–28; weekly: ISO weekday 1 (Mon) – 7 (Sun)
+  day        Int
+  amount     Int // minor units, org base currency
+  categoryId String           @map("category_id") @db.Uuid
+  merchant   String
+  purpose    String           @default("")
+  active     Boolean          @default(true)
+  lastRunAt  DateTime?        @map("last_run_at")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  category     Category     @relation(fields: [categoryId], references: [id])
+
+  @@index([orgId, userId])
+  @@index([orgId, active])
+  @@map("recurring_templates")
+}
+
+// Delegate access (PLAN 6.5): delegate may act ON BEHALF OF principal for
+// expenses/reports — never for approvals. No self-delegation (action guard).
+model Delegation {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  delegateId  String   @map("delegate_id") @db.Uuid
+  principalId String   @map("principal_id") @db.Uuid
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  delegate     User         @relation("DelegationDelegate", fields: [delegateId], references: [id])
+  principal    User         @relation("DelegationPrincipal", fields: [principalId], references: [id])
+
+  @@unique([orgId, delegateId, principalId])
+  @@index([orgId, delegateId, active])
+  @@map("delegations")
 }

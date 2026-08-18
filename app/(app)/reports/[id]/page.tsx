@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
+import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import {
   computeReportTotal,
@@ -45,8 +46,9 @@ export default async function ReportDetailPage({
   const ctx = await requireSession();
   const db = scopedDb(ctx.orgId);
   // own reports only (approver views arrive in 2.2)
+  const acting = await resolveActing(ctx);
   const report = await db.expenseReport.findUnique({
-    where: { id, userId: ctx.userId },
+    where: { id, userId: acting.effectiveUserId },
     include: {
       expenses: {
         orderBy: { date: "desc" },
@@ -118,7 +120,7 @@ export default async function ReportDetailPage({
   // pickable: session user's unattached draft expenses
   const available: ExpenseRow[] = editable
     ? await db.expense.findMany({
-        where: { userId: ctx.userId, status: "draft", reportId: null },
+        where: { userId: acting.effectiveUserId, status: "draft", reportId: null },
         orderBy: { date: "desc" },
         take: 100,
         include: { category: { select: { name: true } } },

@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
+import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatDate } from "@/lib/format";
@@ -28,7 +29,7 @@ export default async function ReportsPage() {
   const [org, reports] = await Promise.all([
     scopedDb(ctx.orgId).organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
     scopedDb(ctx.orgId).expenseReport.findMany({
-      where: { userId: ctx.userId },
+      where: { userId: (await resolveActing(ctx)).effectiveUserId },
       orderBy: { createdAt: "desc" },
       take: 100,
       include: { _count: { select: { expenses: true } } },

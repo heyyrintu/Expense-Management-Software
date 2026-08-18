@@ -9,6 +9,7 @@ import {
   AuthorizationError,
   requireRole,
 } from "@/lib/auth/guard";
+import { actingMeta, resolveActing } from "@/lib/auth/acting";
 import { logAudit } from "@/lib/domain/audit";
 import { toExpenseData, toMileageData } from "@/lib/domain/expense";
 import {
@@ -99,6 +100,7 @@ async function validateClient(
 export async function createExpenseAction(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = expenseInputSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
     const data = toExpenseData(parsed.data);
@@ -131,7 +133,7 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
     // Limits compare BASE amounts (6.4); splits convert via the same rate.
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: null,
-      userId: ctx.userId,
+      userId: acting.effectiveUserId,
       amount: data.amount,
       baseAmount: cur.baseAmount,
       date: data.date,
@@ -147,7 +149,7 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
     const expense = await db.expense.create({
       data: {
         orgId: ctx.orgId,
-        userId: ctx.userId,
+        userId: acting.effectiveUserId,
         ...data,
         currency: cur.currency,
         fxRate: cur.fxRate,
@@ -164,7 +166,7 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
       entity: "Expense",
       entityId: expense.id,
       action: "expense.created",
-      meta: { amount: data.amount, merchant: data.merchant, flagCount: flags.length },
+      meta: { amount: data.amount, merchant: data.merchant, flagCount: flags.length, ...actingMeta(acting) },
     });
     revalidatePath("/expenses");
     return ok({ id: expense.id });
@@ -178,6 +180,7 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
 export async function updateExpenseAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = expenseIdSchema.merge(expenseInputSchema).safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
     const { id, ...rest } = parsed.data;
@@ -210,7 +213,7 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
     const receiptCount = await db.receipt.count({ where: { expenseId: id } });
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: id,
-      userId: ctx.userId,
+      userId: acting.effectiveUserId,
       amount: data.amount,
       baseAmount: cur.baseAmount,
       date: data.date,
@@ -225,7 +228,7 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
 
     // update pinned to owner + draft — non-drafts and others' expenses 404
     const res = await db.expense.updateMany({
-      where: { id, userId: ctx.userId, status: "draft" },
+      where: { id, userId: acting.effectiveUserId, status: "draft" },
       data: {
         ...data,
         currency: cur.currency,
@@ -248,7 +251,7 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
       entity: "Expense",
       entityId: id,
       action: "expense.updated",
-      meta: { amount: data.amount, merchant: data.merchant },
+      meta: { amount: data.amount, merchant: data.merchant, ...actingMeta(acting) },
     });
     revalidatePath("/expenses");
     revalidatePath(`/expenses/${id}`);
@@ -264,18 +267,19 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
 export async function deleteExpenseAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = expenseIdSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
     const owned = await db.expense.findUnique({
-      where: { id: parsed.data.id, userId: ctx.userId, status: "draft" },
+      where: { id: parsed.data.id, userId: acting.effectiveUserId, status: "draft" },
       select: { id: true },
     });
     if (!owned) return err(NOT_EDITABLE);
     await db.expenseSplit.deleteMany({ where: { expenseId: owned.id } });
     const res = await db.expense.deleteMany({
-      where: { id: parsed.data.id, userId: ctx.userId, status: "draft" },
+      where: { id: parsed.data.id, userId: acting.effectiveUserId, status: "draft" },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
 
@@ -283,6 +287,7 @@ export async function deleteExpenseAction(input: unknown): Promise<Result> {
       entity: "Expense",
       entityId: parsed.data.id,
       action: "expense.deleted",
+      meta: actingMeta(acting),
     });
     revalidatePath("/expenses");
     return ok(undefined);

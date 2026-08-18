@@ -56,6 +56,7 @@ Daily pending-approvals digest (5.6) — schedule with any cron:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/jobs/approval-digest
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/recurring   # daily: drafts recurring expenses
 ```
 
 ## Non-negotiables (see CLAUDE.md)

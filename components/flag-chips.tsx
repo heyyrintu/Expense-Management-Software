@@ -8,6 +8,7 @@ const RULE_LABELS: Record<string, string> = {
   receipt_required: "Receipt needed",
   expense_age: "Too old",
   duplicate: "Possible duplicate",
+  auto_created: "Auto-created",
 };
 
 export function asFlags(value: unknown): FlagLike[] {

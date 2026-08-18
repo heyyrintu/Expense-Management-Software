@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
+import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatDate } from "@/lib/format";
@@ -28,11 +29,12 @@ type ExpenseRow = {
 
 export default async function ExpensesPage() {
   const ctx = await requireSession();
+  const acting = await resolveActing(ctx);
   const org = await scopedDb(ctx.orgId).organization.findUniqueOrThrow({
     where: { id: ctx.orgId },
   });
   const expenses: ExpenseRow[] = await scopedDb(ctx.orgId).expense.findMany({
-    where: { userId: ctx.userId },
+    where: { userId: acting.effectiveUserId },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take: 200,
     include: { category: { select: { name: true } } },
@@ -47,9 +49,14 @@ export default async function ExpensesPage() {
             Draft expenses can be edited until they join a submitted report.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/expenses/new">Add expense</Link>
-        </Button>
+        <span className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/recurring">Recurring</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/expenses/new">Add expense</Link>
+          </Button>
+        </span>
       </div>
 
       {expenses.length === 0 ? (

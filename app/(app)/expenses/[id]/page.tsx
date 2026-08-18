@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
+import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { isExpenseEditable, type ExpenseStatus } from "@/lib/domain/expense";
 import { scopedDb } from "@/lib/db/scoped";
@@ -29,8 +30,9 @@ export default async function ExpenseDetailPage({
   const ctx = await requireSession();
   const db = scopedDb(ctx.orgId);
   // own expenses only — someone else's id (or another org's) is a 404
+  const acting = await resolveActing(ctx);
   const expense = await db.expense.findUnique({
-    where: { id, userId: ctx.userId },
+    where: { id, userId: acting.effectiveUserId },
     include: {
       category: { select: { id: true, name: true } },
       splits: {

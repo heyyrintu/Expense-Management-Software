@@ -9,6 +9,7 @@ import {
   AuthorizationError,
   requireRole,
 } from "@/lib/auth/guard";
+import { actingMeta, resolveActing } from "@/lib/auth/acting";
 import { resolveChain, type ChainRule } from "@/lib/domain/approval-chain";
 import { logAudit } from "@/lib/domain/audit";
 import { checkBudgetAlertsAfterSubmit } from "@/lib/domain/budget-alerts";
@@ -48,18 +49,19 @@ async function ownReport(db: ScopedDb, id: string, userId: string) {
 export async function createReportAction(input: unknown): Promise<Result<{ id: string }>> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportCreateSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
     const report = await db.expenseReport.create({
-      data: { orgId: ctx.orgId, userId: ctx.userId, title: parsed.data.title },
+      data: { orgId: ctx.orgId, userId: acting.effectiveUserId, title: parsed.data.title },
     });
     await logAudit(db, ctx, {
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.created",
-      meta: { title: parsed.data.title },
+      meta: { title: parsed.data.title, ...actingMeta(acting) },
     });
     revalidatePath("/reports");
     return ok({ id: report.id });
@@ -73,11 +75,12 @@ export async function createReportAction(input: unknown): Promise<Result<{ id: s
 export async function deleteReportAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportIdSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
-    const report = await ownReport(db, parsed.data.id, ctx.userId);
+    const report = await ownReport(db, parsed.data.id, acting.effectiveUserId);
     if (!report || !isReportDeletable(report.status as ReportStatus)) {
       return err("Only draft reports can be deleted.");
     }
@@ -91,6 +94,7 @@ export async function deleteReportAction(input: unknown): Promise<Result> {
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.deleted",
+      meta: actingMeta(acting),
     });
     revalidatePath("/reports");
     return ok(undefined);
@@ -104,20 +108,21 @@ export async function deleteReportAction(input: unknown): Promise<Result> {
 export async function addExpenseToReportAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportExpenseSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
-    const report = await ownReport(db, parsed.data.reportId, ctx.userId);
+    const report = await ownReport(db, parsed.data.reportId, acting.effectiveUserId);
     if (!report || !isReportEditable(report.status as ReportStatus)) {
       return err("Expenses can only be added to an editable report.");
     }
 
-    // own draft expense, not already on another report
+    // owner's draft expense, not already on another report
     const res = await db.expense.updateMany({
       where: {
         id: parsed.data.expenseId,
-        userId: ctx.userId,
+        userId: acting.effectiveUserId,
         status: "draft",
         reportId: null,
       },
@@ -129,7 +134,7 @@ export async function addExpenseToReportAction(input: unknown): Promise<Result> 
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.expense_added",
-      meta: { expenseId: parsed.data.expenseId },
+      meta: { expenseId: parsed.data.expenseId, ...actingMeta(acting) },
     });
     revalidatePath(`/reports/${report.id}`);
     revalidatePath("/expenses");
@@ -144,11 +149,12 @@ export async function addExpenseToReportAction(input: unknown): Promise<Result> 
 export async function removeExpenseFromReportAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportExpenseSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
-    const report = await ownReport(db, parsed.data.reportId, ctx.userId);
+    const report = await ownReport(db, parsed.data.reportId, acting.effectiveUserId);
     if (!report || !isReportEditable(report.status as ReportStatus)) {
       return err("Expenses can only be removed from an editable report.");
     }
@@ -156,7 +162,7 @@ export async function removeExpenseFromReportAction(input: unknown): Promise<Res
     const res = await db.expense.updateMany({
       where: {
         id: parsed.data.expenseId,
-        userId: ctx.userId,
+        userId: acting.effectiveUserId,
         reportId: report.id,
       },
       data: { reportId: null },
@@ -167,7 +173,7 @@ export async function removeExpenseFromReportAction(input: unknown): Promise<Res
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.expense_removed",
-      meta: { expenseId: parsed.data.expenseId },
+      meta: { expenseId: parsed.data.expenseId, ...actingMeta(acting) },
     });
     revalidatePath(`/reports/${report.id}`);
     revalidatePath("/expenses");
@@ -182,11 +188,12 @@ export async function removeExpenseFromReportAction(input: unknown): Promise<Res
 export async function submitReportAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportIdSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
-    const report = await ownReport(db, parsed.data.id, ctx.userId);
+    const report = await ownReport(db, parsed.data.id, acting.effectiveUserId);
     if (!report) return err("Report not found.");
 
     const to = nextStatus(report.status as ReportStatus, "submit");
@@ -211,12 +218,13 @@ export async function submitReportAction(input: unknown): Promise<Result> {
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.submitted",
-      meta: { total, expenseCount: report.expenses.length, from: report.status },
+      meta: { total, expenseCount: report.expenses.length, from: report.status, ...actingMeta(acting) },
     });
 
-    // notify whoever the chain routes level 1 to (5.4; assigned approver by default)
+    // notify whoever the chain routes level 1 to (5.4) — routed by the report
+    // OWNER (the principal when a delegate is acting)
     const me = await db.user.findUniqueOrThrow({
-      where: { id: ctx.userId },
+      where: { id: acting.effectiveUserId },
       select: { name: true, approverId: true, departmentId: true },
     });
     const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
@@ -230,7 +238,7 @@ export async function submitReportAction(input: unknown): Promise<Result> {
       orgThreshold: secondApprovalThreshold(org.settings),
       rules,
     });
-    if (chain.level1ApproverId && chain.level1ApproverId !== ctx.userId) {
+    if (chain.level1ApproverId && chain.level1ApproverId !== acting.effectiveUserId) {
       const approver = (await db.user.findUnique({
         where: { id: chain.level1ApproverId, status: "active" },
         select: { id: true, email: true },
@@ -259,11 +267,12 @@ export async function submitReportAction(input: unknown): Promise<Result> {
 export async function withdrawReportAction(input: unknown): Promise<Result> {
   try {
     const ctx = await requireRole("employee");
+    const acting = await resolveActing(ctx);
     const parsed = reportIdSchema.safeParse(input);
     if (!parsed.success) return err(userErrors.validation);
 
     const db = scopedDb(ctx.orgId);
-    const report = await ownReport(db, parsed.data.id, ctx.userId);
+    const report = await ownReport(db, parsed.data.id, acting.effectiveUserId);
     if (!report) return err("Report not found.");
 
     const to = nextStatus(report.status as ReportStatus, "withdraw");
@@ -281,7 +290,7 @@ export async function withdrawReportAction(input: unknown): Promise<Result> {
       entity: "ExpenseReport",
       entityId: report.id,
       action: "report.withdrawn",
-      meta: { from: report.status },
+      meta: { from: report.status, ...actingMeta(acting) },
     });
     revalidatePath("/reports");
     revalidatePath(`/reports/${report.id}`);

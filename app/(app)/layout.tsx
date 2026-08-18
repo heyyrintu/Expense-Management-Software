@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { resolveActing } from "@/lib/auth/acting";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { scopedDb } from "@/lib/db/scoped";
 import { logoutAction } from "@/app/(auth)/actions";
+import { ActingSwitcher } from "./acting-switcher";
 
 export default async function AppLayout({
   children,
@@ -15,6 +17,11 @@ export default async function AppLayout({
   const unread = await scopedDb(ctx.orgId).notification.count({
     where: { userId: ctx.userId, readAt: null },
   });
+  const acting = await resolveActing(ctx);
+  const myPrincipals = (await scopedDb(ctx.orgId).delegation.findMany({
+    where: { delegateId: ctx.userId, active: true },
+    include: { principal: { select: { id: true, name: true } } },
+  })) as Array<{ principal: { id: string; name: string } }>;
 
   return (
     <div className="min-h-screen">
@@ -83,6 +90,10 @@ export default async function AppLayout({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
+            <ActingSwitcher
+              principals={myPrincipals.map((d) => d.principal)}
+              actingAs={acting.onBehalfOf}
+            />
             <Link
               href="/notifications"
               aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}

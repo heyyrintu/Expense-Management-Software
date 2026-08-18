@@ -6,6 +6,7 @@ import {
   AuthorizationError,
   requireRole,
 } from "@/lib/auth/guard";
+import { resolveActing } from "@/lib/auth/acting";
 import { logAudit } from "@/lib/domain/audit";
 import { refreshExpenseFlags } from "@/lib/domain/policy-eval";
 import { scopedDb } from "@/lib/db/scoped";
@@ -27,9 +28,10 @@ export async function deleteReceiptAction(input: unknown): Promise<Result> {
       where: { id: parsed.data.receiptId },
       include: { expense: { select: { id: true, userId: true, status: true } } },
     });
+    const acting = await resolveActing(ctx);
     if (
       !receipt ||
-      receipt.expense.userId !== ctx.userId ||
+      receipt.expense.userId !== acting.effectiveUserId ||
       receipt.expense.status !== "draft"
     ) {
       return err("Receipts can only be removed from your draft expenses.");

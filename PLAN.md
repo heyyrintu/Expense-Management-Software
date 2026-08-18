@@ -53,7 +53,7 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 - [x] **6.2 Cash advances & trip pre-approval**: employee requests advance (amount, purpose, trip dates) → approver flow reuses report workflow; issued advances settle against submitted reports (balance due to employee vs. refund due to org); advance register for finance.
 - [x] **6.3 Billable & split expenses**: mark expense billable to a client/project; split one expense across categories/projects by amount or %; tax fields (GST/VAT number, tax amount) on expense; project-wise billable report + export.
 - [x] **6.4 Multi-currency**: expense in foreign currency with FX rate (manual entry + daily-rate API stub) converted to org base currency; both amounts stored; reports total in base currency.
-- [ ] **6.5 Recurring & delegate**: recurring expense templates (e.g., monthly internet) auto-draft on schedule; delegate access — assistant submits on behalf of an executive (acts-as banner, both identities in AuditLog).
+- [x] **6.5 Recurring & delegate**: recurring expense templates (e.g., monthly internet) auto-draft on schedule; delegate access — assistant submits on behalf of an executive (acts-as banner, both identities in AuditLog).
 - [ ] **6.6 Email receipt ingestion**: per-org inbound address (receipts+{orgslug}@domain) via webhook (e.g., SES/Mailgun stub) → attachment becomes Draft expense with OCR autofill.
 - [ ] **6.7 Analytics upgrade**: spend trends over time, policy-violation leaderboard, approval-bottleneck view (avg time per approver), budget vs. actual; scheduled monthly PDF/CSV summary email to finance.
 

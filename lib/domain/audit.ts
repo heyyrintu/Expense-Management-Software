@@ -21,7 +21,9 @@ export type AuditEntry = {
     | "ApprovalRule"
     | "PaymentBatch"
     | "Advance"
-    | "Client";
+    | "Client"
+    | "RecurringTemplate"
+    | "Delegation";
   entityId: string;
   action: string; // dot-namespaced, e.g. "category.created"
   meta?: Record<string, unknown>;
