@@ -30,8 +30,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // app role (expense_app) — RLS enforced
+  directUrl = env("DIRECT_DATABASE_URL") // owner role — migrations/seed only
 }
 
 enum Role {

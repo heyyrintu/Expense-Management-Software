@@ -35,14 +35,20 @@ MinIO console: http://localhost:9001 (minioadmin / minioadmin). A `receipts` buc
 npm run dev            # dev server (docker compose up -d first)
 npm run build          # production build — must pass before any commit
 npm run lint           # eslint + tsc --noEmit
+npm run test           # vitest unit tests
 ```
 
 ```bash
 npx prisma migrate dev   # apply migrations (docker compose up -d first)
 npx prisma generate      # regenerate Prisma client
+npm run seed             # seed demo orgs acme + globex (4 roles each)
 ```
 
-Coming in later milestones (see PLAN.md): `npm run test`, `npm run test:isolation`, `npm run test:e2e`, `npm run seed`.
+Demo logins after seeding: `employee@acme.test`, `approver@acme.test`, `finance_admin@acme.test`, `org_admin@acme.test` (same for `globex`), password `Password123!`.
+
+**DB roles**: the app connects as `expense_app` (non-superuser — RLS enforced); `expense` (superuser) is for migrations/seed only via `DIRECT_DATABASE_URL`. If your Postgres volume predates this, recreate it (`docker compose down -v && docker compose up -d`) so the init script creates the role.
+
+Coming in later milestones (see PLAN.md): `npm run test:isolation`, `npm run test:e2e`, `npm run seed`.
 
 ## Non-negotiables (see CLAUDE.md)
 
