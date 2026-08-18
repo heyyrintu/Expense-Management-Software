@@ -17,6 +17,7 @@ import {
   type ReportStatus,
 } from "@/lib/domain/report-workflow";
 import { scopedDb } from "@/lib/db/scoped";
+import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { ReportControls } from "./report-controls";
@@ -48,9 +49,23 @@ export default async function ReportDetailPage({
         include: { category: { select: { name: true } } },
       },
       reimbursement: { select: { paidAt: true, reference: true, amount: true } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
     },
   });
   if (!report) notFound();
+
+  const commentViews: CommentView[] = report.comments.map(
+    (c: { id: string; body: string; createdAt: Date; authorId: string; author: { name: string } }) => ({
+      id: c.id,
+      authorName: c.author.name,
+      body: c.body,
+      when: formatDate(c.createdAt),
+      mine: c.authorId === ctx.userId,
+    })
+  );
 
   const editable = isReportEditable(report.status as ReportStatus);
   const attached: ExpenseRow[] = report.expenses;
@@ -183,6 +198,8 @@ export default async function ReportDetailPage({
           ) : null}
         </Card>
       ) : null}
+
+      <CommentThread reportId={report.id} comments={commentViews} />
     </section>
   );
 }

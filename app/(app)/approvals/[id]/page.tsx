@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireRole } from "@/lib/auth/guard";
@@ -47,9 +48,23 @@ export default async function ApprovalReviewPage({
           _count: { select: { receipts: true } },
         },
       },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
     },
   });
   if (!report) notFound();
+
+  const commentViews: CommentView[] = report.comments.map(
+    (c: { id: string; body: string; createdAt: Date; authorId: string; author: { name: string } }) => ({
+      id: c.id,
+      authorName: c.author.name,
+      body: c.body,
+      when: formatDate(c.createdAt),
+      mine: c.authorId === ctx.userId,
+    })
+  );
 
   const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
   const threshold = secondApprovalThreshold(org.settings);
@@ -168,6 +183,8 @@ export default async function ApprovalReviewPage({
           </CardContent>
         </Card>
       ) : null}
+
+      <CommentThread reportId={report.id} comments={commentViews} />
 
       {canDecide && level ? (
         <DecisionPanel

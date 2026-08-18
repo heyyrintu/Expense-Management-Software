@@ -120,6 +120,7 @@ model Organization {
   notifications  Notification[]
   budgets        Budget[]
   cardTransactions CardTransaction[]
+  reportComments ReportComment[]
 
   @@map("organizations")
 }
@@ -157,6 +158,7 @@ model User {
   approvals      Approval[]      @relation("ApprovalApprover")
   reimbursements Reimbursement[] @relation("ReimbursementPaidBy")
   notifications  Notification[]
+  reportComments ReportComment[]
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -280,6 +282,7 @@ model ExpenseReport {
   expenses      Expense[]
   approvals     Approval[]
   reimbursement Reimbursement?
+  comments      ReportComment[]
 
   @@index([orgId, userId, status])
   @@index([orgId, status, submittedAt])
@@ -419,4 +422,22 @@ model CardTransaction {
   @@index([orgId, importedBatch])
   @@index([orgId, date])
   @@map("card_transactions")
+}
+
+// Report discussion thread (P1, PLAN 5.3). Append-only — comments are part
+// of the audit story and are never edited or deleted.
+model ReportComment {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  reportId  String   @map("report_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  report       ExpenseReport @relation(fields: [reportId], references: [id])
+  author       User          @relation(fields: [authorId], references: [id])
+
+  @@index([orgId, reportId, createdAt])
+  @@map("report_comments")
 }
