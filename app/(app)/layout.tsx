@@ -47,6 +47,14 @@ export default async function AppLayout({
             ) : null}
             {roleAtLeast(ctx.role, "finance_admin") ? (
               <Link
+                href="/finance"
+                className="text-muted-foreground text-sm hover:underline"
+              >
+                Finance
+              </Link>
+            ) : null}
+            {roleAtLeast(ctx.role, "finance_admin") ? (
+              <Link
                 href="/settings"
                 className="text-muted-foreground text-sm hover:underline"
               >

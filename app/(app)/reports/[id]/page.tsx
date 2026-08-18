@@ -47,6 +47,7 @@ export default async function ReportDetailPage({
         orderBy: { date: "desc" },
         include: { category: { select: { name: true } } },
       },
+      reimbursement: { select: { paidAt: true, reference: true, amount: true } },
     },
   });
   if (!report) notFound();
@@ -84,6 +85,16 @@ export default async function ReportDetailPage({
         <p className="text-muted-foreground -mt-4 text-sm">
           Submitted {formatDate(report.submittedAt)}
         </p>
+      ) : null}
+
+      {report.reimbursement ? (
+        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
+          Reimbursed {formatDate(report.reimbursement.paidAt)} · ref{" "}
+          <span className="font-medium">{report.reimbursement.reference}</span>
+          {currency
+            ? ` · ${formatMoney(report.reimbursement.amount, currency)}`
+            : ""}
+        </div>
       ) : null}
 
       <Card>
