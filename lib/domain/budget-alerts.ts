@@ -34,21 +34,21 @@ export async function checkBudgetAlertsAfterSubmit(
     const reportExpenses = (await db.expense.findMany({
       where: { reportId },
       select: {
-        amount: true,
+        baseAmount: true,
         date: true,
         categoryId: true,
         projectId: true,
         user: { select: { departmentId: true } },
       },
     })) as Array<{
-      amount: number;
+      baseAmount: number;
       date: Date;
       categoryId: string;
       projectId: string | null;
       user: { departmentId: string | null };
     }>;
     const submitted: BudgetExpense[] = reportExpenses.map((e) => ({
-      amount: e.amount,
+      amount: e.baseAmount,
       date: e.date,
       categoryId: e.categoryId,
       projectId: e.projectId,
@@ -86,9 +86,9 @@ export async function checkBudgetAlertsAfterSubmit(
           date: { gte: window.start, lt: window.end },
           ...where,
         },
-        _sum: { amount: true },
+        _sum: { baseAmount: true },
       });
-      const after = agg._sum.amount ?? 0;
+      const after = agg._sum.baseAmount ?? 0;
       const before = after - delta;
 
       const crossed = crossedThresholds(before, after, budget.amount);

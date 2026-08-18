@@ -10,18 +10,21 @@ import {
   type SplitForPolicy,
 } from "@/lib/domain/policy";
 import type { ScopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
+import { convertToBase, formatMoney } from "@/lib/money";
 
 export type EvalInput = {
   /** exclude this expense from monthly + duplicate context (updates) */
   expenseId: string | null;
   userId: string;
+  /** ORIGINAL-currency minor units (duplicate probe) */
   amount: number;
+  /** ORG-BASE minor units (limits, 6.4) */
+  baseAmount: number;
   date: Date;
   merchant: string;
   categoryId: string;
   receiptCount: number;
-  /** 6.3: when present, per-category limits run PER SPLIT instead */
+  /** 6.3: when present, per-category limits run PER SPLIT (base amounts) */
   splits?: SplitForPolicy[];
 };
 
@@ -51,7 +54,7 @@ export async function computeExpenseFlags(
         date: { gte: start, lt: end },
         ...(input.expenseId ? { id: { not: input.expenseId } } : {}),
       },
-      _sum: { amount: true },
+      _sum: { baseAmount: true },
     }),
     input.merchant.trim() === ""
       ? Promise.resolve([])
@@ -73,7 +76,8 @@ export async function computeExpenseFlags(
 
   const baseFlags = evaluateExpense(
     {
-      amount: input.amount,
+      baseAmount: input.baseAmount,
+      originalAmount: input.amount,
       date: input.date,
       merchant: input.merchant,
       receiptCount: input.receiptCount,
@@ -81,7 +85,7 @@ export async function computeExpenseFlags(
     {
       // with splits, per-category limits run per split below
       category: hasSplits ? null : category,
-      monthlySpent: monthlyAgg._sum.amount ?? 0,
+      monthlySpent: monthlyAgg._sum.baseAmount ?? 0,
       duplicateCandidates,
       maxAgeDays: expenseAgeLimitDays(org.settings),
       now: new Date(),
@@ -92,7 +96,7 @@ export async function computeExpenseFlags(
   if (
     hasSplits &&
     category?.receiptRequiredAbove != null &&
-    input.amount > category.receiptRequiredAbove &&
+    input.baseAmount > category.receiptRequiredAbove &&
     input.receiptCount === 0
   ) {
     baseFlags.push({
@@ -123,7 +127,7 @@ export async function computeExpenseFlags(
           date: { gte: ws, lt: we },
           ...(input.expenseId ? { id: { not: input.expenseId } } : {}),
         },
-        _sum: { amount: true },
+        _sum: { baseAmount: true },
       }),
     ]);
     if (cat) {
@@ -133,7 +137,7 @@ export async function computeExpenseFlags(
           monthlyLimit: cat.monthlyLimit,
           receiptRequiredAbove: cat.receiptRequiredAbove,
         },
-        monthlySpent: agg._sum.amount ?? 0,
+        monthlySpent: agg._sum.baseAmount ?? 0,
         categoryName: cat.name,
       });
     }
@@ -156,9 +160,12 @@ export async function refreshExpenseFlags(
       id: true,
       userId: true,
       amount: true,
+      baseAmount: true,
+      fxRate: true,
       date: true,
       merchant: true,
       categoryId: true,
+      splits: { select: { categoryId: true, amount: true } },
       _count: { select: { receipts: true } },
     },
   });
@@ -167,10 +174,15 @@ export async function refreshExpenseFlags(
     expenseId: expense.id,
     userId: expense.userId,
     amount: expense.amount,
+    baseAmount: expense.baseAmount,
     date: expense.date,
     merchant: expense.merchant,
     categoryId: expense.categoryId,
     receiptCount: expense._count.receipts,
+    splits: expense.splits.map((sp: { categoryId: string; amount: number }) => ({
+      categoryId: sp.categoryId,
+      amount: convertToBase(sp.amount, expense.fxRate) ?? sp.amount,
+    })),
   });
   await db.expense.update({
     where: { id: expense.id },

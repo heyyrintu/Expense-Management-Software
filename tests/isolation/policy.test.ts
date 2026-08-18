@@ -29,6 +29,7 @@ describe("evaluator scoping", () => {
       expenseId: null,
       userId: A.users.employee,
       amount: 2000,
+      baseAmount: 2000,
       date: new Date("2026-08-10T00:00:00.000Z"),
       merchant: "Fresh Cafe",
       categoryId: A.categoryId,
@@ -44,6 +45,7 @@ describe("evaluator scoping", () => {
       expenseId: null,
       userId: B.users.employee,
       amount: 2000,
+      baseAmount: 2000,
       date: new Date("2026-08-10T00:00:00.000Z"),
       merchant: "Fresh Cafe",
       categoryId: A.categoryId, // cross-org id
@@ -59,6 +61,7 @@ describe("evaluator scoping", () => {
       expenseId: null,
       userId: B.users.employee,
       amount: 12345,
+      baseAmount: 12345,
       date: new Date("2026-08-01T00:00:00.000Z"),
       merchant: "pol-a Cafe",
       categoryId: B.categoryId,

@@ -27,6 +27,8 @@ export default async function NewExpensePage() {
       <NewExpenseSwitcher
         regularDefaults={{
           amount: "",
+          currency: org.currency,
+          fxRate: "1",
           date: today,
           merchant: "",
           categoryId: "",

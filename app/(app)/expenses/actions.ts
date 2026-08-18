@@ -25,7 +25,7 @@ import {
   mileageInputSchema,
 } from "@/lib/schemas/expense";
 import { moneyString } from "@/lib/schemas/category";
-import { parseToMinorUnits } from "@/lib/money";
+import { convertToBase, isValidFxRate, parseToMinorUnits } from "@/lib/money";
 import { z } from "zod";
 import type { PolicyFlag } from "@/lib/domain/policy";
 
@@ -46,6 +46,22 @@ function isPrismaCode(e: unknown, code: string): boolean {
 }
 
 const NOT_EDITABLE = "Only draft expenses can be changed.";
+const BAD_RATE = "Enter a valid exchange rate for the foreign currency.";
+
+/** 6.4: resolve currency/rate/base for an expense in org context. */
+function resolveCurrency(
+  orgCurrency: string,
+  inputCurrency: string,
+  inputFxRate: string,
+  amount: number
+): { currency: string; fxRate: string; baseAmount: number } | { error: string } {
+  const currency = inputCurrency || orgCurrency;
+  const fxRate = currency === orgCurrency ? "1" : inputFxRate.trim();
+  if (!isValidFxRate(fxRate)) return { error: BAD_RATE };
+  const baseAmount = convertToBase(amount, fxRate);
+  if (baseAmount === null || baseAmount === 0) return { error: BAD_RATE };
+  return { currency, fxRate, baseAmount };
+}
 
 /** 6.3: validate refs + build split entries; error on failure. */
 async function resolveSplits(
@@ -103,25 +119,39 @@ export async function createExpenseAction(input: unknown): Promise<Result<{ id: 
     if (clientErr) return err(clientErr);
     const resolved = await resolveSplits(db, data.amount, parsed.data.splits);
     if ("error" in resolved) return err(resolved.error);
+    const cur = resolveCurrency(
+      org.currency,
+      parsed.data.currency,
+      parsed.data.fxRate,
+      data.amount
+    );
+    if ("error" in cur) return err(cur.error);
 
-    // policy check runs inline at entry time — flags, never blocks (PRD 6.5)
+    // policy check runs inline at entry time — flags, never blocks (PRD 6.5).
+    // Limits compare BASE amounts (6.4); splits convert via the same rate.
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: null,
       userId: ctx.userId,
       amount: data.amount,
+      baseAmount: cur.baseAmount,
       date: data.date,
       merchant: data.merchant,
       categoryId: data.categoryId,
       receiptCount: 0,
-      splits: resolved.splits,
+      splits: resolved.splits.map((sp) => ({
+        categoryId: sp.categoryId,
+        amount: convertToBase(sp.amount, cur.fxRate) ?? sp.amount,
+      })),
     });
 
     const expense = await db.expense.create({
       data: {
         orgId: ctx.orgId,
         userId: ctx.userId,
-        currency: org.currency,
         ...data,
+        currency: cur.currency,
+        fxRate: cur.fxRate,
+        baseAmount: cur.baseAmount,
         flags,
       },
     });
@@ -166,23 +196,43 @@ export async function updateExpenseAction(input: unknown): Promise<Result> {
     if (clientErr) return err(clientErr);
     const resolved = await resolveSplits(db, data.amount, parsed.data.splits);
     if ("error" in resolved) return err(resolved.error);
+    const orgForUpdate = await db.organization.findUniqueOrThrow({
+      where: { id: ctx.orgId },
+    });
+    const cur = resolveCurrency(
+      orgForUpdate.currency,
+      parsed.data.currency,
+      parsed.data.fxRate,
+      data.amount
+    );
+    if ("error" in cur) return err(cur.error);
 
     const receiptCount = await db.receipt.count({ where: { expenseId: id } });
     const flags = await computeExpenseFlags(db, ctx.orgId, {
       expenseId: id,
       userId: ctx.userId,
       amount: data.amount,
+      baseAmount: cur.baseAmount,
       date: data.date,
       merchant: data.merchant,
       categoryId: data.categoryId,
       receiptCount,
-      splits: resolved.splits,
+      splits: resolved.splits.map((sp) => ({
+        categoryId: sp.categoryId,
+        amount: convertToBase(sp.amount, cur.fxRate) ?? sp.amount,
+      })),
     });
 
     // update pinned to owner + draft — non-drafts and others' expenses 404
     const res = await db.expense.updateMany({
       where: { id, userId: ctx.userId, status: "draft" },
-      data: { ...data, flags },
+      data: {
+        ...data,
+        currency: cur.currency,
+        fxRate: cur.fxRate,
+        baseAmount: cur.baseAmount,
+        flags,
+      },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
 
@@ -270,6 +320,7 @@ export async function createMileageExpenseAction(
       expenseId: null,
       userId: ctx.userId,
       amount: data.amount,
+      baseAmount: data.amount, // mileage is always org-currency
       date: data.date,
       merchant: data.merchant,
       categoryId: data.categoryId,
@@ -280,6 +331,8 @@ export async function createMileageExpenseAction(
         orgId: ctx.orgId,
         userId: ctx.userId,
         currency: org.currency,
+        fxRate: "1",
+        baseAmount: data.amount,
         ...data,
         flags,
       },
@@ -323,6 +376,7 @@ export async function updateMileageExpenseAction(input: unknown): Promise<Result
       expenseId: id,
       userId: ctx.userId,
       amount: data.amount,
+      baseAmount: data.amount,
       date: data.date,
       merchant: data.merchant,
       categoryId: data.categoryId,
@@ -333,7 +387,7 @@ export async function updateMileageExpenseAction(input: unknown): Promise<Result
     // silently become a mileage one (or vice versa)
     const res = await db.expense.updateMany({
       where: { id, userId: ctx.userId, status: "draft", type: "mileage" },
-      data: { ...data, flags },
+      data: { ...data, fxRate: "1", baseAmount: data.amount, flags },
     });
     if (res.count === 0) return err(NOT_EDITABLE);
 
@@ -355,6 +409,8 @@ export async function updateMileageExpenseAction(input: unknown): Promise<Result
 
 const previewSchema = z.object({
   amount: moneyString,
+  currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+  fxRate: z.string().trim().max(13).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   merchant: z.string().max(80),
   categoryId: z.string().uuid(),
@@ -373,10 +429,14 @@ export async function previewExpenseFlagsAction(
     const amount = parseToMinorUnits(parsed.data.amount);
     if (amount === null || amount === 0) return ok({ flags: [] });
 
+    const rate = parsed.data.fxRate && isValidFxRate(parsed.data.fxRate)
+      ? parsed.data.fxRate
+      : "1";
     const flags = await computeExpenseFlags(scopedDb(ctx.orgId), ctx.orgId, {
       expenseId: parsed.data.expenseId === "" ? null : parsed.data.expenseId,
       userId: ctx.userId,
       amount,
+      baseAmount: convertToBase(amount, rate) ?? amount,
       date: new Date(`${parsed.data.date}T00:00:00.000Z`),
       merchant: parsed.data.merchant,
       categoryId: parsed.data.categoryId,
@@ -386,6 +446,29 @@ export async function previewExpenseFlagsAction(
   } catch (e) {
     const g = guardError(e);
     if (g) return g as Result<{ flags: PolicyFlag[] }>;
+    throw e;
+  }
+}
+
+const fxLookupSchema = z.object({ currency: z.string().regex(/^[A-Z]{3}$/) });
+
+/** 6.4: stub-rate prefill for the form; null → user enters the rate. */
+export async function getFxRateAction(
+  input: unknown
+): Promise<Result<{ rate: string | null; baseCurrency: string }>> {
+  try {
+    const ctx = await requireRole("employee");
+    const parsed = fxLookupSchema.safeParse(input);
+    if (!parsed.success) return err(userErrors.validation);
+    const org = await scopedDb(ctx.orgId).organization.findUniqueOrThrow({
+      where: { id: ctx.orgId },
+    });
+    const { getFxRate } = await import("@/lib/fx");
+    const rate = await getFxRate(parsed.data.currency, org.currency);
+    return ok({ rate, baseCurrency: org.currency });
+  } catch (e) {
+    const g = guardError(e);
+    if (g) return g as Result<{ rate: string | null; baseCurrency: string }>;
     throw e;
   }
 }

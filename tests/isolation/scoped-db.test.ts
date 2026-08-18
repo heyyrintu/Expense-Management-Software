@@ -108,6 +108,8 @@ describe("create stamping", () => {
         orgId: A.orgId, // hostile input — must be overridden
         userId: B.users.employee,
         amount: 999,
+        baseAmount: 999,
+        fxRate: "1",
         currency: "INR",
         date: new Date("2026-08-02"),
         merchant: "Smuggle Mart",

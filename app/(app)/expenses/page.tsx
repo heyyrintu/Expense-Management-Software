@@ -17,6 +17,7 @@ import { formatMoney } from "@/lib/money";
 type ExpenseRow = {
   id: string;
   amount: number;
+  baseAmount: number;
   currency: string;
   date: Date;
   merchant: string;
@@ -27,6 +28,9 @@ type ExpenseRow = {
 
 export default async function ExpensesPage() {
   const ctx = await requireSession();
+  const org = await scopedDb(ctx.orgId).organization.findUniqueOrThrow({
+    where: { id: ctx.orgId },
+  });
   const expenses: ExpenseRow[] = await scopedDb(ctx.orgId).expense.findMany({
     where: { userId: ctx.userId },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
@@ -71,8 +75,15 @@ export default async function ExpensesPage() {
                     <CardHeader>
                       <div className="flex items-center justify-between gap-2">
                         <CardTitle className="truncate">{e.merchant}</CardTitle>
-                        <span className="font-semibold whitespace-nowrap">
-                          {formatMoney(e.amount, e.currency)}
+                        <span className="grid text-right">
+                          <span className="font-semibold whitespace-nowrap">
+                            {formatMoney(e.amount, e.currency)}
+                          </span>
+                          {e.currency !== org.currency ? (
+                            <span className="text-muted-foreground text-xs">
+                              → {formatMoney(e.baseAmount, org.currency)}
+                            </span>
+                          ) : null}
                         </span>
                       </div>
                       <CardDescription className="flex flex-wrap items-center gap-2">
@@ -107,6 +118,11 @@ export default async function ExpensesPage() {
                     <td className="p-3">{e.category.name}</td>
                     <td className="p-3 text-right whitespace-nowrap">
                       {formatMoney(e.amount, e.currency)}
+                      {e.currency !== org.currency ? (
+                        <span className="text-muted-foreground block text-xs">
+                          → {formatMoney(e.baseAmount, org.currency)}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="p-3">
                       <span className="flex flex-wrap items-center gap-1">

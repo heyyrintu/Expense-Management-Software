@@ -41,7 +41,7 @@ function guardError(e: unknown): Result | null {
 async function ownReport(db: ScopedDb, id: string, userId: string) {
   return db.expenseReport.findUnique({
     where: { id, userId },
-    include: { expenses: { select: { id: true, amount: true } } },
+    include: { expenses: { select: { id: true, baseAmount: true } } },
   });
 }
 
@@ -195,8 +195,9 @@ export async function submitReportAction(input: unknown): Promise<Result> {
       return err("Add at least one expense before submitting.");
     }
 
+    // 6.4: report totals are in the ORG BASE currency
     const total = computeReportTotal(
-      report.expenses.map((e: { amount: number }) => e.amount)
+      report.expenses.map((e: { baseAmount: number }) => e.baseAmount)
     );
     await db.expenseReport.update({
       where: { id: report.id },

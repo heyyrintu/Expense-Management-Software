@@ -11,6 +11,9 @@ const splitRowSchema = z.object({
 
 export const expenseInputSchema = z.object({
   amount: moneyString,
+  // 6.4 multi-currency: ISO code + rate to the org base (required when foreign)
+  currency: z.string().regex(/^[A-Z]{3}$/).default("INR"),
+  fxRate: z.string().trim().max(13).default("1"),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date")

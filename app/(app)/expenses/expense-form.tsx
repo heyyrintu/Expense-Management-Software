@@ -21,8 +21,9 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { FlagChips } from "@/components/flag-chips";
 import type { Result } from "@/lib/errors";
 import { expenseInputSchema, type ExpenseInput } from "@/lib/schemas/expense";
-import { deleteExpenseAction } from "./actions";
+import { deleteExpenseAction, getFxRateAction } from "./actions";
 import { usePolicyPreview } from "./use-policy-preview";
+import { SUPPORTED_CURRENCIES } from "@/lib/fx";
 
 export type Option = { id: string; name: string };
 export type ClientOption = { id: string; name: string; code: string };
@@ -92,6 +93,25 @@ export function ExpenseForm({
   }
 
   const splitArray = useFieldArray({ control: form.control, name: "splits" });
+  const selCurrency = form.watch("currency");
+  const fxRate = form.watch("fxRate");
+  const isForeign = selCurrency !== currency;
+  React.useEffect(() => {
+    if (!isForeign) {
+      form.setValue("fxRate", "1");
+      return;
+    }
+    let cancelled = false;
+    void getFxRateAction({ currency: selCurrency }).then((res) => {
+      if (!cancelled && res.ok && res.data.rate) {
+        form.setValue("fxRate", res.data.rate, { shouldDirty: true });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selCurrency, isForeign]);
   const billable = form.watch("billable");
   const watchedSplits = form.watch("splits");
   const watchedAmount = form.watch("amount");
@@ -173,7 +193,7 @@ export function ExpenseForm({
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount ({currency})</FormLabel>
+                <FormLabel>Amount ({selCurrency})</FormLabel>
                 <FormControl>
                   <Input inputMode="decimal" placeholder="500.00" {...field} />
                 </FormControl>
@@ -181,6 +201,53 @@ export function ExpenseForm({
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Currency</FormLabel>
+                <FormControl>
+                  <NativeSelect {...field}>
+                    {[currency, ...SUPPORTED_CURRENCIES.filter((c) => c !== currency)].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </NativeSelect>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        {isForeign ? (
+          <div className="grid gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+            <FormField
+              control={form.control}
+              name="fxRate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Exchange rate (1 {selCurrency} = ? {currency})
+                  </FormLabel>
+                  <FormControl>
+                    <Input inputMode="decimal" placeholder="83.50" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <p className="text-muted-foreground text-xs" aria-live="polite">
+              {(() => {
+                const a = Number.parseFloat(watchedAmount || "0");
+                const r = Number.parseFloat(fxRate || "0");
+                return Number.isFinite(a) && Number.isFinite(r) && a > 0 && r > 0
+                  ? `≈ ${selCurrency} ${a.toFixed(2)} → ${currency} ${(a * r).toFixed(2)} (exact value computed on save with banker's rounding)`
+                  : "Prefilled from the daily rate when available — you can override it.";
+              })()}
+            </p>
+          </div>
+        ) : null}
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
             name="date"

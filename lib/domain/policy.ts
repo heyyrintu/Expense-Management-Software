@@ -16,8 +16,10 @@ export type PolicyFlag = {
 };
 
 export type ExpenseForPolicy = {
-  /** minor units */
-  amount: number;
+  /** minor units in the ORG BASE currency — limits compare against this (6.4) */
+  baseAmount: number;
+  /** minor units in the ORIGINAL currency — duplicate detection uses this */
+  originalAmount: number;
   /** calendar date of the expense (UTC midnight) */
   date: Date;
   merchant: string;
@@ -64,11 +66,11 @@ function sameCalendarDay(a: Date, b: Date): boolean {
 /** Duplicate probe (CLAUDE.md): same amount + date + merchant, merchant
  *  compared case-insensitively (org+user scoping happens at the query). */
 export function isDuplicateOf(
-  expense: Pick<ExpenseForPolicy, "amount" | "date" | "merchant">,
+  expense: Pick<ExpenseForPolicy, "originalAmount" | "date" | "merchant">,
   candidate: DuplicateCandidate
 ): boolean {
   return (
-    candidate.amount === expense.amount &&
+    candidate.amount === expense.originalAmount &&
     sameCalendarDay(candidate.date, expense.date) &&
     candidate.merchant.trim().toLowerCase() ===
       expense.merchant.trim().toLowerCase()
@@ -82,7 +84,7 @@ export function evaluateExpense(
   const flags: PolicyFlag[] = [];
   const cat = ctx.category;
 
-  if (cat?.perExpenseLimit != null && expense.amount > cat.perExpenseLimit) {
+  if (cat?.perExpenseLimit != null && expense.baseAmount > cat.perExpenseLimit) {
     flags.push({
       rule: "per_expense_limit",
       message: policyMessages.per_expense_limit(
@@ -93,7 +95,7 @@ export function evaluateExpense(
 
   if (
     cat?.monthlyLimit != null &&
-    ctx.monthlySpent + expense.amount > cat.monthlyLimit
+    ctx.monthlySpent + expense.baseAmount > cat.monthlyLimit
   ) {
     flags.push({
       rule: "monthly_limit",
@@ -103,7 +105,7 @@ export function evaluateExpense(
 
   if (
     cat?.receiptRequiredAbove != null &&
-    expense.amount > cat.receiptRequiredAbove &&
+    expense.baseAmount > cat.receiptRequiredAbove &&
     expense.receiptCount === 0
   ) {
     flags.push({

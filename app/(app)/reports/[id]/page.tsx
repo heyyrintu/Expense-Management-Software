@@ -27,7 +27,9 @@ import { ReportControls } from "./report-controls";
 type ExpenseRow = {
   id: string;
   amount: number;
+  baseAmount: number;
   currency: string;
+  fxRate: string;
   date: Date;
   merchant: string;
   flags: unknown;
@@ -89,7 +91,7 @@ export default async function ReportDetailPage({
       }) => ({
         id: p.id,
         when: formatDate(p.paidAt),
-        amount: formatMoney(p.amountPaid, report.expenses[0]?.currency ?? "INR"),
+        amount: formatMoney(p.amountPaid, currency),
         method: p.method.replace("_", " "),
         reference: p.reference,
         proofUrl: p.proofKey ? await signedProofUrl({ proofKey: p.proofKey }) : null,
@@ -107,10 +109,11 @@ export default async function ReportDetailPage({
     })
   );
 
+  const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
   const editable = isReportEditable(report.status as ReportStatus);
   const attached: ExpenseRow[] = report.expenses;
-  const runningTotal = computeReportTotal(attached.map((e) => e.amount));
-  const currency = attached[0]?.currency;
+  const runningTotal = computeReportTotal(attached.map((e) => e.baseAmount));
+  const currency = org.currency; // totals are always org-base (6.4)
 
   // pickable: session user's unattached draft expenses
   const available: ExpenseRow[] = editable
@@ -205,8 +208,15 @@ export default async function ReportDetailPage({
                     <FlagChips flags={asFlags(e.flags)} />
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="font-semibold">
-                      {formatMoney(e.amount, e.currency)}
+                    <span className="grid text-right">
+                      <span className="font-semibold">
+                        {formatMoney(e.amount, e.currency)}
+                      </span>
+                      {e.currency !== currency ? (
+                        <span className="text-muted-foreground text-xs">
+                          → {formatMoney(e.baseAmount, currency)}
+                        </span>
+                      ) : null}
                     </span>
                     {editable ? (
                       <ReportControls.RemoveButton

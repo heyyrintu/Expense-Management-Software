@@ -155,8 +155,15 @@ export default async function ApprovalReviewPage({
                   </span>
                   <span className="flex items-center gap-2">
                     <FlagChips flags={flags} />
-                    <span className="font-semibold">
-                      {formatMoney(e.amount, e.currency)}
+                    <span className="grid text-right">
+                      <span className="font-semibold">
+                        {formatMoney(e.amount, e.currency)}
+                      </span>
+                      {e.currency !== org.currency ? (
+                        <span className="text-muted-foreground text-xs">
+                          → {formatMoney(e.baseAmount, org.currency)}
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </li>

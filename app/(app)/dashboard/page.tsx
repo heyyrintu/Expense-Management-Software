@@ -34,6 +34,8 @@ import { parseFilters } from "@/lib/schemas/dashboard";
 
 type DbExpenseRow = {
   amount: number;
+  baseAmount: number;
+  currency: string;
   date: Date;
   status: string;
   merchant: string;
@@ -82,6 +84,8 @@ export default async function DashboardPage({
       where,
       select: {
         amount: true,
+        baseAmount: true,
+        currency: true,
         date: true,
         status: true,
         merchant: true,
@@ -106,7 +110,7 @@ export default async function DashboardPage({
     departments.map((d: { id: string; name: string }) => [d.id, d.name])
   );
   const rows: ExpenseAggRow[] = dbRows.map((e) => ({
-    amount: e.amount,
+    amount: e.baseAmount, // dashboards aggregate in org-base currency (6.4)
     date: e.date,
     status: e.status,
     merchant: e.merchant,
@@ -161,7 +165,7 @@ export default async function DashboardPage({
             total: 0,
             count: 0,
           };
-          entry.total += e.amount;
+          entry.total += e.baseAmount;
           entry.count += 1;
           map.set(key, entry);
         }

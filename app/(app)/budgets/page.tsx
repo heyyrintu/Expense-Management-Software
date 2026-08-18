@@ -54,9 +54,9 @@ export default async function BudgetsPage() {
           date: { gte: window.start, lt: window.end },
           user: { departmentId: b.scopeId },
         },
-        _sum: { amount: true },
+        _sum: { baseAmount: true },
       });
-      spent = agg._sum.amount ?? 0;
+      spent = agg._sum.baseAmount ?? 0;
     } else {
       const agg = await db.expense.aggregate({
         where: {
@@ -66,9 +66,9 @@ export default async function BudgetsPage() {
             ? { categoryId: b.scopeId }
             : { projectId: b.scopeId }),
         },
-        _sum: { amount: true },
+        _sum: { baseAmount: true },
       });
-      spent = agg._sum.amount ?? 0;
+      spent = agg._sum.baseAmount ?? 0;
     }
     const pct = utilizationPct(spent, b.amount);
     views.push({

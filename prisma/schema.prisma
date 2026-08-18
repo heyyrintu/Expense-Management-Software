@@ -245,8 +245,10 @@ model Expense {
   userId     String        @map("user_id") @db.Uuid
   reportId   String?       @map("report_id") @db.Uuid
   type       ExpenseType   @default(regular)
-  amount     Int // minor units
+  amount     Int // minor units, ORIGINAL currency
   currency   String        @db.Char(3)
+  fxRate     String        @default("1") @map("fx_rate") // decimal string, original → base
+  baseAmount Int           @map("base_amount") // minor units, ORG BASE currency
   date       DateTime      @db.Date
   merchant   String
   categoryId String        @map("category_id") @db.Uuid

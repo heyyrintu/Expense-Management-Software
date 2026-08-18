@@ -43,3 +43,49 @@ export function assertMinorUnits(minor: number): void {
     throw new Error(`money: expected integer minor units, got ${minor}`);
   }
 }
+
+// ---------- multi-currency (6.4) ----------
+
+const FX_RATE_RE = /^(\d{1,6})(?:\.(\d{1,6}))?$/;
+
+/** Validate an FX rate string ("83.5", "0.0125"…): 1–6 int + ≤6 frac digits, > 0. */
+export function isValidFxRate(rate: string): boolean {
+  const m = FX_RATE_RE.exec(rate.trim());
+  if (!m) return false;
+  return Number.parseInt(m[1], 10) > 0 || (m[2] !== undefined && Number.parseInt(m[2], 10) > 0);
+}
+
+/**
+ * Convert original-currency minor units to org-base minor units:
+ * base = amount × rate, using BANKER'S ROUNDING (round-half-to-even) on the
+ * final division — the statistician's default: exact halves round to the
+ * nearest even result, so long-run conversion bias cancels out instead of
+ * always drifting up. Pure integer math throughout (no floats).
+ */
+export function convertToBase(amountMinor: number, rate: string): number | null {
+  assertMinorUnits(amountMinor);
+  const m = FX_RATE_RE.exec(rate.trim());
+  if (!m || !isValidFxRate(rate)) return null;
+  const frac = m[2] ?? "";
+  const rateScaled = BigInt(m[1] + frac.padEnd(frac.length, "")); // digits only
+  const scale = BigInt(10) ** BigInt(frac.length);
+  if (rateScaled <= 0n) return null;
+
+  const numerator = BigInt(amountMinor) * rateScaled;
+  const q = numerator / scale;
+  const rem = numerator % scale;
+  const twice = rem * 2n;
+
+  let result: bigint;
+  if (twice < scale) {
+    result = q;
+  } else if (twice > scale) {
+    result = q + 1n;
+  } else {
+    // exact half — round to even
+    result = q % 2n === 0n ? q : q + 1n;
+  }
+  const asNumber = Number(result);
+  if (!Number.isSafeInteger(asNumber)) return null;
+  return asNumber;
+}

@@ -127,6 +127,8 @@ export default async function ExpenseDetailPage({
           expenseId={expense.id}
           defaults={{
             amount: toDecimalString(expense.amount),
+            currency: expense.currency,
+            fxRate: expense.fxRate,
             date: toDateInputValue(expense.date),
             merchant: expense.merchant,
             categoryId: expense.categoryId,

@@ -57,6 +57,8 @@ export async function provisionOrg(tag: string): Promise<OrgFixture> {
       userId: users.employee,
       reportId: report.id,
       amount: 12345,
+      baseAmount: 12345,
+      fxRate: "1",
       currency: "INR",
       date: new Date("2026-08-01"),
       merchant: `${tag} Cafe`,

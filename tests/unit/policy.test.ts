@@ -26,7 +26,8 @@ function ctx(overrides: Partial<PolicyContext> = {}): PolicyContext {
 }
 
 const expense = (over: Partial<Parameters<typeof evaluateExpense>[0]> = {}) => ({
-  amount: 10000,
+  baseAmount: 10000,
+  originalAmount: 10000,
   date: new Date("2026-08-10T00:00:00.000Z"),
   merchant: "Uber",
   receiptCount: 1,
@@ -37,29 +38,29 @@ const rules = (flags: PolicyFlag[]) => flags.map((f) => f.rule).sort();
 
 describe("per_expense_limit", () => {
   it("flags strictly above the limit, not at it", () => {
-    expect(rules(evaluateExpense(expense({ amount: 100001 }), ctx()))).toContain("per_expense_limit");
-    expect(rules(evaluateExpense(expense({ amount: 100000 }), ctx()))).not.toContain("per_expense_limit");
+    expect(rules(evaluateExpense(expense({ baseAmount: 100001 }), ctx()))).toContain("per_expense_limit");
+    expect(rules(evaluateExpense(expense({ baseAmount: 100000 }), ctx()))).not.toContain("per_expense_limit");
   });
   it("silent when the category has no limit or no category", () => {
     expect(
-      evaluateExpense(expense({ amount: 9999999 }), ctx({ category: { perExpenseLimit: null, monthlyLimit: null, receiptRequiredAbove: null } }))
+      evaluateExpense(expense({ baseAmount: 9999999 }), ctx({ category: { perExpenseLimit: null, monthlyLimit: null, receiptRequiredAbove: null } }))
     ).toHaveLength(0);
-    expect(evaluateExpense(expense({ amount: 9999999 }), ctx({ category: null }))).toHaveLength(0);
+    expect(evaluateExpense(expense({ baseAmount: 9999999 }), ctx({ category: null }))).toHaveLength(0);
   });
 });
 
 describe("monthly_limit", () => {
   it("flags when prior spend + this expense crosses the limit", () => {
-    expect(rules(evaluateExpense(expense({ amount: 100000 }), ctx({ monthlySpent: 400001 })))).toContain("monthly_limit");
-    expect(rules(evaluateExpense(expense({ amount: 100000 }), ctx({ monthlySpent: 400000 })))).not.toContain("monthly_limit");
+    expect(rules(evaluateExpense(expense({ baseAmount: 100000 }), ctx({ monthlySpent: 400001 })))).toContain("monthly_limit");
+    expect(rules(evaluateExpense(expense({ baseAmount: 100000 }), ctx({ monthlySpent: 400000 })))).not.toContain("monthly_limit");
   });
 });
 
 describe("receipt_required", () => {
   it("flags above threshold with zero receipts; a receipt clears it", () => {
-    expect(rules(evaluateExpense(expense({ amount: 50001, receiptCount: 0 }), ctx()))).toContain("receipt_required");
-    expect(rules(evaluateExpense(expense({ amount: 50001, receiptCount: 1 }), ctx()))).not.toContain("receipt_required");
-    expect(rules(evaluateExpense(expense({ amount: 50000, receiptCount: 0 }), ctx()))).not.toContain("receipt_required");
+    expect(rules(evaluateExpense(expense({ baseAmount: 50001, receiptCount: 0 }), ctx()))).toContain("receipt_required");
+    expect(rules(evaluateExpense(expense({ baseAmount: 50001, receiptCount: 1 }), ctx()))).not.toContain("receipt_required");
+    expect(rules(evaluateExpense(expense({ baseAmount: 50000, receiptCount: 0 }), ctx()))).not.toContain("receipt_required");
   });
 });
 
@@ -100,7 +101,12 @@ describe("duplicate", () => {
 describe("combinations", () => {
   it("multiple violations stack; each carries a human message", () => {
     const flags = evaluateExpense(
-      expense({ amount: 200000, receiptCount: 0, date: new Date("2026-01-01T00:00:00.000Z") }),
+      expense({
+        baseAmount: 200000,
+        originalAmount: 200000,
+        receiptCount: 0,
+        date: new Date("2026-01-01T00:00:00.000Z"),
+      }),
       ctx({
         monthlySpent: 500000,
         duplicateCandidates: [

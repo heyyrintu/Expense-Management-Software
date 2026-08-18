@@ -17,6 +17,8 @@ type ExportRow = {
   date: Date;
   merchant: string;
   amount: number;
+  baseAmount: number;
+  fxRate: string;
   currency: string;
   status: string;
   purpose: string;
@@ -71,6 +73,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       "merchant",
       "amount",
       "currency",
+      "fx_rate",
+      "base_amount",
       "status",
       "category",
       "project",
@@ -90,6 +94,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       e.merchant,
       toDecimalString(e.amount),
       e.currency,
+      e.fxRate,
+      toDecimalString(e.baseAmount),
       e.status,
       e.category.name,
       e.project?.name ?? "",
