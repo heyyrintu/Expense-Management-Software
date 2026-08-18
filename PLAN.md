@@ -20,7 +20,8 @@ Each task ≈ one focused Claude Code session. Do them in order; check off when 
 
 ## Milestone 2 — Reports & approvals (PRD 6.3–6.4)
 
-- [ ] **2.1 Report workflow**: group expenses into report; state machine in `lib/domain/report-workflow.ts` with AuditLog on every transition; withdraw while Submitted.
+- [ ] **2.0 User management**: org_admin screen — list users, invite (email + role + department), edit role/department/**assigned approver**, deactivate. Departments CRUD. Prerequisite for 2.2 approval routing.
+- [x] **2.1 Report workflow**: group expenses into report; state machine in `lib/domain/report-workflow.ts` with AuditLog on every transition; withdraw while Submitted.
 - [ ] **2.2 Approval queue**: approver inbox; approve / reject (reason required) / send back; bulk approve unflagged; self-approval blocked; second-level approval above org threshold.
 - [ ] **2.3 Notifications**: in-app notification center + email stubs (console/SMTP env) for submit/approve/reject/reimburse events.
 
