@@ -23,6 +23,7 @@ export const TENANT_MODELS = [
   "ReportComment",
   "ApprovalRule",
   "PaymentBatch",
+  "Advance",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

@@ -31,6 +31,7 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
   const [method, setMethod] = React.useState("bank_transfer");
   const [partialAmount, setPartialAmount] = React.useState("");
   const [proof, setProof] = React.useState<File | null>(null);
+  const [offsetAdvances, setOffsetAdvances] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -65,6 +66,7 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
         JSON.stringify({
           paidAt,
           method,
+          offsetAdvances,
           reports: selectedItems.map((i) => ({
             reportId: i.id,
             reference: references[i.id].trim(),
@@ -200,6 +202,15 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
             />
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={offsetAdvances}
+            onChange={(e) => setOffsetAdvances(e.target.checked)}
+            className="size-4"
+          />
+          Offset against open advances (oldest first)
+        </label>
         {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
         {message ? <p role="status" className="text-sm text-green-700">{message}</p> : null}
         <div>

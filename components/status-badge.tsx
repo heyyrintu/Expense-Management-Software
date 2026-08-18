@@ -10,6 +10,9 @@ const STYLES: Record<string, string> = {
   sent_back: "bg-amber-100 text-amber-800",
   partially_reimbursed: "bg-teal-100 text-teal-700",
   reimbursed: "bg-violet-100 text-violet-700",
+  disbursed: "bg-indigo-100 text-indigo-700",
+  partially_settled: "bg-teal-100 text-teal-700",
+  settled: "bg-violet-100 text-violet-700",
 };
 
 const LABELS: Record<string, string> = {
@@ -20,6 +23,9 @@ const LABELS: Record<string, string> = {
   sent_back: "Sent back",
   partially_reimbursed: "Partially reimbursed",
   reimbursed: "Reimbursed",
+  disbursed: "Disbursed",
+  partially_settled: "Partially settled",
+  settled: "Settled",
 };
 
 export function StatusBadge({ status }: { status: string }) {

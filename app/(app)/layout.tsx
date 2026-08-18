@@ -37,6 +37,12 @@ export default async function AppLayout({
             >
               Reports
             </Link>
+            <Link
+              href="/advances"
+              className="text-muted-foreground text-sm hover:underline"
+            >
+              Advances
+            </Link>
             {roleAtLeast(ctx.role, "approver") ? (
               <Link
                 href="/approvals"

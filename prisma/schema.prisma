@@ -133,6 +133,7 @@ model Organization {
   reportComments ReportComment[]
   approvalRules  ApprovalRule[]
   paymentBatches PaymentBatch[]
+  advances       Advance[]
 
   @@map("organizations")
 }
@@ -176,6 +177,8 @@ model User {
   approvals      Approval[]      @relation("ApprovalApprover")
   reimbursements Reimbursement[] @relation("ReimbursementPaidBy")
   paymentBatches PaymentBatch[]  @relation("PaymentBatchCreatedBy")
+  advances       Advance[]       @relation("AdvanceOwner")
+  advancesApproved Advance[]     @relation("AdvanceApprovedBy")
   notifications  Notification[]
   reportComments ReportComment[]
 
@@ -507,4 +510,45 @@ model ApprovalRule {
 
   @@index([orgId, departmentId])
   @@map("approval_rules")
+}
+
+enum AdvanceStatus {
+  draft
+  submitted
+  approved
+  rejected
+  disbursed
+  partially_settled
+  settled
+
+  @@map("advance_status")
+}
+
+// Cash advance / trip pre-approval (PLAN 6.2). Transitions only through
+// lib/domain/advance.ts; settlement offsets reimbursed reports against the
+// oldest open advances.
+model Advance {
+  id                   String        @id @default(uuid(7)) @db.Uuid
+  orgId                String        @map("org_id") @db.Uuid
+  userId               String        @map("user_id") @db.Uuid
+  amount               Int // minor units
+  purpose              String
+  tripStart            DateTime?     @map("trip_start") @db.Date
+  tripEnd              DateTime?     @map("trip_end") @db.Date
+  status               AdvanceStatus @default(draft)
+  approvedById         String?       @map("approved_by_id") @db.Uuid
+  disbursedAt          DateTime?     @map("disbursed_at")
+  disbursementRef      String?       @map("disbursement_ref")
+  disbursementProofKey String?       @map("disbursement_proof_key")
+  settledAmount        Int           @default(0) @map("settled_amount")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation("AdvanceOwner", fields: [userId], references: [id])
+  approvedBy   User?        @relation("AdvanceApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([orgId, userId, status])
+  @@index([orgId, status])
+  @@map("advances")
 }

@@ -25,6 +25,7 @@ import {
   totalsBy,
   type ExpenseAggRow,
 } from "@/lib/domain/dashboard";
+import { outstandingAdvance } from "@/lib/domain/advance";
 import { buildExpenseWhere } from "@/lib/domain/expense-query";
 import { resolveExpenseScope } from "@/lib/domain/expense-scope";
 import { scopedDb } from "@/lib/db/scoped";
@@ -168,6 +169,15 @@ export default async function DashboardPage({
     approvalTime = ms === null ? null : formatDurationMs(ms);
   }
 
+  const myOpenAdvances = (await db.advance.findMany({
+    where: { userId: ctx.userId, status: { in: ["disbursed", "partially_settled"] } },
+    select: { amount: true, settledAmount: true },
+  })) as Array<{ amount: number; settledAmount: number }>;
+  const advanceBalance = myOpenAdvances.reduce(
+    (sum, a) => sum + outstandingAdvance(a.amount, a.settledAmount),
+    0
+  );
+
   const fmt = (minor: number) => formatMoney(minor, org.currency);
   const exportQs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v !== undefined) as [string, string][]
@@ -257,6 +267,16 @@ export default async function DashboardPage({
         <Stat label="Awaiting approval" value={fmt(pending)} hint="submitted expenses" />
         <Stat label="Reimbursed" value={fmt(reimbursed)} hint="in current scope/filters" />
       </div>
+
+      {advanceBalance > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Stat
+            label="Open advance balance"
+            value={fmt(advanceBalance)}
+            hint="settles against your reimbursed reports"
+          />
+        </div>
+      ) : null}
 
       {isFinance ? (
         <div className="grid gap-4 sm:grid-cols-3">

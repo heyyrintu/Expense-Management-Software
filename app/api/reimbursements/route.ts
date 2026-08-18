@@ -6,6 +6,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionCtx } from "@/lib/auth/guard";
+import {
+  allocateSettlement,
+  nextAdvanceStatus,
+  OPEN_ADVANCE_STATUSES,
+  type AdvanceStatus,
+} from "@/lib/domain/advance";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/domain/audit";
 import {
@@ -36,6 +42,8 @@ const payloadSchema = z.object({
     .refine((s) => !Number.isNaN(Date.parse(s))),
   method: z.enum(PAYMENT_METHODS),
   notes: z.string().trim().max(500).optional(),
+  // 6.2: offset reimbursed amounts against the owner's open advances
+  offsetAdvances: z.boolean().optional(),
   reports: z
     .array(
       z.object({
@@ -207,6 +215,40 @@ export async function POST(request: Request): Promise<NextResponse> {
         console.error("[reimbursements] notify failed:", e);
       }
     }
+    // 6.2: settle against the owner's open advances, oldest first
+    if (payload.offsetAdvances) {
+      const open = (await db.advance.findMany({
+        where: {
+          userId: report.user.id,
+          status: { in: [...OPEN_ADVANCE_STATUSES] },
+        },
+        orderBy: { disbursedAt: "asc" },
+        select: { id: true, amount: true, settledAmount: true, status: true },
+      })) as Array<{ id: string; amount: number; settledAmount: number; status: string }>;
+      const { allocations } = allocateSettlement(amountPaid, open);
+      for (const alloc of allocations) {
+        const current = open.find((a) => a.id === alloc.advanceId)!;
+        const action = alloc.newStatus === "settled" ? "settle_full" : "settle_partial";
+        const to = nextAdvanceStatus(current.status as AdvanceStatus, action);
+        if (!to) continue; // stale state — skip rather than corrupt
+        await db.advance.update({
+          where: { id: alloc.advanceId },
+          data: { settledAmount: alloc.newSettledAmount, status: to },
+        });
+        await logAudit(db, ctx, {
+          entity: "Advance",
+          entityId: alloc.advanceId,
+          action: "advance.settled",
+          meta: {
+            amount: alloc.amount,
+            settledAmount: alloc.newSettledAmount,
+            viaReportId: report.id,
+            batchId: batch.id,
+          },
+        });
+      }
+    }
+
     results.push({ reportId: item.reportId, ok: true });
   }
 
