@@ -119,6 +119,7 @@ model Organization {
   auditLogs      AuditLog[]
   notifications  Notification[]
   budgets        Budget[]
+  cardTransactions CardTransaction[]
 
   @@map("organizations")
 }
@@ -235,6 +236,7 @@ model Expense {
   category     Category       @relation(fields: [categoryId], references: [id])
   project      Project?       @relation(fields: [projectId], references: [id])
   receipts     Receipt[]
+  cardTransaction CardTransaction?
 
   // duplicate detection probe: org + user + amount + date (+ merchant, compared case-insensitively in app)
   @@index([orgId, userId, amount, date])
@@ -395,4 +397,26 @@ model Budget {
   @@unique([orgId, scopeType, scopeId, period])
   @@index([orgId, scopeType])
   @@map("budgets")
+}
+
+// Card statement line (P1, PLAN 5.2). Org-level (company card); imported in
+// batches by finance. matched_expense_id is 1:1 — an expense reconciles
+// with at most one statement line.
+model CardTransaction {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  orgId            String   @map("org_id") @db.Uuid
+  importedBatch    String   @map("imported_batch") @db.Uuid
+  date             DateTime @db.Date
+  amount           Int // minor units
+  merchant         String
+  matchedExpenseId String?  @unique @map("matched_expense_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization   Organization @relation(fields: [orgId], references: [id])
+  matchedExpense Expense?     @relation(fields: [matchedExpenseId], references: [id])
+
+  @@index([orgId, matchedExpenseId])
+  @@index([orgId, importedBatch])
+  @@index([orgId, date])
+  @@map("card_transactions")
 }

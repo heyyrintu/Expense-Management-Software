@@ -59,6 +59,12 @@ export default async function AppLayout({
                 >
                   Budgets
                 </Link>
+                <Link
+                  href="/card-imports"
+                  className="text-muted-foreground text-sm hover:underline"
+                >
+                  Cards
+                </Link>
               </>
             ) : null}
             {roleAtLeast(ctx.role, "finance_admin") ? (

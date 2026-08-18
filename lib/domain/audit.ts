@@ -15,7 +15,8 @@ export type AuditEntry = {
     | "ExpenseReport"
     | "Approval"
     | "Reimbursement"
-    | "Budget";
+    | "Budget"
+    | "CardTransaction";
   entityId: string;
   action: string; // dot-namespaced, e.g. "category.created"
   meta?: Record<string, unknown>;
