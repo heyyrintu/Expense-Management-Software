@@ -9,8 +9,10 @@ import {
   AuthorizationError,
   requireRole,
 } from "@/lib/auth/guard";
+import { resolveChain, type ChainRule } from "@/lib/domain/approval-chain";
 import { logAudit } from "@/lib/domain/audit";
 import { checkBudgetAlertsAfterSubmit } from "@/lib/domain/budget-alerts";
+import { secondApprovalThreshold } from "@/lib/domain/org-settings";
 import {
   computeReportTotal,
   expenseStatusFor,
@@ -211,22 +213,35 @@ export async function submitReportAction(input: unknown): Promise<Result> {
       meta: { total, expenseCount: report.expenses.length, from: report.status },
     });
 
-    // notify the assigned approver (2.3)
+    // notify whoever the chain routes level 1 to (5.4; assigned approver by default)
     const me = await db.user.findUniqueOrThrow({
       where: { id: ctx.userId },
-      select: {
-        name: true,
-        approver: { select: { id: true, email: true } },
-      },
+      select: { name: true, approverId: true, departmentId: true },
     });
-    if (me.approver) {
-      const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
-      await notify(db, ctx.orgId, [me.approver], "report.submitted", {
-        reportId: report.id,
-        reportTitle: report.title,
-        actorName: me.name,
-        totalFormatted: formatMoney(total, org.currency),
-      });
+    const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+    const rules = (await db.approvalRule.findMany({
+      orderBy: { createdAt: "asc" },
+    })) as ChainRule[];
+    const chain = resolveChain({
+      ownerAssignedApproverId: me.approverId,
+      ownerDepartmentId: me.departmentId,
+      total,
+      orgThreshold: secondApprovalThreshold(org.settings),
+      rules,
+    });
+    if (chain.level1ApproverId && chain.level1ApproverId !== ctx.userId) {
+      const approver = (await db.user.findUnique({
+        where: { id: chain.level1ApproverId, status: "active" },
+        select: { id: true, email: true },
+      })) as { id: string; email: string } | null;
+      if (approver) {
+        await notify(db, ctx.orgId, [approver], "report.submitted", {
+          reportId: report.id,
+          reportTitle: report.title,
+          actorName: me.name,
+          totalFormatted: formatMoney(total, org.currency),
+        });
+      }
     }
     // budget 80%/100% alerts (5.1) — never blocks submission
     await checkBudgetAlertsAfterSubmit(db, ctx.orgId, report.id);

@@ -2,11 +2,14 @@
 // Pure filtering happens in lib/domain/approvals; this composes the query.
 import type { Role } from "@/lib/auth/roles";
 import {
+  resolveChain,
+  type ChainRule,
+} from "@/lib/domain/approval-chain";
+import {
   canDecideAtLevel,
   currentSubmissionApprovals,
   isReportFlagged,
   pendingLevel,
-  requiredLevels,
   type ApprovalRow,
 } from "@/lib/domain/approvals";
 import { secondApprovalThreshold } from "@/lib/domain/org-settings";
@@ -29,13 +32,16 @@ export async function approvalQueueFor(
 ): Promise<QueueItem[]> {
   const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
   const threshold = secondApprovalThreshold(org.settings);
+  const rules = (await db.approvalRule.findMany({
+    orderBy: { createdAt: "asc" },
+  })) as ChainRule[];
 
   const submitted = (await db.expenseReport.findMany({
     where: { status: "submitted" },
     orderBy: { submittedAt: "asc" },
     take: 200,
     include: {
-      user: { select: { name: true, approverId: true } },
+      user: { select: { name: true, approverId: true, departmentId: true } },
       approvals: {
         select: { level: true, action: true, approverId: true, actedAt: true },
       },
@@ -47,18 +53,25 @@ export async function approvalQueueFor(
     title: string;
     total: number;
     submittedAt: Date | null;
-    user: { name: string; approverId: string | null };
+    user: { name: string; approverId: string | null; departmentId: string | null };
     approvals: ApprovalRow[];
     expenses: { flags: unknown }[];
   }>;
 
   const queue: QueueItem[] = [];
   for (const r of submitted) {
-    const required = requiredLevels(r.total, threshold);
+    const chain = resolveChain({
+      ownerAssignedApproverId: r.user.approverId,
+      ownerDepartmentId: r.user.departmentId,
+      total: r.total,
+      orgThreshold: threshold,
+      rules,
+    });
+    const required = chain.level2 ? 2 : 1;
     const current = currentSubmissionApprovals(r.approvals, r.submittedAt);
     const level = pendingLevel(current, required);
     if (!level) continue;
-    const level1ApproverId =
+    const decidedLevel1Id =
       current.find((a) => a.level === 1 && a.action === "approved")?.approverId ??
       null;
     if (
@@ -66,8 +79,9 @@ export async function approvalQueueFor(
         actorId: ctx.userId,
         actorRole: ctx.role,
         ownerId: r.userId,
-        ownerApproverId: r.user.approverId,
-        level1ApproverId,
+        responsibleLevel1Id: chain.level1ApproverId,
+        decidedLevel1Id,
+        level2: chain.level2,
         level,
       })
     ) {

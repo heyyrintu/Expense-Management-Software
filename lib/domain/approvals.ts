@@ -54,27 +54,43 @@ export function pendingLevel(
   return null;
 }
 
+export type ChainLevel2Input =
+  | { type: "user"; userId: string }
+  | { type: "finance" }
+  | null;
+
 export type EligibilityInput = {
   actorId: string;
   actorRole: Role;
   ownerId: string;
-  ownerApproverId: string | null;
-  level1ApproverId: string | null; // who approved level 1 this submission
+  /** who is RESPONSIBLE for level 1 (resolved chain; assigned approver by default) */
+  responsibleLevel1Id: string | null;
+  /** who actually APPROVED level 1 this submission (distinctness at level 2) */
+  decidedLevel1Id: string | null;
+  /** level-2 requirement from the resolved chain */
+  level2: ChainLevel2Input;
   level: 1 | 2;
 };
 
-/** Whether the actor may decide at `level`. Self-approval is never allowed. */
+/** Whether the actor may decide at `level`. Self-approval is never allowed
+ *  and the level-2 decider must differ from the level-1 one (5.4). */
 export function canDecideAtLevel(input: EligibilityInput): boolean {
   if (!canActorDecide(input.ownerId, input.actorId)) return false;
   if (input.level === 1) {
     return (
-      input.ownerApproverId !== null && input.actorId === input.ownerApproverId
+      input.responsibleLevel1Id !== null &&
+      input.actorId === input.responsibleLevel1Id
     );
   }
-  return (
-    roleAtLeast(input.actorRole, "finance_admin") &&
-    input.actorId !== input.level1ApproverId
-  );
+  if (input.level2 === null) return false;
+  if (input.actorId === input.decidedLevel1Id) return false;
+  if (input.level2.type === "user") {
+    return (
+      input.actorId === input.level2.userId &&
+      roleAtLeast(input.actorRole, "approver")
+    );
+  }
+  return roleAtLeast(input.actorRole, "finance_admin");
 }
 
 /** A report is flagged when any expense carries policy flags (3.x). */

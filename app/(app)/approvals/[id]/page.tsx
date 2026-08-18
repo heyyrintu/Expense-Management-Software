@@ -12,10 +12,13 @@ import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { requireRole } from "@/lib/auth/guard";
 import {
+  resolveChain,
+  type ChainRule,
+} from "@/lib/domain/approval-chain";
+import {
   canDecideAtLevel,
   currentSubmissionApprovals,
   pendingLevel,
-  requiredLevels,
   type ApprovalRow,
 } from "@/lib/domain/approvals";
 import { secondApprovalThreshold } from "@/lib/domain/org-settings";
@@ -36,7 +39,9 @@ export default async function ApprovalReviewPage({
   const report = await db.expenseReport.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, name: true, approverId: true } },
+      user: {
+        select: { id: true, name: true, approverId: true, departmentId: true },
+      },
       approvals: {
         orderBy: { actedAt: "asc" },
         include: { approver: { select: { name: true } } },
@@ -68,7 +73,17 @@ export default async function ApprovalReviewPage({
 
   const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
   const threshold = secondApprovalThreshold(org.settings);
-  const required = requiredLevels(report.total, threshold);
+  const rules = (await db.approvalRule.findMany({
+    orderBy: { createdAt: "asc" },
+  })) as ChainRule[];
+  const chain = resolveChain({
+    ownerAssignedApproverId: report.user.approverId,
+    ownerDepartmentId: report.user.departmentId,
+    total: report.total,
+    orgThreshold: threshold,
+    rules,
+  });
+  const required: 1 | 2 = chain.level2 ? 2 : 1;
   const approvalRows: ApprovalRow[] = report.approvals.map(
     (a: { level: number; action: ApprovalRow["action"]; approverId: string; actedAt: Date }) => ({
       level: a.level,
@@ -79,7 +94,7 @@ export default async function ApprovalReviewPage({
   );
   const current = currentSubmissionApprovals(approvalRows, report.submittedAt);
   const level = report.status === "submitted" ? pendingLevel(current, required) : null;
-  const level1ApproverId =
+  const decidedLevel1Id =
     current.find((a) => a.level === 1 && a.action === "approved")?.approverId ?? null;
   const canDecide =
     level !== null &&
@@ -87,8 +102,9 @@ export default async function ApprovalReviewPage({
       actorId: ctx.userId,
       actorRole: ctx.role,
       ownerId: report.user.id,
-      ownerApproverId: report.user.approverId,
-      level1ApproverId,
+      responsibleLevel1Id: chain.level1ApproverId,
+      decidedLevel1Id,
+      level2: chain.level2,
       level,
     });
 

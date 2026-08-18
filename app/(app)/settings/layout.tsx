@@ -30,6 +30,9 @@ export default async function SettingsLayout({
             <Link href="/settings/departments" className="hover:underline">
               Departments
             </Link>
+            <Link href="/settings/approval-chains" className="hover:underline">
+              Approval chains
+            </Link>
           </>
         ) : null}
       </nav>

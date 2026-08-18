@@ -11,11 +11,14 @@ import {
   type SessionCtx,
 } from "@/lib/auth/guard";
 import {
+  resolveChain,
+  type ChainRule,
+} from "@/lib/domain/approval-chain";
+import {
   canDecideAtLevel,
   currentSubmissionApprovals,
   isReportFlagged,
   pendingLevel,
-  requiredLevels,
   validateDecisionReason,
   type ApprovalRow,
 } from "@/lib/domain/approvals";
@@ -54,6 +57,7 @@ type LoadedReport = {
     name: string;
     email: string;
     approverId: string | null;
+    departmentId: string | null;
   };
   approvals: ApprovalRow[];
   expenses: { flags: unknown }[];
@@ -69,7 +73,13 @@ async function decideOne(
     where: { id: input.reportId },
     include: {
       user: {
-        select: { id: true, name: true, email: true, approverId: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          approverId: true,
+          departmentId: true,
+        },
       },
       approvals: {
         select: { level: true, action: true, approverId: true, actedAt: true },
@@ -81,12 +91,22 @@ async function decideOne(
 
   const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
   const threshold = secondApprovalThreshold(org.settings);
-  const required = requiredLevels(report.total, threshold);
+  const rules = (await db.approvalRule.findMany({
+    orderBy: { createdAt: "asc" },
+  })) as ChainRule[];
+  const chain = resolveChain({
+    ownerAssignedApproverId: report.user.approverId,
+    ownerDepartmentId: report.user.departmentId,
+    total: report.total,
+    orgThreshold: threshold,
+    rules,
+  });
+  const required = chain.level2 ? 2 : 1;
   const current = currentSubmissionApprovals(report.approvals, report.submittedAt);
   const level = pendingLevel(current, required);
   if (!level) return err(NOT_ELIGIBLE);
 
-  const level1ApproverId =
+  const decidedLevel1Id =
     current.find((a) => a.level === 1 && a.action === "approved")?.approverId ??
     null;
   if (
@@ -94,8 +114,9 @@ async function decideOne(
       actorId: ctx.userId,
       actorRole: ctx.role,
       ownerId: report.userId,
-      ownerApproverId: report.user.approverId,
-      level1ApproverId,
+      responsibleLevel1Id: chain.level1ApproverId,
+      decidedLevel1Id,
+      level2: chain.level2,
       level,
     })
   ) {
@@ -145,16 +166,22 @@ async function decideOne(
       action: "report.approved_level1",
       meta: { total: report.total, awaiting: "level2" },
     });
-    // tell eligible finance admins a second approval is waiting (2.3)
-    const financeAdmins = (await db.user.findMany({
-      where: {
-        status: "active",
-        role: { in: ["finance_admin", "org_admin"] },
-        id: { notIn: [report.userId, ctx.userId] },
-      },
-      select: { id: true, email: true },
-    })) as Array<{ id: string; email: string }>;
-    await notify(db, ctx.orgId, financeAdmins, "report.approved_level1", {
+    // tell whoever owns level 2: the chain-pinned approver, else finance pool
+    const level2Recipients =
+      chain.level2?.type === "user"
+        ? ((await db.user.findMany({
+            where: { id: chain.level2.userId, status: "active" },
+            select: { id: true, email: true },
+          })) as Array<{ id: string; email: string }>)
+        : ((await db.user.findMany({
+            where: {
+              status: "active",
+              role: { in: ["finance_admin", "org_admin"] },
+              id: { notIn: [report.userId, ctx.userId] },
+            },
+            select: { id: true, email: true },
+          })) as Array<{ id: string; email: string }>);
+    await notify(db, ctx.orgId, level2Recipients, "report.approved_level1", {
       reportId: report.id,
       reportTitle: report.title,
       actorName: actor.name,

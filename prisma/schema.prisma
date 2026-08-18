@@ -121,6 +121,7 @@ model Organization {
   budgets        Budget[]
   cardTransactions CardTransaction[]
   reportComments ReportComment[]
+  approvalRules  ApprovalRule[]
 
   @@map("organizations")
 }
@@ -440,4 +441,25 @@ model ReportComment {
 
   @@index([orgId, reportId, createdAt])
   @@map("report_comments")
+}
+
+// Custom approval chain rule (P1, PLAN 5.4). The most specific matching
+// rule (department+amount > department > amount) overrides level-1 routing
+// and may pin a specific second approver; otherwise the assigned-approver +
+// org-threshold defaults apply.
+model ApprovalRule {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  orgId            String   @map("org_id") @db.Uuid
+  name             String
+  departmentId     String?  @map("department_id") @db.Uuid // null = all departments
+  aboveAmount      Int?     @map("above_amount") // minor units; null = any amount
+  approverId       String   @map("approver_id") @db.Uuid
+  secondApproverId String?  @map("second_approver_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, departmentId])
+  @@map("approval_rules")
 }

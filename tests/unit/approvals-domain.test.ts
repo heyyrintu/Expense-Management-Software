@@ -51,36 +51,63 @@ describe("pendingLevel", () => {
   });
 });
 
-describe("canDecideAtLevel", () => {
+describe("canDecideAtLevel (chain-aware, 5.4)", () => {
   const base = {
     ownerId: "owner",
-    ownerApproverId: "ap1",
-    level1ApproverId: null as string | null,
+    responsibleLevel1Id: "ap1" as string | null,
+    decidedLevel1Id: null as string | null,
+    level2: null as Parameters<typeof canDecideAtLevel>[0]["level2"],
   };
 
-  it("level 1: only the assigned approver, never the owner", () => {
+  it("level 1: only the responsible approver, never the owner", () => {
     expect(canDecideAtLevel({ ...base, actorId: "ap1", actorRole: "approver", level: 1 })).toBe(true);
     expect(canDecideAtLevel({ ...base, actorId: "other", actorRole: "org_admin", level: 1 })).toBe(false);
     expect(
       canDecideAtLevel({
         ...base,
-        ownerApproverId: "owner",
+        responsibleLevel1Id: "owner",
         actorId: "owner",
         actorRole: "approver",
         level: 1,
       })
-    ).toBe(false); // self-approval blocked even if misconfigured as own approver
+    ).toBe(false); // self-approval blocked even if misrouted to the owner
     expect(
-      canDecideAtLevel({ ...base, ownerApproverId: null, actorId: "ap1", actorRole: "approver", level: 1 })
-    ).toBe(false); // no approver assigned → nobody can decide level 1
+      canDecideAtLevel({ ...base, responsibleLevel1Id: null, actorId: "ap1", actorRole: "approver", level: 1 })
+    ).toBe(false); // unroutable → nobody can decide level 1
   });
 
-  it("level 2: finance_admin+ only, distinct from owner and level-1 approver", () => {
-    const l2 = { ...base, level1ApproverId: "ap1", level: 2 as const };
+  it("level 2 (finance pool): finance_admin+, distinct from owner and L1 decider", () => {
+    const l2 = {
+      ...base,
+      decidedLevel1Id: "ap1",
+      level2: { type: "finance" } as const,
+      level: 2 as const,
+    };
     expect(canDecideAtLevel({ ...l2, actorId: "fa1", actorRole: "finance_admin" })).toBe(true);
     expect(canDecideAtLevel({ ...l2, actorId: "fa1", actorRole: "approver" })).toBe(false);
     expect(canDecideAtLevel({ ...l2, actorId: "ap1", actorRole: "finance_admin" })).toBe(false);
     expect(canDecideAtLevel({ ...l2, actorId: "owner", actorRole: "org_admin" })).toBe(false);
+  });
+
+  it("level 2 (chain-pinned user): exactly that user, approver+ role", () => {
+    const l2 = {
+      ...base,
+      decidedLevel1Id: "ap1",
+      level2: { type: "user", userId: "vp" } as const,
+      level: 2 as const,
+    };
+    expect(canDecideAtLevel({ ...l2, actorId: "vp", actorRole: "approver" })).toBe(true);
+    expect(canDecideAtLevel({ ...l2, actorId: "fa1", actorRole: "finance_admin" })).toBe(false); // pinned — pool excluded
+    expect(canDecideAtLevel({ ...l2, actorId: "vp", actorRole: "employee" })).toBe(false);
+    expect(
+      canDecideAtLevel({ ...l2, decidedLevel1Id: "vp", actorId: "vp", actorRole: "approver" })
+    ).toBe(false); // same person can't take both levels
+  });
+
+  it("no level-2 requirement → nobody can decide level 2", () => {
+    expect(
+      canDecideAtLevel({ ...base, actorId: "fa1", actorRole: "org_admin", level: 2 })
+    ).toBe(false);
   });
 });
 
