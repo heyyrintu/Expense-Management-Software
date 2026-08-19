@@ -25,7 +25,9 @@ export type AuditEntry = {
     | "RecurringTemplate"
     | "Delegation"
     | "BankStatementImport"
-    | "Complaint";
+    | "Complaint"
+    | "WhatsAppAccount"
+    | "WhatsAppLink";
   entityId: string;
   action: string; // dot-namespaced, e.g. "category.created"
   meta?: Record<string, unknown>;

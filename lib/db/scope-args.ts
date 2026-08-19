@@ -33,6 +33,9 @@ export const TENANT_MODELS = [
   "BankStatementLine",
   "Complaint",
   "ComplaintMessage",
+  "WhatsAppAccount",
+  "WhatsAppLink",
+  "WhatsAppInbound",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */

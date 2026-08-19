@@ -15,6 +15,9 @@ export const RATE_LIMITS = {
   upload: { limit: 60, windowMs: 60_000 }, // per org
   export: { limit: 10, windowMs: 60_000 }, // per org
   mutation: { limit: 300, windowMs: 60_000 }, // per org, coarse guard
+  whatsappInbound: { limit: 30, windowMs: 60_000 }, // per sending number
+  whatsappReply: { limit: 3, windowMs: 10 * 60_000 }, // canned replies per number
+  whatsappOtp: { limit: 5, windowMs: 60 * 60_000 }, // OTP sends per user
 } as const satisfies Record<string, RateLimitRule>;
 
 /**

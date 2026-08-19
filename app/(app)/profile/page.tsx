@@ -8,7 +8,10 @@ import {
 import { requireSession } from "@/lib/auth/guard";
 import { maskAccountNumber } from "@/lib/domain/reimbursement";
 import { scopedDb } from "@/lib/db/scoped";
+import { formatPhone } from "@/lib/whatsapp/phone";
+import { whatsappEnabledFor } from "@/lib/whatsapp";
 import { BankDetailsForm } from "./bank-details-form";
+import { WhatsAppPanel } from "./whatsapp-panel";
 
 export default async function ProfilePage() {
   const ctx = await requireSession();
@@ -23,6 +26,20 @@ export default async function ProfilePage() {
       upiId: true,
     },
   });
+
+  // WhatsApp is entirely hidden unless the org has the channel configured.
+  const whatsappEnabled = await whatsappEnabledFor(ctx.orgId);
+  const link = whatsappEnabled
+    ? ((await scopedDb(ctx.orgId).whatsAppLink.findUnique({
+        where: { userId: ctx.userId },
+        select: { phoneE164: true, verifiedAt: true, otpHash: true },
+      })) as { phoneE164: string; verifiedAt: Date | null; otpHash: string | null } | null)
+    : null;
+  const waStatus: "none" | "pending" | "linked" = !link
+    ? "none"
+    : link.verifiedAt
+      ? "linked"
+      : "pending";
 
   return (
     <section className="grid max-w-md gap-4">
@@ -70,6 +87,24 @@ export default async function ProfilePage() {
           />
         </CardContent>
       </Card>
+      {whatsappEnabled ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>WhatsApp</CardTitle>
+            <CardDescription>
+              Link your WhatsApp number to send receipts straight from your
+              phone and get updates about your reports.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WhatsAppPanel
+              status={waStatus}
+              phone={link ? formatPhone(link.phoneE164) : null}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
     </section>
   );
 }

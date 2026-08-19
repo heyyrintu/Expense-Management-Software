@@ -143,6 +143,9 @@ model Organization {
   bankLines      BankStatementLine[]
   complaints     Complaint[]
   complaintMessages ComplaintMessage[]
+  whatsappAccount   WhatsAppAccount?
+  whatsappLinks     WhatsAppLink[]
+  whatsappInbound   WhatsAppInbound[]
 
   @@map("organizations")
 }
@@ -197,6 +200,8 @@ model User {
   complaintsRaised   Complaint[] @relation("ComplaintRaisedBy")
   complaintsAssigned Complaint[] @relation("ComplaintAssignedTo")
   complaintMessages  ComplaintMessage[] @relation("ComplaintMessageAuthor")
+  whatsappLink       WhatsAppLink?
+  whatsappInbound    WhatsAppInbound[]
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -807,4 +812,87 @@ model ComplaintMessage {
 
   @@index([orgId, complaintId, createdAt])
   @@map("complaint_messages")
+}
+
+// WhatsApp Business account for an org (PLAN 8.1). Credentials are stored
+// encrypted (AES-256-GCM, lib/crypto/secret-box.ts) and never leave the
+// server. phoneNumberId is globally unique because it is how an inbound
+// webhook is routed to an org BEFORE any session exists — the one lookup in
+// this feature that legitimately precedes a tenant scope.
+model WhatsAppAccount {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  orgId            String    @unique @map("org_id") @db.Uuid
+  enabled          Boolean   @default(false)
+  phoneNumberId    String    @unique @map("phone_number_id")
+  businessPhone    String    @map("business_phone") // display only, E.164
+  tokenCipher      String?   @map("token_cipher")
+  appSecretCipher  String?   @map("app_secret_cipher")
+  verifyTokenCipher String?  @map("verify_token_cipher")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("whatsapp_accounts")
+}
+
+// A user's linked WhatsApp number. One number per user, and a number can only
+// be claimed once inside an org — the SAME number may be linked in another
+// org, so inbound routing is always (business number -> org) first, then
+// (from number -> user WITHIN that org).
+model WhatsAppLink {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  orgId        String    @map("org_id") @db.Uuid
+  userId       String    @unique @map("user_id") @db.Uuid
+  phoneE164    String    @map("phone_e164")
+  verifiedAt   DateTime? @map("verified_at")
+  otpHash      String?   @map("otp_hash")
+  otpExpiresAt DateTime? @map("otp_expires_at")
+  otpAttempts  Int       @default(0) @map("otp_attempts")
+  optedOut     Boolean   @default(false) @map("opted_out")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([orgId, phoneE164])
+  @@index([orgId, verifiedAt])
+  @@map("whatsapp_links")
+}
+
+enum WhatsAppInboundStatus {
+  pending
+  processed
+  ignored
+  failed
+
+  @@map("whatsapp_inbound_status")
+}
+
+// Raw inbound message, persisted for 8.2 to consume. waMessageId is unique so
+// Meta's at-least-once delivery cannot create duplicate expenses.
+model WhatsAppInbound {
+  id            String                @id @default(uuid(7)) @db.Uuid
+  orgId         String                @map("org_id") @db.Uuid
+  waMessageId   String                @unique @map("wa_message_id")
+  fromPhone     String                @map("from_phone")
+  phoneNumberId String                @map("phone_number_id")
+  userId        String?               @map("user_id") @db.Uuid
+  messageType   String                @map("message_type") // text | image | document | ...
+  text          String?
+  mediaId       String?               @map("media_id")
+  payload       Json                  @default("{}")
+  status        WhatsAppInboundStatus @default(pending)
+  error         String?
+  receivedAt    DateTime              @map("received_at")
+  processedAt   DateTime?             @map("processed_at")
+  createdAt     DateTime              @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId, status, receivedAt])
+  @@index([orgId, fromPhone, receivedAt])
+  @@map("whatsapp_inbound")
 }

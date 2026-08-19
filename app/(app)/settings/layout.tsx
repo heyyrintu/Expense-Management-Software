@@ -42,6 +42,9 @@ export default async function SettingsLayout({
             <Link href="/settings/email-ingestion" className="hover:underline">
               Email ingestion
             </Link>
+            <Link href="/settings/whatsapp" className="hover:underline">
+              WhatsApp
+            </Link>
           </>
         ) : null}
       </nav>

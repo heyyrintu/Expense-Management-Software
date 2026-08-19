@@ -69,6 +69,42 @@ Mailgun receiving route (`match_recipient("receipts+.*@$APP_MAIL_DOMAIN")` →
 verified active user email in that org; failures appear for org admins under
 Settings → Email ingestion.
 
+## WhatsApp channel (8.1)
+
+Entirely optional. With no configuration the feature is invisible — no nav
+entries, no profile panel, no webhook activity — and the rest of the app is
+unaffected.
+
+**Provider abstraction.** `lib/whatsapp/types.ts` defines the contract
+(`sendText`, `sendTemplate`, `sendMedia`, `downloadMedia`, `verifyWebhook`,
+`verifySignature`). `lib/whatsapp/meta.ts` implements it against the Meta Cloud
+API and is the only file that knows about Graph URLs or Meta payload shapes;
+swapping in Twilio means writing one class and changing `providerFor()` in
+`lib/whatsapp/config.ts`.
+
+**Configuration.** Either set the `WA_*` variables (see `.env.example`) for a
+single shared business number, or let each org enter its own credentials in
+**Settings > WhatsApp** (org_admin). Per-org values win; anything left blank
+falls back to env. Credentials are encrypted with AES-256-GCM before they are
+stored, using `APP_ENCRYPTION_KEY` — set that first or saving is refused.
+
+**Webhook.** Register `https://<host>/api/webhooks/whatsapp` in Meta ▸
+Configuration with the verify token from settings. `GET` answers the
+subscription handshake; `POST` requires a valid `X-Hub-Signature-256` computed
+over the raw body with the app secret.
+
+**Routing.** An inbound message is routed by the **business** number
+(`metadata.phone_number_id` -> `whatsapp_accounts.phone_number_id`, globally
+unique), never by the sender. The same personal number can be linked in
+several orgs; only after the org is known is the sender matched against that
+org's verified links. Unknown numbers get one rate-limited "link your number"
+reply and nothing is stored.
+
+**Linking.** Each person links their own number from **My profile**: enter the
+number (Indian numbers work without the country code), receive a 6-digit code
+over WhatsApp, confirm. Codes are stored only as SHA-256 hashes, expire in 10
+minutes, and allow 5 attempts.
+
 ## Non-negotiables (see CLAUDE.md)
 
 - Every table has `org_id`; all DB access via `scopedDb(orgId)`; RLS as defense-in-depth
