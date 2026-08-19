@@ -7,49 +7,20 @@
 // that delivers it. A gallery that only lists finished work looks complete
 // long before it is, and a review surface that flatters the project is
 // useless. Each row moves up as its task lands.
-import { BreakdownBarChart } from "@/components/charts/breakdown-bar";
-import { MonthlyBarChart } from "@/components/charts/monthly-bar";
-import { TrendAreaChart } from "@/components/charts/trend-area";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
 import { StatusBadge } from "@/components/status-badge";
-import { CHART_SERIES } from "@/lib/design/chart-colors";
 import { Block, DebtNote, Group, Panel, Row } from "./shared";
+
+// Charts moved to the StatCard-and-charts section in D1.4, where they sit
+// beside the theme that governs them.
 
 /** Fixed dates so the SLA specimens don't change grade overnight. */
 const NOW = new Date("2026-08-19T10:00:00Z");
 const DAYS = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
 
-const MONTHLY = [
-  { month: "Mar", total: 412_000 },
-  { month: "Apr", total: 388_500 },
-  { month: "May", total: 501_200 },
-  { month: "Jun", total: 447_800 },
-  { month: "Jul", total: 623_400 },
-  { month: "Aug", total: 512_900 },
-];
-
-const BREAKDOWN = [
-  { label: "Travel", total: 288_400 },
-  { label: "Meals", total: 121_900 },
-  { label: "Software", total: 96_500 },
-  { label: "Lodging", total: 74_300 },
-  { label: "Other", total: 31_800 },
-];
-
-// TrendAreaChart stacks its series, so the specimen uses categories that
-// legitimately sum to a total — stacking "submitted" on "approved" would
-// teach a chart that lies.
-const TREND = MONTHLY.map((m, i) => ({
-  month: m.month,
-  Travel: Math.round(m.total * (0.55 + i * 0.01)),
-  Meals: Math.round(m.total * 0.25),
-  Software: Math.round(m.total * (0.2 - i * 0.01)),
-}));
-
 /** §6.2 components not yet built, with the task that delivers each. */
 const ROSTER = [
-  { name: "StatCard", purpose: "KPI label, value, delta chip, sparkline", task: "D1.4" },
   { name: "AmountInput", purpose: "Paste-tolerant, minor-unit safe", task: "D2.1" },
   { name: "ReceiptDropzone", purpose: "Drag-and-drop and camera capture", task: "D2.2" },
   { name: "OCRReviewCard", purpose: "Extracted fields with confidence emphasis", task: "D2.2" },
@@ -111,48 +82,6 @@ export function DomainSection() {
             warning token, and carries its message in a <code>title</code>
             attribute instead of a Tooltip — so it is invisible to keyboard
             users. Both are fixed when the capture flow is restyled.
-          </DebtNote>
-        </Panel>
-      </Block>
-
-      <Block
-        title="Charts"
-        description="Recharts, one accent for the primary series and a restrained categorical palette for the rest — never a rainbow. Read-only in v1: no brush, no zoom."
-      >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Monthly spend — single series">
-            <MonthlyBarChart data={MONTHLY} currency="INR" />
-          </Panel>
-          <Panel title="Category breakdown — secondary series">
-            <BreakdownBarChart data={BREAKDOWN} currency="INR" />
-          </Panel>
-          <Panel title="Spend by category over time — stacked categorical" className="lg:col-span-2">
-            <TrendAreaChart
-              series={TREND}
-              labels={["Travel", "Meals", "Software"]}
-              currency="INR"
-            />
-          </Panel>
-        </div>
-        <Panel title="Series palette">
-          <div className="flex flex-wrap gap-3">
-            {CHART_SERIES.map((color, i) => (
-              <div key={color} className="grid gap-1">
-                <span
-                  className="border-line block size-12 rounded-md border"
-                  style={{ background: color }}
-                />
-                <code className="text-meta text-text-tertiary tabular">
-                  {i === CHART_SERIES.length - 1 ? "other" : `series ${i + 1}`}
-                </code>
-              </div>
-            ))}
-          </div>
-          <DebtNote owner="D1.4">
-            The series palette predates the token layer — it is centralised in
-            lib/design/chart-colors.ts but not yet aligned to the accent scale,
-            and the grid, axes and tooltips still use Recharts defaults rather
-            than the card styling §6.2 asks for.
           </DebtNote>
         </Panel>
       </Block>

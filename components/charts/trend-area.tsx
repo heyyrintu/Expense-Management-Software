@@ -10,21 +10,29 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CHART_SERIES } from "@/lib/design/chart-colors";
-import { formatMoney } from "@/lib/money";
+import { useReducedMotion } from "framer-motion";
 
-// Palette lives in lib/design/chart-colors so every chart shares one list.
-const COLORS = CHART_SERIES;
+import {
+  animationProps,
+  axisProps,
+  seriesColor,
+} from "@/lib/charts/theme";
+import { formatMoney } from "@/lib/money";
+import { gridProps } from "@/lib/charts/theme";
+import { ChartFrame, ChartTooltipContent } from "./chart-frame";
 
 export function TrendAreaChart({
   series,
   labels,
   currency,
+  loading = false,
 }: {
   series: Array<Record<string, number | string>>;
   labels: string[];
   currency: string;
+  loading?: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
   // Each series key holds MAJOR units — the stacked area only needs a
   // magnitude. A parallel `minor:<label>` key keeps the untouched integer so
   // the tooltip formats true minor units rather than multiplying a float back
@@ -38,35 +46,61 @@ export function TrendAreaChart({
     }
     return out;
   });
+
+  // The fallback table needs one number per period, and a stacked chart's
+  // honest single number is the stack total — which is what the reader sees.
+  const points = series.map((m) => ({
+    label: String(m.month),
+    value: labels.reduce((sum, l) => sum + Number(m[l] ?? 0), 0),
+  }));
+
+  const summary =
+    points.length === 0
+      ? "No data"
+      : `Stacked spend across ${labels.join(", ")} over ${points.length} periods, ` +
+        `totalling ${formatMoney(
+          points.reduce((s, p) => s + p.value, 0),
+          currency
+        )}`;
+
   return (
-    <div className="h-72 w-full">
-      <ResponsiveContainer>
-        <AreaChart data={display} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11 }} width={70} />
-          <Tooltip
-            // Recharts formatters must return a string, so <Amount> can't be
-            // used here — formatMoney keeps the formatting in lib/money.ts.
-            formatter={(_value, name, item) => [
-              formatMoney(Number(item?.payload?.[`minor:${String(name)}`] ?? 0), currency),
-              String(name),
-            ]}
-          />
-          <Legend />
-          {labels.map((l, i) => (
-            <Area
-              key={l}
-              type="monotone"
-              dataKey={l}
-              stackId="1"
-              stroke={COLORS[i % COLORS.length]}
-              fill={COLORS[i % COLORS.length]}
-              fillOpacity={0.5}
+    <ChartFrame
+      title="Spend over time"
+      summary={summary}
+      points={points}
+      currency={currency}
+      loading={loading}
+      empty={{ headline: "No spend in this period", description: "Widen the date range to see more." }}
+    >
+      <div className="h-72 w-full">
+        <ResponsiveContainer>
+          <AreaChart data={display} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+            <CartesianGrid {...gridProps} />
+            <XAxis dataKey="month" {...axisProps} />
+            <YAxis width={70} {...axisProps} />
+            <Tooltip
+              cursor={{ stroke: "var(--line-strong)" }}
+              content={<ChartTooltipContent currency={currency} />}
             />
-          ))}
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+            <Legend
+              iconType="circle"
+              wrapperStyle={{ fontSize: 12, color: "var(--fg-tertiary)" }}
+            />
+            {labels.map((l, i) => (
+              <Area
+                key={l}
+                type="monotone"
+                dataKey={l}
+                stackId="1"
+                stroke={seriesColor(i)}
+                fill={seriesColor(i)}
+                fillOpacity={0.5}
+                {...animationProps(reducedMotion)}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </ChartFrame>
   );
 }

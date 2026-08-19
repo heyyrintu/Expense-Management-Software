@@ -8,11 +8,12 @@
 // would have been less work and would have quietly lied to anyone with more
 // than 200 expenses — "no results" when the match was on page three.
 //
-// Paging stays client-side: the query still takes 200 in one go. DataTable
-// supports `pagination={{ mode: "server", … }}` for a screen whose query
-// paginates, which this one should become once the row count justifies it.
+// PAGING IS SERVER-SIDE too, as of D1.4. It had to become so: the KPI cards
+// aggregate the whole filtered set, and a table capped at the first 200 rows
+// would have made the cards disagree with the list they link to the moment
+// anyone crossed the cap — which is exactly what §7.4 forbids.
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { DataTable, selectionColumn } from "@/components/data-table";
 import type { DataTableColumn } from "@/components/data-table";
@@ -23,6 +24,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { DateCell } from "@/components/ui/date-cell";
+import { StatCard } from "@/components/ui/stat-card";
+import { countHint, type ExpenseStat } from "@/lib/domain/expense-stats";
 import { statusEntry } from "@/lib/design/status";
 import {
   EMPTY_EXPENSE_FILTERS,
@@ -30,6 +33,9 @@ import {
   hasActiveFilters,
 } from "@/lib/schemas/expense-filters";
 import { cn } from "@/lib/utils";
+
+/** §6.1: pagination past 50 rows. The page's query slices by this too. */
+export const EXPENSE_PAGE_SIZE = 50;
 
 /** Serialisable row — this crosses the server/client boundary. */
 export type ExpenseTableRow = {
@@ -49,14 +55,37 @@ export function ExpensesTable({
   orgCurrency,
   categories,
   projects,
+  stats,
+  totalRows,
+  pageIndex,
 }: {
   rows: ExpenseTableRow[];
   orgCurrency: string;
   categories: Array<{ id: string; name: string }>;
   projects: Array<{ id: string; name: string }>;
+  stats: ExpenseStat[];
+  totalRows: number;
+  pageIndex: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { filters, setFilters, pending } = useUrlFilters();
+
+  // Page lives in the URL beside the filters, so a paged view is as
+  // shareable as a filtered one. It is NOT part of the filter schema: a page
+  // number is a position, not a predicate, and letting it into the filters
+  // would put it on every KPI href.
+  const goToPage = React.useCallback(
+    (next: number) => {
+      const params = new URLSearchParams(searchParams);
+      if (next <= 0) params.delete("page");
+      else params.set("page", String(next + 1));
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const filterConfig = React.useMemo<FilterBarConfig>(
     () => ({
@@ -154,17 +183,39 @@ export function ExpensesTable({
     <div
       aria-busy={pending || undefined}
       className={cn(
-        "transition-opacity duration-fast ease-out",
+        "grid gap-4 transition-opacity duration-fast ease-out",
         pending && "opacity-60"
       )}
     >
+      {/* Every card totals the SAME filtered query the table below runs, and
+          links to that query narrowed to one status — so the figure and the
+          rows it opens can never drift (§7.4). */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard
+            key={stat.key}
+            label={stat.label}
+            value={stat.total}
+            currency={orgCurrency}
+            hint={countHint(stat.count)}
+            href={stat.key === "total" ? undefined : stat.href}
+          />
+        ))}
+      </div>
+
       <DataTable
       label="My expenses"
       columns={columns}
       data={rows}
       getRowId={(row) => row.id}
       enableSelection
-      pagination={{ mode: "client" }}
+      pagination={{
+        mode: "server",
+        pageIndex,
+        pageSize: EXPENSE_PAGE_SIZE,
+        totalRows,
+        onPageChange: goToPage,
+      }}
       onRowClick={(row) => router.push(`/expenses/${row.id}`)}
       empty={
         // Two different situations, and conflating them is a classic
