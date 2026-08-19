@@ -31,7 +31,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 
 - [x] **D3.1 Approval queue**: flagged-first ordering with warning edge accent, decide-without-opening row density, optimistic approve with 5s Undo toast, bulk-approve gating with explanatory disabled state, reject/send-back dialogs with mandatory reason.
 - [x] **D3.2 Finance queue & payment proof**: reimbursement batch flow UI, PaymentProofViewer lightbox, partial-payment balance display, batch summary confirmation before committing money (never optimistic).
-- [ ] **D3.3 Dashboards**: employee / approver / finance layouts per §7.4, responsive grid, persisted URL filters, KPI→table click-through, loading skeletons matching final layout.
+- [x] **D3.3 Dashboards**: employee / approver / finance layouts per §7.4, responsive grid, persisted URL filters, KPI→table click-through, loading skeletons matching final layout.
 
 ## Milestone D4 — Advanced surfaces
 

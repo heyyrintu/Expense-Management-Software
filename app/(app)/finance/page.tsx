@@ -2,6 +2,7 @@ import { Amount } from "@/components/ui/amount";
 import { PageHeader } from "@/components/ui/page-header";
 import type { PaymentProof } from "@/components/ui/payment-proof-viewer";
 import { requireRole } from "@/lib/auth/guard";
+import { payableQuery, summarisePayable } from "@/lib/domain/payable";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
 import { scopedDb } from "@/lib/db/scoped";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
@@ -41,9 +42,10 @@ export default async function FinancePage() {
   const [org, payable, recent] = await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
     db.expenseReport.findMany({
-      where: { status: { in: ["approved", "partially_reimbursed"] } },
-      orderBy: { submittedAt: "asc" },
-      take: 200,
+      // Shared with the dashboard's "Outstanding to employees" card so the
+      // two are the same SET, not two queries that happen to look alike
+      // (lib/domain/payable.ts).
+      ...payableQuery(),
       include: {
         // Bank fields are read ONLY to compute a presence boolean below. The
         // account number never leaves the server (CLAUDE.md) — the client
@@ -107,7 +109,8 @@ export default async function FinancePage() {
     }))
   );
 
-  const outstandingTotal = items.reduce((sum, i) => sum + i.balance, 0);
+  // Same helper the dashboard card uses, over the same rows.
+  const outstandingTotal = summarisePayable(payable).outstanding;
 
   return (
     <>

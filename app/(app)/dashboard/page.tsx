@@ -1,69 +1,102 @@
-import type { ReactNode } from "react";
+// Dashboards (D3.3) — DESIGN-PRD §7.4.
+//
+// One route, three screens. Which one you get is decided by the scope the
+// server resolves from your role, never by a query parameter:
+//
+//   employee   my spend · awaiting approval · pending reimbursement · drafts
+//   approver   the queue waiting on you, then the team's spend
+//   finance    the four cards §7.4 names, org-wide
+//
+// ── THE ONE RULE THIS SCREEN EXISTS TO KEEP ───────────────────────────────
+// "Every KPI clicks through to its filtered table — the number and the list
+// must always agree." (§7.4)
+//
+// It holds here because there is ONE where-clause. The KPI strip, the trend
+// chart, the category breakdown and the top-spender list are all built from
+// the same `where` — the resolved scope, ANDed with the URL's filters — and
+// every card's href is that same filter state serialised back out. A card and
+// the list it opens are the same query narrowed differently, so they cannot
+// drift.
+//
+// The single exception is finance's "Outstanding to employees", which is
+// report totals minus payments and therefore not an expense sum at all. It is
+// typed as `{ kind: "different" }` in lib/domain/dashboard-kpi.ts, which
+// forces a written reason, and that reason renders under the strip. See the
+// note there.
+// ──────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
 
 import { BreakdownBarChart } from "@/components/charts/breakdown-bar";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar";
+import type { FacetConfig } from "@/components/filters";
+import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import { DateCell } from "@/components/ui/date-cell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { KpiStrip } from "@/components/ui/kpi-strip";
+import { PageHeader } from "@/components/ui/page-header";
+import { RankList, type RankRow } from "@/components/ui/rank-list";
+import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
-import { roleAtLeast } from "@/lib/auth/roles";
-import {
-  avgApprovalMs,
-  countViolations,
-  formatDurationMs,
-  lastMonthKeys,
-  monthlyTotals,
-  sumAmounts,
-  topMerchants,
-  totalsBy,
-  type ExpenseAggRow,
-} from "@/lib/domain/dashboard";
-import { outstandingAdvance } from "@/lib/domain/advance";
-import { complaintSummary } from "@/lib/complaints/queries";
-import { buildExpenseWhere } from "@/lib/domain/expense-query";
-import { resolveExpenseScope } from "@/lib/domain/expense-scope";
 import { scopedDb } from "@/lib/db/scoped";
-import { parseFilters } from "@/lib/schemas/dashboard";
+import { cn } from "@/lib/utils";
+import { approvalQueueFor } from "@/lib/domain/approval-queue";
+import {
+  buildApproverKpis,
+  buildEmployeeKpis,
+  buildFinanceKpis,
+  expenseListHref,
+  type DashboardKpi,
+} from "@/lib/domain/dashboard-kpi";
+import { lastMonthKeys, monthlyTotals } from "@/lib/domain/dashboard";
+import { applyExpenseFilters, EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
+import {
+  narrowViewScope,
+  resolveExpenseScope,
+  viewScopeWhere,
+  type ExpenseViewScope,
+} from "@/lib/domain/expense-scope";
+import type { StatusGroup } from "@/lib/domain/expense-stats";
+import { payableQuery, summarisePayable } from "@/lib/domain/payable";
+import { parseExpenseFilters } from "@/lib/schemas/expense-filters";
+import { DashboardFilters } from "./dashboard-filters";
+import {
+  DASH_CHART_GRID,
+  DASH_CHART_MAIN,
+  DASH_CHART_SIDE,
+  DASH_PANEL_GRID,
+  DASH_PANEL_HALF,
+  DASH_STACK,
+} from "./layout-grid";
 
-type DbExpenseRow = {
-  amount: number;
+/** How many months of history the trend chart and the deltas read. */
+const TREND_MONTHS = 6;
+/** Rows in the "recent expenses" panel. Enough to recognise this week. */
+const RECENT_LIMIT = 6;
+
+type TrendRow = { date: Date; baseAmount: number };
+type BreakdownRow = {
+  categoryId: string;
+  _sum: { baseAmount: number | null };
+  _count: { _all: number };
+};
+type SpenderRow = {
+  userId: string;
+  _sum: { baseAmount: number | null };
+  _count: { _all: number };
+};
+type RecentRow = {
+  id: string;
+  merchant: string;
   baseAmount: number;
   currency: string;
+  amount: number;
   date: Date;
   status: string;
-  merchant: string;
-  categoryId: string;
-  projectId: string | null;
-  userId: string;
-  flags: unknown;
-  billable: boolean;
-  clientId: string | null;
-  client: { name: string } | null;
-  user: { name: string; departmentId: string | null };
+  user: { name: string };
   category: { name: string };
-  project: { name: string } | null;
 };
-
-function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl">{value}</CardTitle>
-        {hint ? <CardDescription>{hint}</CardDescription> : null}
-      </CardHeader>
-    </Card>
-  );
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -71,424 +104,369 @@ export default async function DashboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const ctx = await requireSession();
+  const acting = await resolveActing(ctx);
   const db = scopedDb(ctx.orgId);
-  const filters = parseFilters(await searchParams);
-  const isApprover = roleAtLeast(ctx.role, "approver");
-  const isFinance = roleAtLeast(ctx.role, "finance_admin");
+  const filters = parseExpenseFilters(await searchParams);
 
-  const scope = await resolveExpenseScope(db, ctx);
-  const where = buildExpenseWhere(scope, filters);
-
-  const [org, user, dbRows, categories, departments, projects] = await Promise.all([
-    db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
-    db.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { name: true } }),
-    db.expense.findMany({
-      where,
-      select: {
-        amount: true,
-        baseAmount: true,
-        currency: true,
-        date: true,
-        status: true,
-        merchant: true,
-        categoryId: true,
-        projectId: true,
-        userId: true,
-        flags: true,
-        billable: true,
-        clientId: true,
-        client: { select: { name: true } },
-        user: { select: { name: true, departmentId: true } },
-        category: { select: { name: true } },
-        project: { select: { name: true } },
-      },
-    }) as Promise<DbExpenseRow[]>,
-    db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-  ]);
-
-  const deptNames = new Map<string, string>(
-    departments.map((d: { id: string; name: string }) => [d.id, d.name])
+  // Scope comes from the ROLE, server-side. Unlike /expenses there is no
+  // `?scope=` here: a dashboard is the widest view its reader is entitled to,
+  // and offering a narrower one would just be the filter bar with worse
+  // wording.
+  const ceiling = await resolveExpenseScope(db, ctx);
+  const view: ExpenseViewScope = narrowViewScope(
+    ceiling,
+    ceiling.kind === "org" ? "org" : ceiling.kind === "team" ? "team" : "mine"
   );
-  const rows: ExpenseAggRow[] = dbRows.map((e) => ({
-    amount: e.baseAmount, // dashboards aggregate in org-base currency (6.4)
-    date: e.date,
-    status: e.status,
-    merchant: e.merchant,
-    categoryId: e.categoryId,
-    projectId: e.projectId,
-    userId: e.userId,
-    departmentId: e.user.departmentId,
-    flagCount: Array.isArray(e.flags) ? e.flags.length : 0,
-  }));
-  const labelOf = {
-    category: new Map(dbRows.map((e) => [e.categoryId, e.category.name])),
-    project: new Map(dbRows.map((e) => [e.projectId ?? "—", e.project?.name ?? "No project"])),
-    user: new Map(dbRows.map((e) => [e.userId, e.user.name])),
-  };
+  const scopeWhere = viewScopeWhere(ceiling, view, acting.effectiveUserId);
+
+  // THE where-clause. Everything below is this, narrowed.
+  const where = applyExpenseFilters(scopeWhere, filters);
 
   const now = new Date();
-  const thisMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-  const months = lastMonthKeys(now, 6);
-  const monthly = monthlyTotals(rows, months);
-  const thisMonth = monthly.find((m) => m.month === thisMonthKey)?.total ?? 0;
-  const pending = sumAmounts(rows.filter((r) => r.status === "submitted"));
-  const reimbursed = sumAmounts(rows.filter((r) => r.status === "reimbursed"));
-  const byCategory = totalsBy(
-    rows,
-    (r) => r.categoryId,
-    (k) => labelOf.category.get(k) ?? "Unknown"
+  const months = lastMonthKeys(now, TREND_MONTHS);
+  const trendFrom = new Date(`${months[0]}-01T00:00:00.000Z`);
+
+  // The trend keeps every filter EXCEPT the date range, and always shows the
+  // same six months. A six-month chart of a one-week filter is one bar with
+  // five empty slots beside it, and a "trend" whose window moves with the
+  // filter isn't a trend — it's the KPI again, drawn wider. Dropping the
+  // range here rather than spreading a `date` over `where` matters: the
+  // filters live inside an AND, so an outer date would have intersected with
+  // the reader's range instead of replacing it.
+  const trendWhere = {
+    ...applyExpenseFilters(scopeWhere, { ...filters, from: undefined, to: undefined }),
+    date: { gte: trendFrom },
+  };
+
+  const [org, user, statusGroups, byCategoryRows, categories, projects, departments, trendRows, recent] =
+    await Promise.all([
+      db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
+      db.user.findUniqueOrThrow({
+        where: { id: acting.effectiveUserId },
+        select: { name: true },
+      }),
+      // The KPI strip. Same `where` as everything else on the screen, so
+      // "total spend" is the sum of the rows the charts describe.
+      db.expense.groupBy({
+        by: ["status"],
+        where,
+        _sum: { baseAmount: true },
+        _count: { _all: true },
+      }) as Promise<StatusGroup[]>,
+      db.expense.groupBy({
+        by: ["categoryId"],
+        where,
+        _sum: { baseAmount: true },
+        _count: { _all: true },
+      }) as Promise<BreakdownRow[]>,
+      db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }) as Promise<
+        Array<{ id: string; name: string }>
+      >,
+      db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }) as Promise<
+        Array<{ id: string; name: string }>
+      >,
+      db.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }) as Promise<
+        Array<{ id: string; name: string }>
+      >,
+      // The trend deliberately IGNORES the date filter and always reads the
+      // last six months: a six-month chart of a one-week filter is one bar,
+      // and a "trend" that changes shape with the range isn't a trend. Every
+      // other dimension of the filter still applies, and the chart says so.
+      db.expense.findMany({
+        where: trendWhere,
+        select: { date: true, baseAmount: true },
+      }) as Promise<TrendRow[]>,
+      db.expense.findMany({
+        where,
+        orderBy: EXPENSE_LIST_ORDER,
+        take: RECENT_LIMIT,
+        select: {
+          id: true,
+          merchant: true,
+          amount: true,
+          baseAmount: true,
+          currency: true,
+          date: true,
+          status: true,
+          user: { select: { name: true } },
+          category: { select: { name: true } },
+        },
+      }) as Promise<RecentRow[]>,
+    ]);
+
+  const monthly = monthlyTotals(
+    trendRows.map((r) => ({ amount: r.baseAmount, date: r.date })),
+    months
   );
 
-  // finance-only aggregates
-  const byDepartment = isFinance
-    ? totalsBy(
-        rows,
-        (r) => r.departmentId,
-        (k) => (k === null ? "No department" : (deptNames.get(k) ?? "Unknown"))
-      )
-    : [];
-  const byProject = isFinance
-    ? totalsBy(rows, (r) => r.projectId, (k) => labelOf.project.get(k ?? "—") ?? "No project")
-    : [];
-  const byUser = isApprover
-    ? totalsBy(rows, (r) => r.userId, (k) => labelOf.user.get(k) ?? "Unknown")
-    : [];
-  const merchants = isFinance ? topMerchants(rows, 8) : [];
-  const billableByClient = isFinance
-    ? (() => {
-        const map = new Map<string, { label: string; total: number; count: number }>();
-        for (const e of dbRows) {
-          if (!e.billable) continue;
-          const key = e.clientId ?? "—";
-          const entry = map.get(key) ?? {
-            label: e.client?.name ?? "No client set",
-            total: 0,
-            count: 0,
-          };
-          entry.total += e.baseAmount;
-          entry.count += 1;
-          map.set(key, entry);
-        }
-        return [...map.entries()]
-          .map(([key, v]) => ({ key, ...v }))
-          .sort((a, b) => b.total - a.total);
-      })()
-    : [];
-  const violations = isFinance ? countViolations(rows) : 0;
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  const byCategory: RankRow[] = byCategoryRows
+    .map((r) => ({
+      key: r.categoryId,
+      label: categoryName.get(r.categoryId) ?? "Uncategorised",
+      total: r._sum.baseAmount ?? 0,
+      count: r._count._all,
+      // Every row opens the expenses behind it — the screen's filters plus
+      // this one category. Same contract as the cards above.
+      href: expenseListHref(
+        { ...filters, categoryId: [r.categoryId] },
+        { scope: view }
+      ),
+    }))
+    .sort((a, b) => b.total - a.total);
 
-  let approvalTime: string | null = null;
+  // ── The three dashboards ────────────────────────────────────────────────
+  const isApprover = ceiling.kind !== "employee";
+  const isFinance = ceiling.kind === "org";
+
+  let kpis: DashboardKpi[];
+  let spenders: RankRow[] = [];
+
   if (isFinance) {
-    const decided = (await db.expenseReport.findMany({
-      where: { status: { in: ["approved", "reimbursed"] }, submittedAt: { not: null } },
-      select: {
-        submittedAt: true,
-        approvals: {
-          where: { action: "approved" },
-          orderBy: { actedAt: "desc" },
-          take: 1,
-          select: { actedAt: true },
-        },
+    const [payable, spenderRows] = await Promise.all([
+      db.expenseReport.findMany({
+        ...payableQuery(),
+        select: { total: true, reimbursements: { select: { amountPaid: true } } },
+      }) as Promise<Array<{ total: number; reimbursements: Array<{ amountPaid: number }> }>>,
+      db.expense.groupBy({
+        by: ["userId"],
+        where,
+        _sum: { baseAmount: true },
+        _count: { _all: true },
+      }) as Promise<SpenderRow[]>,
+    ]);
+
+    kpis = buildFinanceKpis({
+      groups: statusGroups,
+      filters,
+      currency: org.currency,
+      monthly,
+      payable: summarisePayable(payable),
+    });
+
+    const people = await db.user.findMany({
+      where: { id: { in: spenderRows.map((r) => r.userId) } },
+      select: { id: true, name: true },
+    }) as Array<{ id: string; name: string }>;
+    const personName = new Map(people.map((p) => [p.id, p.name]));
+    spenders = spenderRows
+      .map((r) => ({
+        key: r.userId,
+        label: personName.get(r.userId) ?? "Unknown",
+        total: r._sum.baseAmount ?? 0,
+        count: r._count._all,
+        href: expenseListHref({ ...filters, userId: [r.userId] }, { scope: view }),
+      }))
+      .sort((a, b) => b.total - a.total);
+  } else if (isApprover) {
+    const queue = await approvalQueueFor(db, ctx);
+    kpis = buildApproverKpis({
+      groups: statusGroups,
+      filters,
+      currency: org.currency,
+      monthly,
+      queue: {
+        count: queue.length,
+        total: queue.reduce((sum, q) => sum + q.total, 0),
+        flagged: queue.filter((q) => q.flagged).length,
       },
-      take: 500,
-    })) as Array<{ submittedAt: Date | null; approvals: { actedAt: Date }[] }>;
-    const ms = avgApprovalMs(
-      decided
-        .filter((r) => r.submittedAt && r.approvals.length > 0)
-        .map((r) => ({ submittedAt: r.submittedAt!, decidedAt: r.approvals[0].actedAt }))
-    );
-    approvalTime = ms === null ? null : formatDurationMs(ms);
+    });
+
+    const spenderRows = (await db.expense.groupBy({
+      by: ["userId"],
+      where,
+      _sum: { baseAmount: true },
+      _count: { _all: true },
+    })) as SpenderRow[];
+    const people = (await db.user.findMany({
+      where: { id: { in: spenderRows.map((r) => r.userId) } },
+      select: { id: true, name: true },
+    })) as Array<{ id: string; name: string }>;
+    const personName = new Map(people.map((p) => [p.id, p.name]));
+    spenders = spenderRows
+      .map((r) => ({
+        key: r.userId,
+        label: personName.get(r.userId) ?? "Unknown",
+        total: r._sum.baseAmount ?? 0,
+        count: r._count._all,
+        href: expenseListHref({ ...filters, userId: [r.userId] }, { scope: view }),
+      }))
+      .sort((a, b) => b.total - a.total);
+  } else {
+    kpis = buildEmployeeKpis({
+      groups: statusGroups,
+      filters,
+      currency: org.currency,
+      monthly,
+    });
   }
 
-  const myOpenAdvances = (await db.advance.findMany({
-    where: { userId: ctx.userId, status: { in: ["disbursed", "partially_settled"] } },
-    select: { amount: true, settledAmount: true },
-  })) as Array<{ amount: number; settledAmount: number }>;
-  // Complaints widget (7.3): finance sees the org-wide queue, everyone else
-  // sees their own open disputes. Same query module as /complaints.
-  const complaints = await complaintSummary(
-    db,
-    isFinance ? {} : { raisedById: ctx.userId }
-  );
+  // Facets are role-shaped: an employee filtering by department would be
+  // filtering a set of one. Not sent rather than sent-and-hidden.
+  const facets: FacetConfig[] = [
+    {
+      key: "categoryId",
+      label: "Category",
+      options: categories.map((c) => ({ value: c.id, label: c.name })),
+    },
+    ...(isFinance
+      ? ([
+          {
+            key: "departmentId" as const,
+            label: "Department",
+            options: departments.map((d) => ({ value: d.id, label: d.name })),
+          },
+          {
+            key: "projectId" as const,
+            label: "Project",
+            options: projects.map((p) => ({ value: p.id, label: p.name })),
+          },
+        ] satisfies FacetConfig[])
+      : []),
+  ];
 
-  const advanceBalance = myOpenAdvances.reduce(
-    (sum, a) => sum + outstandingAdvance(a.amount, a.settledAmount),
-    0
-  );
+  const title = isFinance
+    ? "Finance overview"
+    : isApprover
+      ? "Team overview"
+      : `Welcome, ${user.name}`;
+  const description = isFinance
+    ? "Every expense in the organisation. Each figure opens the list it was counted from."
+    : isApprover
+      ? "You and everyone who reports to you."
+      : "Your spend, and what is still moving through approval.";
 
-  const exportQs = new URLSearchParams(
-    Object.entries(filters).filter(([, v]) => v !== undefined) as [string, string][]
-  ).toString();
-
-  const scopeLabel =
-    scope.kind === "org" ? "organization" : scope.kind === "team" ? "your team" : "you";
+  const hasAnything = statusGroups.length > 0;
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Welcome, {user.name}</h1>
-          <p className="text-muted-foreground text-sm">
-            Numbers below cover {scopeLabel}
-            {filters.from || filters.to || filters.categoryId || filters.status
-              ? " (filtered)"
-              : ""}
-            .
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <a href={`/api/exports/expenses${exportQs ? `?${exportQs}` : ""}`}>
-            Export CSV
-          </a>
-        </Button>
-      </div>
+    <>
+      <PageHeader
+        title={title}
+        description={description}
+        action={
+          <Button asChild>
+            <Link href="/expenses/new">Add expense</Link>
+          </Button>
+        }
+      />
 
-      {isApprover ? (
-        <form className="flex flex-wrap items-end gap-2" action="/dashboard" method="GET">
-          <div className="grid gap-1">
-            <label htmlFor="from" className="text-muted-foreground text-xs">From</label>
-            <Input id="from" name="from" type="date" defaultValue={filters.from ?? ""} className="w-40" />
-          </div>
-          <div className="grid gap-1">
-            <label htmlFor="to" className="text-muted-foreground text-xs">To</label>
-            <Input id="to" name="to" type="date" defaultValue={filters.to ?? ""} className="w-40" />
-          </div>
-          <div className="grid gap-1">
-            <label htmlFor="categoryId" className="text-muted-foreground text-xs">Category</label>
-            <NativeSelect id="categoryId" name="categoryId" defaultValue={filters.categoryId ?? ""} className="w-40">
-              <option value="">All categories</option>
-              {categories.map((c: { id: string; name: string }) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </NativeSelect>
-          </div>
-          {isFinance ? (
-            <>
-              <div className="grid gap-1">
-                <label htmlFor="departmentId" className="text-muted-foreground text-xs">Department</label>
-                <NativeSelect id="departmentId" name="departmentId" defaultValue={filters.departmentId ?? ""} className="w-40">
-                  <option value="">All departments</option>
-                  {departments.map((d: { id: string; name: string }) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <div className="grid gap-1">
-                <label htmlFor="projectId" className="text-muted-foreground text-xs">Project</label>
-                <NativeSelect id="projectId" name="projectId" defaultValue={filters.projectId ?? ""} className="w-40">
-                  <option value="">All projects</option>
-                  {projects.map((p: { id: string; name: string }) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </NativeSelect>
-              </div>
-            </>
-          ) : null}
-          <div className="grid gap-1">
-            <label htmlFor="status" className="text-muted-foreground text-xs">Status</label>
-            <NativeSelect id="status" name="status" defaultValue={filters.status ?? ""} className="w-36">
-              <option value="">All statuses</option>
-              <option value="draft">draft</option>
-              <option value="submitted">submitted</option>
-              <option value="approved">approved</option>
-              <option value="rejected">rejected</option>
-              <option value="reimbursed">reimbursed</option>
-            </NativeSelect>
-          </div>
-          <Button type="submit" variant="outline">Apply</Button>
-        </form>
-      ) : null}
+      <div className={DASH_STACK}>
+        <DashboardFilters facets={facets} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat
-          label="Spend this month"
-          value={<Amount value={thisMonth} currency={org.currency} size="display" />}
-        />
-        <Stat
-          label="Awaiting approval"
-          value={<Amount value={pending} currency={org.currency} size="display" />}
-          hint="submitted expenses"
-        />
-        <Stat
-          label="Reimbursed"
-          value={<Amount value={reimbursed} currency={org.currency} size="display" />}
-          hint="in current scope/filters"
-        />
-      </div>
+        <KpiStrip kpis={kpis} />
 
-      {complaints.open > 0 ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {isFinance ? "Open complaints" : "My open complaints"}
-            </CardTitle>
-            <CardDescription>
-              {isFinance
-                ? "Disputes waiting on finance — 5 business-day target."
-                : "Disputes you've raised that are still being looked at."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-4">
-            <Stat label="Open" value={String(complaints.open)} />
-            <Stat label="In review" value={String(complaints.inReview)} />
-            <Stat
-              label="Past SLA"
-              value={String(complaints.breached)}
-              hint={complaints.breached > 0 ? "needs attention today" : undefined}
+        <div className={DASH_CHART_GRID}>
+          <div className={DASH_CHART_MAIN}>
+            <MonthlyBarChart data={monthly} currency={org.currency} />
+          </div>
+          <div className={DASH_CHART_SIDE}>
+            <BreakdownBarChart
+              data={byCategory.map((c) => ({ label: c.label, total: c.total }))}
+              currency={org.currency}
             />
-            <Stat
-              label="Oldest"
-              value={`${complaints.oldestOpenDays}d`}
-              hint="business days"
+          </div>
+        </div>
+
+        <div className={DASH_PANEL_GRID}>
+          <Panel
+            className={DASH_PANEL_HALF}
+            title={isApprover ? "Top spenders" : "Where it went"}
+            description={
+              isApprover
+                ? "Highest first. Each row opens that person's expenses in this view."
+                : "By category. Each row opens the expenses behind it."
+            }
+          >
+            <RankList
+              rows={isApprover ? spenders : byCategory}
+              currency={org.currency}
+              emptyMessage="No expenses match this view yet."
             />
-            <div className="sm:col-span-4">
-              <Link href="/complaints" className="text-sm underline">
-                {isFinance ? "Open the complaints inbox" : "View my complaints"}
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
+          </Panel>
 
-      {advanceBalance > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Stat
-            label="Open advance balance"
-            value={<Amount value={advanceBalance} currency={org.currency} size="display" />}
-            hint="settles against your reimbursed reports"
-          />
-        </div>
-      ) : null}
-
-      {isFinance ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Stat
-            label="Total in scope"
-            value={<Amount value={sumAmounts(rows)} currency={org.currency} size="display" />}
-            hint={`${rows.length} expenses`}
-          />
-          <Stat label="Policy violations" value={String(violations)} hint="expenses with flags" />
-          <Stat label="Avg approval time" value={approvalTime ?? "—"} hint="submission → final approval" />
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly spend</CardTitle>
-            <CardDescription>Last 6 months</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {rows.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No expenses yet — <Link href="/expenses/new" className="underline">capture one</Link>.
-              </p>
+          <Panel
+            className={DASH_PANEL_HALF}
+            title="Recent expenses"
+            description="Newest first, across everything in view."
+          >
+            {recent.length === 0 ? (
+              <EmptyState
+                headline={hasAnything ? "Nothing in this view" : "No expenses yet"}
+                description={
+                  hasAnything
+                    ? "Widen the filters above to see more."
+                    : "Capture the first one — it takes about fifteen seconds."
+                }
+                action={
+                  hasAnything ? undefined : (
+                    <Button asChild>
+                      <Link href="/expenses/new">Add expense</Link>
+                    </Button>
+                  )
+                }
+              />
             ) : (
-              <MonthlyBarChart data={monthly} currency={org.currency} />
+              <ul className="divide-line grid divide-y">
+                {recent.map((e) => (
+                  <li key={e.id}>
+                    <Link
+                      href={`/expenses/${e.id}`}
+                      className="hover:bg-bg-subtle -mx-2 grid gap-1 rounded-md px-2 py-3 transition-colors duration-instant ease-out outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+                    >
+                      <span className="flex items-baseline justify-between gap-3">
+                        <span className="text-body text-text-primary truncate">
+                          {e.merchant}
+                        </span>
+                        {/* Raw minor units to a client child; never a
+                            pre-formatted string (D1.1). */}
+                        <Amount value={e.amount} currency={e.currency} align="right" />
+                      </span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        <DateCell value={e.date.toISOString()} />
+                        <span className="text-meta text-text-tertiary">
+                          {e.category.name}
+                          {isApprover ? ` · ${e.user.name}` : ""}
+                        </span>
+                        <StatusBadge status={e.status} />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>By category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {byCategory.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Nothing to show.</p>
-            ) : (
-              <BreakdownBarChart data={byCategory} currency={org.currency} />
-            )}
-          </CardContent>
-        </Card>
+          </Panel>
+        </div>
       </div>
+    </>
+  );
+}
 
-      {isApprover && byUser.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{isFinance ? "By user" : "Team members"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="grid gap-1 text-sm">
-              {byUser.slice(0, 10).map((u) => (
-                <li key={u.key} className="flex justify-between gap-2">
-                  <span>{u.label} <span className="text-muted-foreground">({u.count})</span></span>
-                  <Amount value={u.total} currency={org.currency} align="right" />
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {isFinance ? (
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader><CardTitle>By department</CardTitle></CardHeader>
-            <CardContent>
-              <ul className="grid gap-1 text-sm">
-                {byDepartment.slice(0, 8).map((d) => (
-                  <li key={d.key} className="flex justify-between gap-2">
-                    <span>{d.label}</span>
-                    <Amount value={d.total} currency={org.currency} align="right" />
-                  </li>
-                ))}
-                {byDepartment.length === 0 ? (
-                  <li className="text-muted-foreground">Nothing to show.</li>
-                ) : null}
-              </ul>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>By project</CardTitle></CardHeader>
-            <CardContent>
-              <ul className="grid gap-1 text-sm">
-                {byProject.slice(0, 8).map((p) => (
-                  <li key={p.key} className="flex justify-between gap-2">
-                    <span>{p.label}</span>
-                    <Amount value={p.total} currency={org.currency} align="right" />
-                  </li>
-                ))}
-                {byProject.length === 0 ? (
-                  <li className="text-muted-foreground">Nothing to show.</li>
-                ) : null}
-              </ul>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Billable by client</CardTitle></CardHeader>
-            <CardContent>
-              <ul className="grid gap-1 text-sm">
-                {billableByClient.slice(0, 8).map((c) => (
-                  <li key={c.key} className="flex justify-between gap-2">
-                    <span>{c.label} <span className="text-muted-foreground">({c.count})</span></span>
-                    <Amount value={c.total} currency={org.currency} align="right" />
-                  </li>
-                ))}
-                {billableByClient.length === 0 ? (
-                  <li className="text-muted-foreground">No billable spend in scope.</li>
-                ) : null}
-              </ul>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Top merchants</CardTitle></CardHeader>
-            <CardContent>
-              <ul className="grid gap-1 text-sm">
-                {merchants.map((m) => (
-                  <li key={m.merchant} className="flex justify-between gap-2">
-                    <span>{m.merchant} <span className="text-muted-foreground">({m.count})</span></span>
-                    <Amount value={m.total} currency={org.currency} align="right" />
-                  </li>
-                ))}
-                {merchants.length === 0 ? (
-                  <li className="text-muted-foreground">Nothing to show.</li>
-                ) : null}
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-    </div>
+/** A dashboard panel. Border, no shadow — §4.2: one or the other, never both. */
+function Panel({
+  title,
+  description,
+  className,
+  children,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className={cn(
+        "border-line bg-bg-surface grid content-start gap-4 rounded-lg border p-5",
+        className
+      )}
+    >
+      <div className="grid gap-1">
+        <h2 className="text-h3 text-text-primary">{title}</h2>
+        {description ? (
+          <p className="text-meta text-text-tertiary">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
   );
 }

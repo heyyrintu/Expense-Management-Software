@@ -100,3 +100,31 @@ export function applyExpenseFilters(scope: Where, filters: ExpenseFilters): Wher
   if (Object.keys(filterWhere).length === 0) return { ...scope };
   return { ...scope, AND: [filterWhere] };
 }
+
+/**
+ * The expense list's sort order — and the reason it has three keys.
+ *
+ * ── A PAGINATED SORT MUST BE A TOTAL ORDER ────────────────────────────────
+ * This was `[{ date: "desc" }, { createdAt: "desc" }]`, which is a total
+ * order only while no two expenses share both. Bulk paths break that
+ * routinely: a card import or a `createMany` writes dozens of rows with the
+ * same `createdAt`, and expense dates repeat by nature. Postgres is then free
+ * to return tied rows in a different order for each `OFFSET`, so paging
+ * through the list can show one row twice and never show another.
+ *
+ * That is not a cosmetic glitch. §7.4 requires a KPI to equal the total of
+ * the table it opens, and the reader adds that table up one page at a time —
+ * over an unstable sort the two genuinely disagree. Found by
+ * tests/isolation/dashboard-kpi.test.ts: an org-wide card read 258,345 while
+ * walking its own list gave 255,545.
+ *
+ * `id` is unique, so appending it makes the order total and every page
+ * boundary deterministic. Exported so the list, the dashboard and the tests
+ * that walk them cannot sort differently.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+export const EXPENSE_LIST_ORDER = [
+  { date: "desc" as const },
+  { createdAt: "desc" as const },
+  { id: "desc" as const },
+];

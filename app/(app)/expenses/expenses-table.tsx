@@ -60,6 +60,7 @@ export function ExpensesTable({
   totalRows,
   pageIndex,
   openReports,
+  canAttach = true,
 }: {
   rows: ExpenseTableRow[];
   orgCurrency: string;
@@ -69,6 +70,13 @@ export function ExpensesTable({
   totalRows: number;
   pageIndex: number;
   openReports: OpenReport[];
+  /**
+   * False in the team and org views (D3.3). A report belongs to one person,
+   * so offering "Add to report" over someone else's rows would put a button
+   * on screen whose only outcome is a server refusal — UI that lies about
+   * what it can do is worse than UI that isn't there.
+   */
+  canAttach?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -276,7 +284,10 @@ export function ExpensesTable({
           </span>
         </button>
       )}
-      renderBulkActions={({ rows: selected, clear }) => (
+      renderBulkActions={
+        !canAttach
+          ? undefined
+          : ({ rows: selected, clear }) => (
         // The action D1.2's bar was built for. Only DRAFT expenses can join a
         // report, so the button counts what is actually attachable rather
         // than what is ticked — and says so, instead of failing per row after
@@ -289,7 +300,8 @@ export function ExpensesTable({
           reports={openReports}
           onDone={clear}
         />
-      )}
+            )
+      }
       />
     </div>
   );

@@ -5,7 +5,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { applyExpenseFilters } from "@/lib/domain/expense-query";
+import { applyExpenseFilters, EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
+import {
+  narrowViewScope,
+  parseViewScope,
+  resolveExpenseScope,
+  viewScopeCopy,
+  viewScopeWhere,
+} from "@/lib/domain/expense-scope";
 import {
   buildExpenseStats,
   parsePageIndex,
@@ -42,12 +49,23 @@ export default async function ExpensesPage({
   const filters = parseExpenseFilters(raw);
   const pageIndex = parsePageIndex(raw.page);
 
+  // D3.3: the list can be widened to the team or the whole org so a dashboard
+  // KPI has somewhere honest to point (§7.4). The URL only REQUESTS a width —
+  // `resolveExpenseScope` sets the ceiling from the session role, and
+  // `viewScopeWhere` clamps to it, so `?scope=org` from an employee still
+  // resolves to their own rows. See lib/domain/expense-scope.ts.
+  const ceiling = await resolveExpenseScope(db, ctx);
+  const requestedScope = parseViewScope(raw.scope);
+  const scopeWhere = viewScopeWhere(ceiling, requestedScope, acting.effectiveUserId);
+  const effectiveScope = narrowViewScope(ceiling, requestedScope);
+  const copy = viewScopeCopy(effectiveScope);
+
   // ONE where-clause feeds the list, the count and the KPI strip. That is
   // what makes §7.4 hold — the cards and the rows cannot disagree, because
   // they are the same query narrowed differently. Scope stays pinned to the
   // acting user; applyExpenseFilters ANDs the filters onto it so a filter can
   // only ever narrow (see lib/domain/expense-query.ts).
-  const where = applyExpenseFilters({ userId: acting.effectiveUserId }, filters);
+  const where = applyExpenseFilters(scopeWhere, filters);
 
   const [org, categories, projects, totalRows, statusGroups, expenses, openReportRows] =
     await Promise.all([
@@ -71,7 +89,7 @@ export default async function ExpensesPage({
     // table showed the first 200.
     db.expense.findMany({
       where,
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      orderBy: EXPENSE_LIST_ORDER,
       skip: pageIndex * EXPENSE_PAGE_SIZE,
       take: EXPENSE_PAGE_SIZE,
       include: { category: { select: { name: true } } },
@@ -114,8 +132,8 @@ export default async function ExpensesPage({
   return (
     <>
       <PageHeader
-        title="My expenses"
-        description="Draft expenses can be edited until they join a submitted report."
+        title={copy.title}
+        description={copy.description}
         action={
           <>
             <Button asChild variant="secondary">
@@ -136,6 +154,7 @@ export default async function ExpensesPage({
         totalRows={totalRows}
         pageIndex={pageIndex}
         openReports={openReports}
+        canAttach={effectiveScope === "mine"}
       />
     </>
   );

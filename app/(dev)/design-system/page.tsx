@@ -23,6 +23,7 @@ import { MOTION_TOKENS } from "@/lib/design/tokens";
 import { ApprovalSection } from "./sections/approval-section";
 import { CaptureSection } from "./sections/capture-section";
 import { ComponentsSection } from "./sections/components-section";
+import { DashboardSection } from "./sections/dashboard-section";
 import { DomainSection } from "./sections/domain-section";
 import { FinanceSection } from "./sections/finance-section";
 import { FiltersSection } from "./sections/filters-section";
@@ -113,6 +114,8 @@ export default function DesignSystemPage() {
           <ApprovalSection />
 
           <FinanceSection />
+
+          <DashboardSection />
 
           <DomainSection />
 

@@ -8,7 +8,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { scopedDb } from "@/lib/db/scoped";
-import { applyExpenseFilters } from "@/lib/domain/expense-query";
+import { applyExpenseFilters, EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
 import {
   buildExpenseStats,
   parsePageIndex,
@@ -82,7 +82,7 @@ async function walkList(orgId: string, userId: string, filters: ExpenseFilters) 
   for (;;) {
     const rows = (await db.expense.findMany({
       where,
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      orderBy: EXPENSE_LIST_ORDER,
       skip: pageIndex * PAGE_SIZE,
       take: PAGE_SIZE,
       select: { baseAmount: true },
