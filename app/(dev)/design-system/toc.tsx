@@ -15,6 +15,7 @@ export const GALLERY_SECTIONS = [
   { id: "scales", label: "Spacing · Radius · Elevation", note: "The three short scales" },
   { id: "components", label: "Components", note: "Every primitive, every state" },
   { id: "shell", label: "App shell", note: "Sidebar, top bar, tab bar, page header" },
+  { id: "table", label: "DataTable", note: "Sorting, selection, paging, card collapse" },
   { id: "domain", label: "Domain components", note: "Status, flags, charts — and what's missing" },
   { id: "motion", label: "Motion", note: "Tokens and replayable variants" },
   { id: "patterns", label: "Patterns", note: "Empty, loading, error" },

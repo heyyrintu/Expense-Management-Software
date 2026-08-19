@@ -27,6 +27,7 @@ import { MotionDemos } from "./sections/motion-section";
 import { PatternsSection } from "./sections/patterns-section";
 import { ScalesSection } from "./sections/scales-section";
 import { ShellSection } from "./sections/shell-section";
+import { TableSection } from "./sections/table-section";
 import { TokensSection } from "./sections/tokens-section";
 import { TypographySection } from "./sections/typography-section";
 import { Block, Group } from "./sections/shared";
@@ -89,6 +90,8 @@ export default function DesignSystemPage() {
           >
             <ShellSection />
           </Group>
+
+          <TableSection />
 
           <DomainSection />
 

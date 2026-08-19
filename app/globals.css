@@ -110,6 +110,9 @@
      page content must offset by, and the tab bar's is what it must clear. */
   --topbar-height: 56px;
   --tabbar-height: 64px;
+  /* Comfortable table row (§6.1). Also the height the row skeleton matches,
+     which is why it is a token and not a utility class repeated twice. */
+  --row-height: 48px;
 }
 
 /* Dark theme hook. Only colour tokens change — no component is aware of it.
@@ -292,6 +295,24 @@
 @utility h-topbar { height: var(--topbar-height); }
 @utility h-tabbar { height: var(--tabbar-height); }
 @utility max-w-content { max-width: var(--content-max-width); }
+
+/* A sticky table header parks directly under the app's top bar rather than
+   at the viewport edge, where the bar would cover it (D1.2). Same value as
+   the bar's own height, from the same token, so the two can't drift. */
+@utility top-topbar { top: var(--topbar-height); }
+
+/* Comfortable table row (§6.1: 48px) and its header. Named because the
+   skeleton rows have to match the real rows exactly — two places using
+   `h-12` is a coincidence waiting to be broken; one token is a contract. */
+@utility h-row { height: var(--row-height); }
+@utility min-h-row { min-height: var(--row-height); }
+
+/* The 2px accent bar on a selected table row (§6.1). An INSET SHADOW, not a
+   border: a border would change the row's box model and shift every cell 2px
+   sideways the moment you tick a checkbox. */
+@utility selected-bar {
+  box-shadow: inset 2px 0 0 0 var(--accent-base);
+}
 
 /* Safe-area insets (§ mobile). iOS home-indicator territory: the tab bar
    paints into it (so the bar reaches the screen edge) but its controls sit
