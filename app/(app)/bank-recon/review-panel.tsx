@@ -19,7 +19,7 @@
 // every action waits for the server and the board re-renders from it.
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify, toast } from "@/components/ui/toaster";
 
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ export function ReviewPanel({ data }: { data: BucketData }) {
       if (!res.ok) {
         // The server's own sentence, not a generic one — it knows whether the
         // period is locked, the line already matched, or the report unpayable.
-        toast.error(res.error ?? "That didn't work.");
+        notify.failed(res.error);
         return;
       }
       toast.success(success);

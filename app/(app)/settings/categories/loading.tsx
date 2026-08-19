@@ -1,8 +1,18 @@
-export default function CategoriesLoading() {
+// Loading skeleton (D5.1).
+//
+// Renders INSIDE app/(app)/settings/layout.tsx, so the section nav is already
+// on screen — this reserves only the right-hand panel. Wrapping the whole
+// shell here would paint a second nav beside the real one.
+import {
+  TableSkeleton,
+  PageHeaderSkeleton,
+} from "@/components/ui/page-skeleton";
+
+export default function Loading() {
   return (
-    <div className="grid animate-pulse gap-4">
-      <div className="bg-muted h-6 w-40 rounded" />
-      <div className="bg-muted h-32 rounded-xl" />
+    <div className="grid content-start gap-6">
+      <PageHeaderSkeleton hasAction={true} />
+      <TableSkeleton rows={6} />
     </div>
   );
 }

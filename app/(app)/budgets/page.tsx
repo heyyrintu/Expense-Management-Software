@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { computeBudgetUtilization } from "@/lib/analytics/budgets";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { BudgetsPanel, type BudgetView } from "./budgets-panel";
@@ -50,15 +45,10 @@ export default async function BudgetsPage() {
         </p>
       </div>
       {views.length === 0 ? (
-        <Card>
-          <CardHeader className="items-center text-center">
-            <CardTitle>No budgets yet</CardTitle>
-            <CardDescription>
-              Set a monthly, quarterly, or yearly amount per department,
-              project, or category.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          headline="No budgets yet"
+          description="Set an amount per department, project or category and this screen tracks spend against it. Add your first below."
+        />
       ) : null}
       <BudgetsPanel
         budgets={views}

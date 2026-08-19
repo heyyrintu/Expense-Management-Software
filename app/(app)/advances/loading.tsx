@@ -1,8 +1,15 @@
-export default function AdvancesLoading() {
+// Loading skeleton (D5.1) — reserves the same boxes advances renders,
+// so nothing shifts when the data lands.
+import {
+  CardListSkeleton,
+  PageHeaderSkeleton,
+} from "@/components/ui/page-skeleton";
+
+export default function Loading() {
   return (
-    <div className="grid animate-pulse gap-4">
-      <div className="bg-muted h-6 w-32 rounded" />
-      <div className="bg-muted h-28 rounded-xl" />
-    </div>
+    <>
+      <PageHeaderSkeleton hasAction />
+      <CardListSkeleton rows={4} />
+    </>
   );
 }

@@ -500,6 +500,8 @@
    footer work. position:sticky pins to the nearest scroll container, so
    without a bounded height the "sticky" ends are just ordinary table ends. */
 @utility max-h-ledger { max-height: var(--ledger-viewport-height); }
+/* The same height as a filled ledger viewport — the skeleton reserves it. */
+@utility h-ledger { height: var(--ledger-viewport-height); }
 
 /* A reconciliation bucket's scrollable list (D4.2). Bounded so a 200-line
    statement cannot push the other two buckets off screen — seeing all three

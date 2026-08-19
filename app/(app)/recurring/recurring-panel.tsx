@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -133,7 +134,10 @@ export function RecurringPanel({
       </form>
 
       {templates.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No templates yet.</p>
+        <EmptyState
+          headline="No recurring expenses"
+          description="A template files the same expense on a schedule — a monthly SIM bill, a weekly commute. Add one above."
+        />
       ) : (
         <ul className="grid gap-2">
           {templates.map((t) => (

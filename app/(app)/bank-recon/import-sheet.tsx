@@ -24,6 +24,8 @@ import { useRouter } from "next/navigation";
 import { Check, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+import { offlineAwareMessage } from "@/lib/errors";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateCell } from "@/components/ui/date-cell";
@@ -126,7 +128,9 @@ export function ImportSheet() {
       }
       return json.data;
     } catch {
-      setError("That didn't work. Try again.");
+      // A fetch that throws is a transport failure, and offline is the
+      // likeliest cause on a phone — the advice differs, so say which.
+      setError(offlineAwareMessage());
       return null;
     } finally {
       setBusy(false);

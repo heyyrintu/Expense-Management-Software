@@ -11,6 +11,7 @@ import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 // inside a template literal, which is what lib/format is for.
@@ -52,17 +53,15 @@ export default async function ReportsPage() {
       </div>
 
       {reports.length === 0 ? (
-        <Card>
-          <CardHeader className="items-center text-center">
-            <CardTitle>No reports yet</CardTitle>
-            <CardDescription>
-              Create a report, add your draft expenses, and submit for approval.
-            </CardDescription>
-            <Button asChild className="mt-2 w-fit self-center">
-              <Link href="/reports/new">Create your first report</Link>
+        <EmptyState
+          headline="No reports yet"
+          description="A report groups your draft expenses into one submission. Create one, add expenses, and send it for approval."
+          action={
+            <Button asChild>
+              <Link href="/reports/new">Create a report</Link>
             </Button>
-          </CardHeader>
-        </Card>
+          }
+        />
       ) : (
         <ul className="grid gap-3">
           {reports.map((r) => (

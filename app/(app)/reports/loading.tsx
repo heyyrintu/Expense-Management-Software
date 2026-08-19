@@ -1,9 +1,15 @@
-export default function ReportsLoading() {
+// Loading skeleton (D5.1) — reserves the same boxes reports renders,
+// so nothing shifts when the data lands.
+import {
+  CardListSkeleton,
+  PageHeaderSkeleton,
+} from "@/components/ui/page-skeleton";
+
+export default function Loading() {
   return (
-    <div className="grid animate-pulse gap-4">
-      <div className="bg-muted h-6 w-40 rounded" />
-      <div className="bg-muted h-24 rounded-xl" />
-      <div className="bg-muted h-24 rounded-xl" />
-    </div>
+    <>
+      <PageHeaderSkeleton hasAction />
+      <CardListSkeleton rows={4} />
+    </>
   );
 }

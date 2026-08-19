@@ -21,7 +21,7 @@
 // page would cover the complaint header the reader is replying about.
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify } from "@/components/ui/toaster";
 
 import { Avatar } from "@/components/shell/avatar-menu";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function ComplaintThread({
     startTransition(async () => {
       const res = await postComplaintMessageAction(form);
       if (!res.ok) {
-        toast.error(res.error ?? "That didn't send.");
+        notify.failed(res.error);
         return;
       }
       setBody("");

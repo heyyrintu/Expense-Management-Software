@@ -15,7 +15,7 @@
 // it the only thing on screen.
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { notify, toast } from "@/components/ui/toaster";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -84,7 +84,7 @@ export function HandlerPanel({
     startTransition(async () => {
       const res = await fn();
       if (!res.ok) {
-        toast.error(res.error ?? "That didn't work.");
+        notify.failed(res.error);
         return;
       }
       toast.success(success);

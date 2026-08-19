@@ -12,6 +12,7 @@
 // Money movement never uses it.
 import { Toaster as SonnerToaster, toast } from "sonner";
 
+import { failureCopy } from "@/lib/errors";
 import { DURATION } from "@/lib/motion";
 
 const UNDO_WINDOW_MS = 5000;
@@ -45,6 +46,29 @@ function Toaster() {
 export const notify = {
   success(message: string, description?: string) {
     return toast.success(message, { description });
+  },
+  /**
+   * A mutation that didn't land (D5.1).
+   *
+   * Every failed action goes through here rather than each call site writing
+   * its own sentence, so the voice stays consistent and — more importantly —
+   * so OFFLINE is distinguished from a server refusal everywhere at once.
+   * The reader's first question after a failed save is "did I lose it?", and
+   * lib/errors' copy answers that before anything else.
+   *
+   * `navigator.onLine` is read at the moment of failure, not held in state:
+   * a stale flag would tell someone they are offline while they are reading
+   * the toast on a working connection.
+   */
+  failed(serverError?: string | null) {
+    const copy = failureCopy({
+      serverError,
+      online: typeof navigator === "undefined" ? true : navigator.onLine,
+    });
+    return toast.error(copy.title, {
+      description: copy.description || undefined,
+      duration: 6000,
+    });
   },
   error(message: string, description?: string) {
     // Errors linger: they carry information the user needs to act on.

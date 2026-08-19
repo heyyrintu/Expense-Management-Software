@@ -1,11 +1,7 @@
 import Link from "next/link";
 
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { NotificationList } from "./notification-list";
@@ -31,17 +27,15 @@ export default async function NotificationsPage() {
     return (
       <section className="grid gap-4">
         <h1 className="text-xl font-semibold">Notifications</h1>
-        <Card>
-          <CardHeader className="items-center text-center">
-            <CardTitle>Nothing here yet</CardTitle>
-            <CardDescription>
-              You&apos;ll see report submissions and decisions here.{" "}
-              <Link href="/reports" className="underline underline-offset-4">
-                Go to reports
-              </Link>
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          headline="Nothing to catch up on"
+          description="Approvals, payments and complaint updates land here as they happen."
+          action={
+            <Button asChild variant="secondary">
+              <Link href="/reports">Go to reports</Link>
+            </Button>
+          }
+        />
       </section>
     );
   }

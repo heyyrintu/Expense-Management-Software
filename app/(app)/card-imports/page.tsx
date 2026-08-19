@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireRole } from "@/lib/auth/guard";
 import { MATCH_WINDOW_DAYS } from "@/lib/domain/card-import";
 import { scopedDb } from "@/lib/db/scoped";
@@ -82,15 +77,10 @@ export default async function CardImportsPage() {
       <CardImportPanel unmatched={unmatched} />
 
       {totalCount === 0 ? (
-        <Card>
-          <CardHeader className="items-center text-center">
-            <CardTitle>No statements yet</CardTitle>
-            <CardDescription>
-              Upload a card statement CSV (columns: date, amount, merchant or
-              description) to reconcile against expenses.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          headline="No card statements yet"
+          description="Upload a CSV with date, amount and merchant columns. Each transaction is matched against expenses people have already filed."
+        />
       ) : null}
     </section>
   );

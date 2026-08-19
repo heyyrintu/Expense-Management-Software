@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
@@ -150,7 +151,10 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground text-sm">No advances yet.</p>
+        <EmptyState
+          headline="No advances yet"
+          description="Request money up front for a trip, and settle it against the expenses you file afterwards."
+        />
       )}
     </div>
   );

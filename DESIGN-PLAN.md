@@ -42,7 +42,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 
 ## Milestone D5 — Polish & verification
 
-- [ ] **D5.1 Empty, loading, error states sweep**: every route gets purposeful empty state, shape-matched skeleton, and error boundary with recovery action. Audit checklist committed.
+- [x] **D5.1 Empty, loading, error states sweep**: every route gets purposeful empty state, shape-matched skeleton, and error boundary with recovery action. Audit checklist committed.
 - [ ] **D5.2 Motion audit**: every animation checked against DESIGN-PRD §4.4 — duration ≤300ms, correct easing direction, transform/opacity only, interruptible, origin-anchored, reduced-motion respected. Remove anything decorative.
 - [ ] **D5.3 Accessibility audit**: axe automated pass in CI, keyboard walkthrough of the three critical flows, screen-reader pass, contrast verification, focus-order fixes. Target Lighthouse a11y ≥95.
 - [ ] **D5.4 Performance & responsive pass**: Lighthouse ≥90 on dashboard, CLS <0.05, INP <200ms; test at 360px, 768px, 1024px, 1440px; font loading without FOUT; image/receipt lazy loading.

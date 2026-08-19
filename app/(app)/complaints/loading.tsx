@@ -1,9 +1,19 @@
+// Loading skeleton (D5.1) — reserves the same boxes complaints renders,
+// so nothing shifts when the data lands.
+import {
+  PageHeaderSkeleton,
+  TableSkeleton,
+  ToolbarSkeleton,
+} from "@/components/ui/page-skeleton";
+
 export default function Loading() {
   return (
-    <section className="grid gap-4">
-      <div className="bg-muted h-6 w-48 animate-pulse rounded" />
-      <div className="bg-muted h-20 animate-pulse rounded-lg" />
-      <div className="bg-muted h-20 animate-pulse rounded-lg" />
-    </section>
+    <>
+      <PageHeaderSkeleton hasAction />
+      <div className="grid gap-4">
+        <ToolbarSkeleton />
+        <TableSkeleton />
+      </div>
+    </>
   );
 }

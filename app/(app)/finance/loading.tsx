@@ -1,8 +1,19 @@
-export default function FinanceLoading() {
+// Loading skeleton (D5.1) — reserves the same boxes finance renders,
+// so nothing shifts when the data lands.
+import {
+  CardListSkeleton,
+  PageHeaderSkeleton,
+  StatStripSkeleton,
+} from "@/components/ui/page-skeleton";
+
+export default function Loading() {
   return (
-    <div className="grid animate-pulse gap-4">
-      <div className="bg-muted h-6 w-32 rounded" />
-      <div className="bg-muted h-32 rounded-xl" />
-    </div>
+    <>
+      <PageHeaderSkeleton />
+      <div className="grid gap-6">
+        <StatStripSkeleton count={2} />
+        <CardListSkeleton rows={4} height="h-28" />
+      </div>
+    </>
   );
 }

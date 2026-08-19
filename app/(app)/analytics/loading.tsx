@@ -1,9 +1,20 @@
-export default function AnalyticsLoading() {
+// Loading skeleton (D5.1) — reserves the same boxes analytics renders,
+// so nothing shifts when the data lands.
+import {
+  PageHeaderSkeleton,
+  PanelSkeleton,
+  StatStripSkeleton,
+} from "@/components/ui/page-skeleton";
+
+export default function Loading() {
   return (
-    <div className="grid animate-pulse gap-4">
-      <div className="bg-muted h-6 w-32 rounded" />
-      <div className="bg-muted h-72 rounded-xl" />
-      <div className="bg-muted h-40 rounded-xl" />
-    </div>
+    <>
+      <PageHeaderSkeleton hasAction />
+      <div className="grid gap-6">
+        <StatStripSkeleton count={3} />
+        <PanelSkeleton />
+        <PanelSkeleton height="h-64" />
+      </div>
+    </>
   );
 }
