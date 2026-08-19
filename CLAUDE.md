@@ -79,6 +79,8 @@ Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROM
 - **Motion**: see the Motion rules section below.
 - Money movement is never optimistic. Approvals may be optimistic with a 5s Undo.
 - Any new or changed component must be added to `/design-system` in the same commit.
+- **App shell**: screens render inside `components/shell/AppShell` — they must not add their own header, sidebar, page padding or max-width. Start every screen with `<PageHeader title description action />`; `action` holds the screen's single primary button.
+- **Navigation**: `components/shell/nav.ts` is the only nav model, and its `minRole` mirrors each route's existing server guard — it never replaces one. Add a route's guard first, then mirror it there and in `tests/unit/nav.test.ts`.
 
 ## Motion rules
 

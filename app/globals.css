@@ -105,6 +105,11 @@
   --sidebar-width: 240px;
   --sidebar-rail-width: 64px;
   --content-max-width: 1280px;
+  /* Shell chrome heights. §5.5 fixes the sidebar and content widths but not
+     these two; named here in D0.4 because the top bar's height is what the
+     page content must offset by, and the tab bar's is what it must clear. */
+  --topbar-height: 56px;
+  --tabbar-height: 64px;
 }
 
 /* Dark theme hook. Only colour tokens change — no component is aware of it.
@@ -272,6 +277,31 @@
    so mobile browser chrome doesn't push it off-screen. */
 @utility max-h-sheet {
   max-height: 85svh;
+}
+
+/* ---- App shell (D0.4) --------------------------------------------------
+   The shell's measurements are tokens, not numbers at call sites: the
+   sidebar's two widths, the two chrome heights, and the content ceiling.
+   `w-sidebar` and `ps-sidebar` are the same value used twice — the rail's
+   width and the gutter the content leaves for it — so they can never drift
+   apart the way `w-60` and `pl-60` silently can. */
+@utility w-sidebar { width: var(--sidebar-width); }
+@utility w-sidebar-rail { width: var(--sidebar-rail-width); }
+@utility ps-sidebar { padding-inline-start: var(--sidebar-width); }
+@utility ps-sidebar-rail { padding-inline-start: var(--sidebar-rail-width); }
+@utility h-topbar { height: var(--topbar-height); }
+@utility h-tabbar { height: var(--tabbar-height); }
+@utility max-w-content { max-width: var(--content-max-width); }
+
+/* Safe-area insets (§ mobile). iOS home-indicator territory: the tab bar
+   paints into it (so the bar reaches the screen edge) but its controls sit
+   above it. `env()` resolves to 0 everywhere else, so there is no cost on
+   hardware without a notch. Requires viewport-fit=cover — set in the root
+   layout's viewport export. */
+@utility pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Bottom clearance for page content sitting under the mobile tab bar. */
+@utility pb-tabbar {
+  padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom, 0px));
 }
 
 /* Skeleton pulse: opacity only, 1.6s (§6.1). Reduced motion stops it —

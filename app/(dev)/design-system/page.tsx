@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 
 import { MotionDemos } from "./motion-demos";
 import { PrimitiveSpecimens } from "./primitives";
+import { ShellSpecimens } from "./shell-specimens";
 import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import {
   BRAND_FILL_PAIRS,
@@ -95,6 +96,13 @@ export default function DesignSystemPage() {
           description="Every component and every state. Tab through them: each has a 2px accent focus ring at 2px offset, and every interactive control clears a 44px touch target."
         >
           <PrimitiveSpecimens />
+        </Section>
+
+        <Section
+          title="App shell"
+          description="Sidebar at both widths, top bar, mobile tab bar and the page header. Switch the role to check what each one sees — nav is filtered by role, but every route still runs its own server guard."
+        >
+          <ShellSpecimens />
         </Section>
 
         {COLOR_GROUPS.map((group) => (

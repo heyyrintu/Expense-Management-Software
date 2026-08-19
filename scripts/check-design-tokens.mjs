@@ -46,7 +46,12 @@ const ALLOWED_EXCEPTIONS = [];
  * classes from before the design system existed; D1–D5 clear them screen by
  * screen and add each directory here as it lands.
  */
-const TOKEN_ONLY_DIRS = ["components/ui", "components/status-badge.tsx", "components/sla-badge.tsx"];
+const TOKEN_ONLY_DIRS = [
+  "components/ui",
+  "components/shell", // D0.4 — the shell is chrome on every screen
+  "components/status-badge.tsx",
+  "components/sla-badge.tsx",
+];
 
 const PALETTE_COLOUR =
   /\b(?:bg|text|border|ring|fill|stroke|from|via|to|divide|outline|shadow|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/;

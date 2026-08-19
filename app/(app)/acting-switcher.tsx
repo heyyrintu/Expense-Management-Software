@@ -24,14 +24,18 @@ export function ActingSwitcher({
     });
   }
 
+  // Acting on someone else's behalf is a state you must not be able to
+  // forget you're in — warning tokens, read from the token layer rather than
+  // hand-picked, and always visible in the top bar. (D0.4 restyle; the
+  // behaviour is untouched.)
   if (actingAs) {
     return (
-      <div className="flex items-center gap-2 rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
-        Acting as {actingAs.name}
+      <div className="bg-status-warning-subtle text-status-warning-text hidden items-center gap-1 rounded-md px-2 py-1 text-meta sm:flex">
+        <span className="truncate">Acting as {actingAs.name}</span>
         <Button
           size="sm"
           variant="ghost"
-          className="h-6 px-1 text-xs"
+          className="text-meta"
           disabled={pending}
           onClick={() => switchTo("")}
         >
@@ -46,7 +50,7 @@ export function ActingSwitcher({
       aria-label="Act on behalf of"
       value=""
       onChange={(e) => e.target.value && switchTo(e.target.value)}
-      className="h-8 w-36 text-xs"
+      className="hidden w-40 text-label sm:block"
       disabled={pending}
     >
       <option value="">Act as…</option>
