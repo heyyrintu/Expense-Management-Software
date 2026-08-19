@@ -25,14 +25,28 @@ afterAll(async () => {
 });
 
 describe("app shell chrome reads", () => {
-  it("B cannot read A's organization name", async () => {
-    const db = scopedDb(B.orgId);
-    expect(
-      await db.organization.findUnique({
-        where: { id: A.orgId },
-        select: { name: true },
-      })
-    ).toBeNull();
+  it("B asking for A's organization gets its OWN, never A's", async () => {
+    // Not null — and that is deliberate. For Organization, scope-args pins
+    // `where.id` to the session's org, so the caller's id is overwritten
+    // rather than ANDed. The session always wins over the request, which is
+    // the safe direction: B cannot address A's row at all.
+    const row = (await scopedDb(B.orgId).organization.findUnique({
+      where: { id: A.orgId },
+      select: { name: true },
+    })) as { name: string } | null;
+
+    expect(row?.name).toBe("Isolation shell-b");
+    expect(row?.name).not.toBe("Isolation shell-a");
+  });
+
+  it("B listing organizations by A's id gets nothing", async () => {
+    // findMany goes through the AND branch instead, so a filter genuinely
+    // intersects and the result is empty rather than substituted.
+    const rows = (await scopedDb(B.orgId).organization.findMany({
+      where: { id: A.orgId },
+      select: { name: true },
+    })) as Array<{ name: string }>;
+    expect(rows).toHaveLength(0);
   });
 
   it("B reads its own organization name", async () => {

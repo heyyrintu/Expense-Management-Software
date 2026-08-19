@@ -1,24 +1,35 @@
 "use client";
 
-// The expense list, on the shared DataTable (D1.2) — the reference
-// implementation every later table copies.
+// The expense list — the reference implementation for both the shared
+// DataTable (D1.2) and the shared FilterBar (D1.3).
 //
-// Presentation only. The page's query is untouched: it still reads up to 200
-// of the acting user's expenses in one go, so this pages in the browser.
-// DataTable also supports `pagination={{ mode: "server", … }}`, which is what
-// a screen whose query paginates should pass — see the note on the
-// `pagination` prop. Switching this screen to a server-paged query is a
-// query change, and D1.2 is a presentation task.
+// FILTERING IS SERVER-SIDE. The filter state lives in the URL, the page reads
+// it, and the query narrows. Filtering the 200 rows already in the browser
+// would have been less work and would have quietly lied to anyone with more
+// than 200 expenses — "no results" when the match was on page three.
+//
+// Paging stays client-side: the query still takes 200 in one go. DataTable
+// supports `pagination={{ mode: "server", … }}` for a screen whose query
+// paginates, which this one should become once the row count justifies it.
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { DataTable, selectionColumn } from "@/components/data-table";
 import type { DataTableColumn } from "@/components/data-table";
+import { FilterBar, useUrlFilters } from "@/components/filters";
+import type { FilterBarConfig } from "@/components/filters";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { DateCell } from "@/components/ui/date-cell";
+import { statusEntry } from "@/lib/design/status";
+import {
+  EMPTY_EXPENSE_FILTERS,
+  EXPENSE_STATUSES,
+  hasActiveFilters,
+} from "@/lib/schemas/expense-filters";
+import { cn } from "@/lib/utils";
 
 /** Serialisable row — this crosses the server/client boundary. */
 export type ExpenseTableRow = {
@@ -36,11 +47,46 @@ export type ExpenseTableRow = {
 export function ExpensesTable({
   rows,
   orgCurrency,
+  categories,
+  projects,
 }: {
   rows: ExpenseTableRow[];
   orgCurrency: string;
+  categories: Array<{ id: string; name: string }>;
+  projects: Array<{ id: string; name: string }>;
 }) {
   const router = useRouter();
+  const { filters, setFilters, pending } = useUrlFilters();
+
+  const filterConfig = React.useMemo<FilterBarConfig>(
+    () => ({
+      search: { placeholder: "Search merchant" },
+      dateRange: true,
+      facets: [
+        {
+          key: "status",
+          label: "Status",
+          // Labels come from the status map, so a chip reads "Sent back"
+          // rather than "sent_back" and matches the badge beside it.
+          options: EXPENSE_STATUSES.map((s) => ({
+            value: s,
+            label: statusEntry(s).label,
+          })),
+        },
+        {
+          key: "categoryId",
+          label: "Category",
+          options: categories.map((c) => ({ value: c.id, label: c.name })),
+        },
+        {
+          key: "projectId",
+          label: "Project",
+          options: projects.map((p) => ({ value: p.id, label: p.name })),
+        },
+      ],
+    }),
+    [categories, projects]
+  );
 
   const columns = React.useMemo<DataTableColumn<ExpenseTableRow>[]>(
     () => [
@@ -101,7 +147,18 @@ export function ExpensesTable({
   );
 
   return (
-    <DataTable
+    // While the server re-runs the query the list DIMS rather than being
+    // replaced by skeletons: swapping in placeholders on every keystroke
+    // would destroy the context the reader is filtering against. Opacity
+    // only, so reduced motion loses nothing.
+    <div
+      aria-busy={pending || undefined}
+      className={cn(
+        "transition-opacity duration-fast ease-out",
+        pending && "opacity-60"
+      )}
+    >
+      <DataTable
       label="My expenses"
       columns={columns}
       data={rows}
@@ -109,13 +166,34 @@ export function ExpensesTable({
       enableSelection
       pagination={{ mode: "client" }}
       onRowClick={(row) => router.push(`/expenses/${row.id}`)}
-      empty={{
-        headline: "No expenses yet",
-        description: "Capture your first expense — it only takes a minute.",
-        action: (
-          <Button onClick={() => router.push("/expenses/new")}>Add your first expense</Button>
-        ),
-      }}
+      empty={
+        // Two different situations, and conflating them is a classic
+        // filter bug: "you have nothing" versus "your filters match
+        // nothing". The second needs a way back, not an invitation to
+        // create something.
+        hasActiveFilters(filters)
+          ? {
+              headline: "No expenses match these filters",
+              description: "Try a wider date range, or clear a filter.",
+              action: (
+                <Button variant="secondary" onClick={() => setFilters(EMPTY_EXPENSE_FILTERS)}>
+                  Clear filters
+                </Button>
+              ),
+            }
+          : {
+              headline: "No expenses yet",
+              description: "Capture your first expense — it only takes a minute.",
+              action: (
+                <Button onClick={() => router.push("/expenses/new")}>
+                  Add your first expense
+                </Button>
+              ),
+            }
+      }
+      toolbar={
+        <FilterBar config={filterConfig} value={filters} onChange={setFilters} />
+      }
       renderCard={(row) => (
         <button
           type="button"
@@ -153,6 +231,7 @@ export function ExpensesTable({
           Add to report arrives with the report builder
         </span>
       )}
-    />
+      />
+    </div>
   );
 }

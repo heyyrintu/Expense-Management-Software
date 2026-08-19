@@ -18,7 +18,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 
 - [x] **D1.1 Money & date formatting**: `<Amount>` component (tabular, right-aligned, org currency, negative in danger token, optional secondary original-currency line) and `<DateCell>`; used everywhere — grep for stray `toFixed`/`toLocaleString` in components and replace.
 - [x] **D1.2 DataTable**: TanStack-based shared table — sticky header, 48px rows, hover/selected treatments, column visibility, server pagination, sort indicators, row skeletons, empty state, and the mobile card-collapse variant. Migrate expense list to it.
-- [ ] **D1.3 Filter bar**: shared filter component (search, date range, multi-select facets) with URL state sync, active-filter chips, "Clear all", and mobile filter sheet with active-count badge.
+- [x] **D1.3 Filter bar**: shared filter component (search, date range, multi-select facets) with URL state sync, active-filter chips, "Clear all", and mobile filter sheet with active-count badge.
 - [ ] **D1.4 StatCard + charts**: KPI card (label/value/delta/sparkline) and Recharts theme (accent series, restrained categorical palette, token grid/tooltips, mount-only draw-in). Numbers agree with linked tables — click-through wired.
 
 ## Milestone D2 — Capture flow (highest-impact screens)

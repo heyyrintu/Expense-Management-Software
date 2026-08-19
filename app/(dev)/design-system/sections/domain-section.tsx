@@ -49,7 +49,6 @@ const TREND = MONTHLY.map((m, i) => ({
 
 /** §6.2 components not yet built, with the task that delivers each. */
 const ROSTER = [
-  { name: "FilterBar", purpose: "Search, date range, facets, URL state", task: "D1.3" },
   { name: "StatCard", purpose: "KPI label, value, delta chip, sparkline", task: "D1.4" },
   { name: "AmountInput", purpose: "Paste-tolerant, minor-unit safe", task: "D2.1" },
   { name: "ReceiptDropzone", purpose: "Drag-and-drop and camera capture", task: "D2.2" },

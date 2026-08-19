@@ -89,7 +89,15 @@ export async function provisionOrg(tag: string): Promise<OrgFixture> {
   };
 }
 
-/** Hard-delete fixtures (tests only — the app never hard-deletes). */
+/**
+ * Hard-delete fixtures (tests only — the app never hard-deletes).
+ *
+ * ORDER IS THE WHOLE FUNCTION. Every child has to go before its parent, or
+ * Postgres refuses the delete on a RESTRICT foreign key and the suite fails
+ * in teardown having already passed — which reads as a mystery failure and
+ * leaves rows behind for the next run to trip over. Anything referencing
+ * `users` in particular belongs above the user delete.
+ */
 export async function teardownOrgs(orgIds: string[]): Promise<void> {
   const where = { orgId: { in: orgIds } };
   await owner.receipt.deleteMany({ where });
@@ -98,6 +106,8 @@ export async function teardownOrgs(orgIds: string[]): Promise<void> {
   await owner.expense.deleteMany({ where });
   await owner.expenseReport.deleteMany({ where });
   await owner.auditLog.deleteMany({ where });
+  // notifications_user_id_fkey is RESTRICT, so these must precede users.
+  await owner.notification.deleteMany({ where });
   await owner.user.deleteMany({ where });
   await owner.category.deleteMany({ where });
   await owner.project.deleteMany({ where });
