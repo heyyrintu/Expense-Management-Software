@@ -58,6 +58,7 @@ npm run seed           # seed 2 demo orgs (acme, globex) with users of every rol
 - Migrations: never edit an applied migration; additive first, destructive only with a backfill plan.
 - Commits: conventional (`feat:`, `fix:`, `test:`, `chore:`); every feat commit includes its tests.
 
+
 ## Definition of done (every task)
 
 1. `npm run lint && npm run build` clean
@@ -75,9 +76,29 @@ Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROM
 - Status color is defined **only** in `StatusBadge` via the map in DESIGN-PRD §5.2 — never hand-colored elsewhere.
 - Amounts render through `<Amount>`, dates through `<DateCell>`. No `toFixed`/`toLocaleString` in components.
 - One primary (filled) button visible per screen.
-- **Motion**: enter `ease-out`, exit `ease-in`, 150–250ms (300ms ceiling), animate `transform`/`opacity` only, always interruptible, anchored to origin, `prefers-reduced-motion` respected. Decorative animation is deleted, not tuned.
+- **Motion**: see the Motion rules section below.
 - Money movement is never optimistic. Approvals may be optimistic with a 5s Undo.
 - Any new or changed component must be added to `/design-system` in the same commit.
+
+## Motion rules
+
+DESIGN-PRD §4 principle 4, quoted as project law. Every animation in the app
+obeys these; if one can't, it doesn't ship.
+
+- Enter animations use `ease-out`; exits use `ease-in`. **Never `ease-in-out` for UI.**
+- 150–250ms for most transitions. Anything over 400ms feels broken; **300ms is the hard ceiling**.
+- Animate `transform` and `opacity` only. **Never animate layout properties.**
+- Animations must be **interruptible** — a user clicking twice fast never sees a stuck state.
+- Elements animate **from their origin** — a dropdown scales from the trigger, a sheet slides from the edge it belongs to.
+- Springs for anything the user drags or that should feel physical (sheets, toasts); duration-based easing for everything else.
+- `prefers-reduced-motion` disables transforms, keeps opacity fades.
+
+In practice:
+
+- All durations, easings, springs and shared variants come from `lib/motion.ts`. A component that writes its own numbers has opted out of the design system — don't.
+- `MotionProvider` (in the root layout) sets the default transition and `reducedMotion="user"`. `app/globals.css` handles the CSS side. Both are required.
+- `collapseRow` is the **only** sanctioned exception to transform/opacity-only: removing a row from a list has to animate height so the rows below close the gap. Nothing else may.
+- If an animation doesn't communicate state, direction, or origin — delete it, don't tune it.
 
 ## Skills
 

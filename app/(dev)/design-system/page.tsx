@@ -9,6 +9,8 @@
 // a tenant screen, so it carries no session, no org scope and no data.
 import type { Metadata } from "next";
 
+import { MotionDemos } from "./motion-demos";
+import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import {
   BRAND_FILL_PAIRS,
   COLOR_GROUPS,
@@ -279,6 +281,16 @@ export default function DesignSystemPage() {
                 <span className="text-meta text-text-secondary tabular">{token.value}</span>
               </div>
             ))}
+          </div>
+        </Section>
+
+        <Section
+          title="Motion variants"
+          description="Enter with ease-out, exit with ease-in, 300ms ceiling, transform and opacity only. Replay is spammable on purpose — every variant has to survive being interrupted mid-flight."
+        >
+          <div className="grid gap-4">
+            <ReducedMotionIndicator />
+            <MotionDemos />
           </div>
         </Section>
 
