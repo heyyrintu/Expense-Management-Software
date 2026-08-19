@@ -113,6 +113,7 @@
   /* Comfortable table row (§6.1). Also the height the row skeleton matches,
      which is why it is a token and not a utility class repeated twice. */
   --row-height: 48px;
+  --ledger-viewport-height: 32rem; /* D4.1: bounds the sticky-ends scroll area */
 }
 
 /* Dark theme hook. Only colour tokens change — no component is aware of it.
@@ -482,5 +483,95 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ── Ledger (D4.1, §7.5) ───────────────────────────────────────────────── */
+
+/* The scrolling viewport that makes the sticky header and sticky totals
+   footer work. position:sticky pins to the nearest scroll container, so
+   without a bounded height the "sticky" ends are just ordinary table ends. */
+@utility max-h-ledger { max-height: var(--ledger-viewport-height); }
+
+/* Alternating rows at 40% of --bg-subtle (§7.5): enough to carry the eye
+   across six columns, well short of zebra striping, which turns a dense
+   table into a barcode. color-mix rather than an opacity utility because the
+   row must stay OPAQUE — a translucent row would let the sticky header show
+   through it while scrolling. */
+@utility ledger-row-alt {
+  background-color: color-mix(in srgb, var(--bg-subtle) 40%, var(--bg-surface));
+}
+
+/* ── Print (D4.1) ──────────────────────────────────────────────────────────
+   A printed ledger is evidence: it gets handed to an auditor, stapled to a
+   voucher, filed. So print is a real layout, not the screen with its colours
+   knocked out.
+
+   White ground, black text, no chrome, and — the part browsers get wrong by
+   default — the table header REPEATED on every page and the totals on the
+   last one. `display: table-header-group` is what tells the printer that
+   <thead> is a running header rather than content that happens to be first.
+   ────────────────────────────────────────────────────────────────────────── */
+@media print {
+  :root {
+    /* Kill every tint at the source: one override here beats a `print:`
+       variant on each of forty elements, and nothing can be missed. */
+    --bg-app: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-subtle: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-tertiary: #333333;
+    --line: #000000;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  /* App chrome never prints: sidebar, top bar, mobile tab bar, and anything
+     a screen marks as screen-only. */
+  [data-slot="app-sidebar"],
+  [data-slot="app-topbar"],
+  [data-slot="app-tabbar"],
+  [data-print="hide"] {
+    display: none !important;
+  }
+
+  /* The shell reserves space for a sidebar that is no longer there. */
+  [data-slot="app-main"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .ledger-table {
+    width: 100%;
+    font-size: 10pt;
+  }
+
+  /* The two rules that make a multi-page ledger readable. */
+  .ledger-table thead {
+    display: table-header-group;
+  }
+  .ledger-table tfoot {
+    display: table-footer-group;
+  }
+
+  /* A row split across a page break loses its balance figure. */
+  .ledger-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .ledger-table th,
+  .ledger-table td {
+    border-bottom: 1px solid #000000;
+    padding: 4pt 6pt;
+  }
+
+  @page {
+    margin: 14mm;
   }
 }

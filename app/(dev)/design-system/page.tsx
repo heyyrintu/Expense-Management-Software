@@ -28,6 +28,7 @@ import { DomainSection } from "./sections/domain-section";
 import { FinanceSection } from "./sections/finance-section";
 import { FiltersSection } from "./sections/filters-section";
 import { KpiSection } from "./sections/kpi-section";
+import { LedgerSection } from "./sections/ledger-section";
 import { MoneySection } from "./sections/money-section";
 import { MotionDemos } from "./sections/motion-section";
 import { PatternsSection } from "./sections/patterns-section";
@@ -116,6 +117,8 @@ export default function DesignSystemPage() {
           <FinanceSection />
 
           <DashboardSection />
+
+          <LedgerSection />
 
           <DomainSection />
 

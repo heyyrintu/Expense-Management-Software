@@ -36,6 +36,7 @@ export function MobileTabBar({ role }: { role: Role }) {
   return (
     <>
       <nav
+        data-slot="app-tabbar"
         aria-label="Primary"
         className="border-line bg-bg-surface fixed inset-x-0 bottom-0 z-30 border-t pb-safe md:hidden print:hidden"
       >

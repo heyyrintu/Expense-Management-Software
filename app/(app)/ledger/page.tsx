@@ -1,31 +1,65 @@
-// Reimbursement ledger (7.1): employee sees their own; finance_admin+ can
-// open any user's, with date filters and CSV/Tally export. Print-friendly.
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+// Ledger (D4.1) — DESIGN-PRD §7.5, PLAN 7.1.
+//
+// A Tally-style party statement: Date · Particulars · Debit · Credit ·
+// Balance, in date order, with a running balance and four totals.
+//
+// ── THE SCREEN AND ITS EXPORTS ARE ONE DERIVATION ─────────────────────────
+// The DoD for this task is "on-screen totals match the CSV export", and the
+// way that is kept is structural rather than checked: this page and
+// /api/exports/ledger both call `resolveLedgerEntity` then `fetchEntityLedger`
+// then `buildLedger`, with the same date window parsed by the same helper.
+// Neither computes a total of its own. tests/isolation/ledger-export.test.ts
+// runs both paths and compares every figure.
+//
+// Presentation only, per the task: every number below comes out of
+// lib/domain/ledger.ts untouched.
+// ──────────────────────────────────────────────────────────────────────────
 import { Amount } from "@/components/ui/amount";
-import { DateCell } from "@/components/ui/date-cell";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
-import { fetchLedgerEvents } from "@/lib/analytics/ledger";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LedgerTable } from "@/components/ledger/ledger-table";
+import { ExportMenu } from "@/components/ledger/export-menu";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
-import { buildLedger } from "@/lib/domain/ledger";
 import { scopedDb } from "@/lib/db/scoped";
-import { PrintButton } from "./print-button";
+import {
+  entityCaveat,
+  fetchEntityLedger,
+  parseLedgerEntityKind,
+  resolveLedgerEntity,
+  type LedgerEntityKind,
+} from "@/lib/analytics/ledger-entity";
+import { buildLedger } from "@/lib/domain/ledger";
+import {
+  ledgerExportHref,
+  parseLedgerWindow,
+} from "@/lib/domain/ledger-params";
+import { LedgerControls, type EntityOption } from "./ledger-controls";
 
-const TYPE_LABELS: Record<string, string> = {
-  report_approved: "Report approved",
-  payment: "Payment",
-  advance_disbursed: "Advance disbursed",
-  advance_settled: "Advance settled",
-};
+/** Heading and subtitle for the resolved entity. */
+function entityCopy(
+  kind: LedgerEntityKind,
+  name: string,
+  isSelf: boolean
+): { title: string; description: string } {
+  if (kind === "project") {
+    return {
+      title: `Ledger — ${name}`,
+      description: "Every report and payment touching this project.",
+    };
+  }
+  if (kind === "department") {
+    return {
+      title: `Ledger — ${name}`,
+      description: "Every member's reports, payments and advances, combined.",
+    };
+  }
+  return {
+    title: isSelf ? "My ledger" : `Ledger — ${name}`,
+    description:
+      "Derived live from reports, payments and advances — nothing is stored.",
+  };
+}
 
 export default async function LedgerPage({
   searchParams,
@@ -34,165 +68,138 @@ export default async function LedgerPage({
 }) {
   const ctx = await requireSession();
   const db = scopedDb(ctx.orgId);
-  const isFinance = roleAtLeast(ctx.role, "finance_admin");
   const raw = await searchParams;
 
-  // finance may view any org member; everyone else only themselves
-  const requestedUser = typeof raw.user === "string" ? raw.user : "";
-  const targetUserId = isFinance && requestedUser ? requestedUser : ctx.userId;
-  const from = typeof raw.from === "string" && raw.from ? new Date(`${raw.from}T00:00:00.000Z`) : undefined;
-  const to = typeof raw.to === "string" && raw.to ? new Date(`${raw.to}T23:59:59.999Z`) : undefined;
+  const isFinance = roleAtLeast(ctx.role, "finance_admin");
+  // Below finance_admin this is forced to the reader's own user ledger
+  // inside resolveLedgerEntity — the guard is there, not here, so the export
+  // route gets it too.
+  const kind: LedgerEntityKind = isFinance ? parseLedgerEntityKind(raw.entity) : "user";
+  const entity = await resolveLedgerEntity(db, ctx, { entity: raw.entity, id: raw.id });
 
-  const [org, target, users] = await Promise.all([
+  const [org, options] = await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
-    db.user.findUnique({
-      where: { id: targetUserId },
-      select: { id: true, name: true },
-    }),
-    isFinance
-      ? (db.user.findMany({
-          where: { status: "active" },
+    // Only the pickable set for the CURRENT kind — loading users, projects
+    // and departments on every render to fill a select the reader may never
+    // open is three queries for one.
+    (async (): Promise<EntityOption[]> => {
+      if (!isFinance) return [];
+      if (kind === "project") {
+        return (await db.project.findMany({
           orderBy: { name: "asc" },
           select: { id: true, name: true },
-        }) as Promise<Array<{ id: string; name: string }>>)
-      : Promise.resolve([]),
+        })) as EntityOption[];
+      }
+      if (kind === "department") {
+        return (await db.department.findMany({
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        })) as EntityOption[];
+      }
+      return (await db.user.findMany({
+        where: { status: "active" },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      })) as EntityOption[];
+    })(),
   ]);
-  if (!target) {
+
+  const window = parseLedgerWindow(raw);
+  const caveat = entityCaveat(kind);
+
+  // A project or department that hasn't been picked yet, or an id that
+  // resolves to nothing. Not an error — the switcher is right there.
+  if (!entity) {
     return (
-      <section className="grid gap-4">
-        <h1 className="text-xl font-semibold">Ledger</h1>
-        <p className="text-muted-foreground text-sm">User not found.</p>
-      </section>
+      <>
+        <PageHeader
+          title="Ledger"
+          description="Pick a project or department to open its rollup."
+        />
+        <div className="grid gap-6">
+          <LedgerControls
+            kind={kind}
+            entityId=""
+            options={options}
+            canSwitchEntity={isFinance}
+          />
+          <EmptyState
+            headline={`Choose a ${kind}`}
+            description={
+              options.length === 0
+                ? `No ${kind === "project" ? "projects" : "departments"} have been set up yet.`
+                : "Its ledger loads as soon as you pick one."
+            }
+          />
+        </div>
+      </>
     );
   }
 
-  const { events, requested } = await fetchLedgerEvents(db, target.id, { from, to });
+  const { events, requested } = await fetchEntityLedger(db, entity, window);
   const { lines, totals } = buildLedger(events, requested);
 
-  const exportQs = new URLSearchParams();
-  if (isFinance && requestedUser) exportQs.set("user", requestedUser);
-  if (typeof raw.from === "string" && raw.from) exportQs.set("from", raw.from);
-  if (typeof raw.to === "string" && raw.to) exportQs.set("to", raw.to);
+  const copy = entityCopy(kind, entity.name, entity.id === ctx.userId);
+  const exportBase = { entity: kind, id: entity.id, ...window.raw };
 
   return (
-    <section className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div>
-          <h1 className="text-xl font-semibold">
-            {target.id === ctx.userId ? "My ledger" : `Ledger — ${target.name}`}
+    <>
+      <PageHeader
+        title={copy.title}
+        description={copy.description}
+        action={
+          <ExportMenu
+            csvHref={ledgerExportHref({ ...exportBase, format: "csv" })}
+            tallyHref={ledgerExportHref({ ...exportBase, format: "tally" })}
+          />
+        }
+      />
+
+      <div className="grid gap-6">
+        <LedgerControls
+          kind={kind}
+          entityId={entity.id}
+          options={options}
+          canSwitchEntity={isFinance}
+        />
+
+        {/* Print-only masthead. A printed page leaves the app behind, so it
+            has to name the organisation, the party and the period itself —
+            otherwise it is a table of numbers about nobody. */}
+        <div className="hidden print:block">
+          <h1 className="text-h2">
+            {org.name} — {copy.title}
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Derived live from reports, payments, and advances — nothing stored.
+          <p className="text-meta tabular">
+            {window.raw.from || window.raw.to
+              ? `Period: ${window.raw.from ?? "start"} to ${window.raw.to ?? "today"}`
+              : "Period: all time"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <a href={`/api/exports/ledger?format=csv&${exportQs.toString()}`}>CSV</a>
-          </Button>
-          <Button asChild variant="outline">
-            <a href={`/api/exports/ledger?format=tally&${exportQs.toString()}`}>Tally XML</a>
-          </Button>
-          <PrintButton />
-        </div>
-      </div>
 
-      <form className="flex flex-wrap items-end gap-2 print:hidden" action="/ledger" method="GET">
-        {isFinance ? (
-          <div className="grid gap-1">
-            <label htmlFor="l-user" className="text-muted-foreground text-xs">User</label>
-            <NativeSelect id="l-user" name="user" defaultValue={requestedUser} className="w-44">
-              <option value="">Me</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </NativeSelect>
-          </div>
+        {caveat ? (
+          <p className="text-meta text-text-tertiary max-w-3xl">{caveat}</p>
         ) : null}
-        <div className="grid gap-1">
-          <label htmlFor="l-from" className="text-muted-foreground text-xs">From</label>
-          <Input id="l-from" name="from" type="date" defaultValue={typeof raw.from === "string" ? raw.from : ""} className="w-40" />
-        </div>
-        <div className="grid gap-1">
-          <label htmlFor="l-to" className="text-muted-foreground text-xs">To</label>
-          <Input id="l-to" name="to" type="date" defaultValue={typeof raw.to === "string" ? raw.to : ""} className="w-40" />
-        </div>
-        <Button type="submit" variant="outline">Apply</Button>
-      </form>
 
-      <div className="hidden print:block">
-        <h1 className="text-lg font-bold">Ledger — {target.name} ({org.name})</h1>
-      </div>
+        <LedgerTable lines={lines} totals={totals} currency={org.currency} />
 
-      <div className="grid gap-4 sm:grid-cols-4">
-        {(
-          [
-            ["Requested", totals.requested],
-            ["Approved", totals.approved],
-            ["Paid", totals.paid],
-            ["Outstanding", totals.outstanding],
-          ] as const
-        ).map(([label, v]) => (
-          <Card key={label}>
-            <CardHeader>
-              <CardDescription>{label}</CardDescription>
-              <CardTitle>
-                <Amount value={v} currency={org.currency} size="display" />
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
+        {/* The net position only differs from `outstanding` when advances are
+            in play, and when it differs it is the number that decides who
+            owes whom — so it is stated rather than left to be derived from
+            the last row of the balance column. */}
+        {totals.netBalance !== totals.outstanding ? (
+          <p className="text-meta text-text-secondary">
+            Net position including advances:{" "}
+            {/* Raw minor units into <Amount>; never a pre-formatted string. */}
+            <Amount
+              value={totals.netBalance}
+              currency={org.currency}
+              className={totals.netBalance < 0 ? "text-status-danger-text" : undefined}
+            />
+            {totals.netBalance < 0 ? " — owed back to the organisation." : ""}
+          </p>
+        ) : null}
       </div>
-      {totals.netBalance !== totals.outstanding ? (
-        <p className="text-muted-foreground text-sm">
-          Net position incl. advances:{" "}
-          <Amount value={totals.netBalance} currency={org.currency} />
-          {totals.netBalance < 0 ? " (owed to the organization)" : ""}
-        </p>
-      ) : null}
-
-      <div className="overflow-x-auto rounded-xl border print:border-0">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left print:bg-transparent">
-            <tr>
-              <th className="p-2 font-medium">Date</th>
-              <th className="p-2 font-medium">Entry</th>
-              <th className="p-2 font-medium">Reference</th>
-              <th className="p-2 text-right font-medium">Credit</th>
-              <th className="p-2 text-right font-medium">Debit</th>
-              <th className="p-2 text-right font-medium">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l) => (
-              <tr key={l.id} className="border-t">
-                <td className="p-2 whitespace-nowrap"><DateCell value={l.date} /></td>
-                <td className="p-2">
-                  <span className="font-medium">{TYPE_LABELS[l.type]}</span>{" "}
-                  <span className="text-muted-foreground">{l.description}</span>
-                </td>
-                <td className="text-muted-foreground p-2">{l.reference}</td>
-                <td className="p-2 text-right whitespace-nowrap">
-                  {l.credit ? <Amount value={l.credit} currency={org.currency} align="right" /> : ""}
-                </td>
-                <td className="p-2 text-right whitespace-nowrap">
-                  {l.debit ? <Amount value={l.debit} currency={org.currency} align="right" /> : ""}
-                </td>
-                <td className="p-2 text-right whitespace-nowrap">
-                  <Amount value={l.balance} currency={org.currency} align="right" />
-                </td>
-              </tr>
-            ))}
-            {lines.length === 0 ? (
-              <tr><td colSpan={6} className="text-muted-foreground p-3">No ledger activity yet.</td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-muted-foreground text-xs print:hidden">
-        Rollups by project/department:{" "}
-        <Link href="/analytics" className="underline">Analytics</Link> shows spend
-        by entity; ledger rollups aggregate the same expenses proportionally.
-      </p>
-    </section>
+    </>
   );
 }

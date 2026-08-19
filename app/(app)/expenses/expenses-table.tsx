@@ -51,6 +51,9 @@ export type ExpenseTableRow = {
   flags: unknown;
 };
 
+/** Query keys carried through a filter change. */
+const PRESERVED_PARAMS = ["scope"] as const;
+
 export function ExpensesTable({
   rows,
   orgCurrency,
@@ -81,7 +84,10 @@ export function ExpensesTable({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { filters, setFilters, pending } = useUrlFilters();
+  // `scope` is not a filter but must survive one (D3.3/D4.1): changing a
+  // date range in the org-wide view must not throw the reader back to
+  // their own rows.
+  const { filters, setFilters, pending } = useUrlFilters(PRESERVED_PARAMS);
 
   // Page lives in the URL beside the filters, so a paged view is as
   // shareable as a filtered one. It is NOT part of the filter schema: a page

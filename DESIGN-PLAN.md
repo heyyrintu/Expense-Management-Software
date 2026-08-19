@@ -35,7 +35,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 
 ## Milestone D4 — Advanced surfaces
 
-- [ ] **D4.1 Ledger view**: Tally-style table per §7.5 — sticky header + totals footer, entity segmented control, running-balance emphasis, print stylesheet, export menu.
+- [x] **D4.1 Ledger view**: Tally-style table per §7.5 — sticky header + totals footer, entity segmented control, running-balance emphasis, print stylesheet, export menu.
 - [ ] **D4.2 Reconciliation wizard**: 3-step sheet (upload → map columns with live preview → review), three-bucket board with counts and summary strip, manual-match search UI, period-lock confirmation.
 - [ ] **D4.3 Complaints thread**: conversation layout, SLA badge, composer, resolve dialog requiring resolution note, finance inbox with aging.
 - [ ] **D4.4 Settings & admin**: users, departments, categories, org settings, WhatsApp linking — consistent settings layout (left section nav + form panels), destructive-action confirmations, invite flow polish.

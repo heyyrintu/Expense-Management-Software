@@ -39,6 +39,7 @@ export function Sidebar({
 
   return (
     <aside
+      data-slot="app-sidebar"
       data-collapsed={collapsed ? "" : undefined}
       className={cn(
         "border-line bg-bg-surface fixed inset-y-0 left-0 z-30 hidden flex-col border-r md:flex print:hidden",

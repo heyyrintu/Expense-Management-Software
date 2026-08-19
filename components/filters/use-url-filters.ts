@@ -22,7 +22,27 @@ import {
 /** Long enough to skip most intermediate keystrokes, short enough to feel live. */
 export const SEARCH_DEBOUNCE_MS = 300;
 
-export function useUrlFilters(): {
+export function useUrlFilters(
+  /**
+   * Query keys that are NOT filters but must survive a filter change.
+   *
+   * ── WHY THIS EXISTS ─────────────────────────────────────────────────────
+   * `setFilters` rebuilds the query string from the filter state alone, which
+   * is what keeps two identical filter states producing one identical URL.
+   * The cost is that anything else in the query string is dropped — and by
+   * D4.1 two screens had something else there: `?scope=` on the expense list
+   * (D3.3) and `?entity=`/`?id=` on the ledger. Touching a date range would
+   * have silently thrown the reader from the org-wide view back to their own
+   * rows, or from a project ledger back to their personal one.
+   *
+   * These keys are carried through verbatim. They are deliberately NOT
+   * merged into the filter schema: `scope` and `entity` can WIDEN a query,
+   * filters may only narrow, and the two must not travel in one bag (see
+   * lib/domain/expense-scope.ts).
+   * ────────────────────────────────────────────────────────────────────────
+   */
+  preserve: readonly string[] = []
+): {
   filters: ExpenseFilters;
   setFilters: (next: ExpenseFilters) => void;
   /** True while the server is re-rendering for a filter change. */
@@ -38,9 +58,17 @@ export function useUrlFilters(): {
     [searchParams]
   );
 
+  // Joined so the callback's identity tracks the VALUES rather than the array
+  // literal a caller re-creates on every render.
+  const preserveKey = preserve.join(",");
+
   const setFilters = React.useCallback(
     (next: ExpenseFilters) => {
       const params = expenseFiltersToParams(next);
+      const current = new URLSearchParams(searchParams);
+      for (const key of preserveKey ? preserveKey.split(",") : []) {
+        for (const value of current.getAll(key)) params.append(key, value);
+      }
       const query = params.toString();
       startTransition(() => {
         // replace, not push: twenty filter tweaks should not mean twenty
@@ -51,7 +79,7 @@ export function useUrlFilters(): {
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
       });
     },
-    [pathname, router]
+    [pathname, router, searchParams, preserveKey]
   );
 
   return { filters, setFilters, pending };

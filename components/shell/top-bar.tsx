@@ -37,6 +37,7 @@ export function TopBar({
 
   return (
     <header
+      data-slot="app-topbar"
       className={cn(
         "border-line bg-bg-surface sticky top-0 z-20 border-b print:hidden",
         // Border, not shadow (§5.4).

@@ -1,18 +1,38 @@
-// Ledger export (7.1): CSV or Tally XML, built from the SAME derivation as
-// the /ledger screen. Employees export their own; finance_admin+ any user.
+// Ledger export (PLAN 7.1, entity rollups D4.1): CSV or Tally XML.
+//
+// ── SAME DERIVATION AS THE SCREEN, NOT A MATCHING ONE ─────────────────────
+// This route calls `resolveLedgerEntity` → `fetchEntityLedger` → `buildLedger`
+// with a window from `parseLedgerWindow`, which is exactly what
+// app/(app)/ledger/page.tsx does. It computes no total of its own, applies no
+// date arithmetic of its own, and repeats no authorization logic of its own —
+// `resolveLedgerEntity` forces anyone below finance_admin back to their own
+// user ledger, so a hand-written `?entity=department&id=…` from an employee
+// exports their personal statement rather than the department's.
+//
+// tests/isolation/ledger-export.test.ts runs both paths and compares every
+// line and every total.
+// ──────────────────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
-import { fetchLedgerEvents } from "@/lib/analytics/ledger";
+
 import { getSessionCtx } from "@/lib/auth/guard";
-import { roleAtLeast } from "@/lib/auth/roles";
+import { scopedDb } from "@/lib/db/scoped";
+import { fetchEntityLedger, resolveLedgerEntity } from "@/lib/analytics/ledger-entity";
 import { buildCsv } from "@/lib/domain/dashboard";
 import { buildLedger } from "@/lib/domain/ledger";
+import { parseLedgerWindow } from "@/lib/domain/ledger-params";
 import { parseOrgSettings } from "@/lib/domain/org-settings";
-import { scopedDb } from "@/lib/db/scoped";
 import { buildTallyXml } from "@/lib/exports/tally";
 import { toDecimalString } from "@/lib/money";
 import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+
+/** Search params as the shared parsers expect them. */
+function toRecord(url: URL): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [key, value] of url.searchParams.entries()) out[key] = value;
+  return out;
+}
 
 export async function GET(request: Request): Promise<NextResponse> {
   const ctx = await getSessionCtx();
@@ -24,63 +44,77 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const url = new URL(request.url);
-  const isFinance = roleAtLeast(ctx.role, "finance_admin");
-  const requestedUser = url.searchParams.get("user") ?? "";
-  const targetUserId = isFinance && requestedUser ? requestedUser : ctx.userId;
-  const fromS = url.searchParams.get("from");
-  const toS = url.searchParams.get("to");
+  const raw = toRecord(url);
   const format = url.searchParams.get("format") === "tally" ? "tally" : "csv";
 
+  // `?user=` was the pre-D4.1 contract, and old links live in bookmarks and
+  // email. Accepting it costs two lines and keeps them working.
+  const legacyUser = url.searchParams.get("user");
+  const entityRaw = legacyUser
+    ? { entity: "user", id: legacyUser }
+    : { entity: raw.entity, id: raw.id };
+
   const db = scopedDb(ctx.orgId);
-  const target = await db.user.findUnique({
-    where: { id: targetUserId },
-    select: { id: true, name: true },
-  });
-  if (!target) {
-    return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
+  const entity = await resolveLedgerEntity(db, ctx, entityRaw);
+  if (!entity) {
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   }
 
-  const { events, requested } = await fetchLedgerEvents(db, target.id, {
-    from: fromS ? new Date(`${fromS}T00:00:00.000Z`) : undefined,
-    to: toS ? new Date(`${toS}T23:59:59.999Z`) : undefined,
-  });
+  const window = parseLedgerWindow(raw);
+  const { events, requested } = await fetchEntityLedger(db, entity, window);
   const { lines, totals } = buildLedger(events, requested);
+
+  const slug = entity.name.replace(/\W+/g, "-").toLowerCase();
 
   if (format === "tally") {
     const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
     const settings = parseOrgSettings(org.settings);
     const xml = buildTallyXml(lines, {
-      partyLedger: target.name,
+      // For a rollup the "party" is the project or department — Tally takes
+      // any ledger name here, and importing a project rollup against the
+      // employee's personal ledger would be worse than useless.
+      partyLedger: entity.name,
       expenseLedger: settings.tallyExpenseLedger ?? "Expense Reimbursements",
       bankLedger: settings.tallyBankLedger ?? "Bank",
     });
     return new NextResponse(xml, {
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
-        "Content-Disposition": `attachment; filename="ledger-${target.name.replace(/\W+/g, "-")}.xml"`,
+        "Content-Disposition": `attachment; filename="ledger-${entity.kind}-${slug}.xml"`,
       },
     });
   }
 
   const csv = buildCsv(
-    ["date", "type", "description", "reference", "credit", "debit", "balance"],
+    ["date", "type", "description", "reference", "debit", "credit", "balance"],
     [
       ...lines.map((l) => [
         l.date.toISOString().slice(0, 10),
         l.type,
         l.description,
         l.reference,
-        l.credit ? toDecimalString(l.credit) : "",
         l.debit ? toDecimalString(l.debit) : "",
+        l.credit ? toDecimalString(l.credit) : "",
         toDecimalString(l.balance),
       ]),
-      ["", "totals", `requested ${toDecimalString(totals.requested)}`, `approved ${toDecimalString(totals.approved)}`, `paid ${toDecimalString(totals.paid)}`, `outstanding ${toDecimalString(totals.outstanding)}`, toDecimalString(totals.netBalance)],
+      // The totals row carries the same four figures the sticky footer shows,
+      // labelled, so a spreadsheet reader can reconcile against the screen
+      // without recomputing anything.
+      [
+        "",
+        "totals",
+        `requested ${toDecimalString(totals.requested)}`,
+        `approved ${toDecimalString(totals.approved)}`,
+        `paid ${toDecimalString(totals.paid)}`,
+        `outstanding ${toDecimalString(totals.outstanding)}`,
+        toDecimalString(totals.netBalance),
+      ],
     ]
   );
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="ledger-${target.name.replace(/\W+/g, "-")}.csv"`,
+      "Content-Disposition": `attachment; filename="ledger-${entity.kind}-${slug}.csv"`,
     },
   });
 }

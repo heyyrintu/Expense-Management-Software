@@ -84,6 +84,7 @@ export function AppShell({
         />
         <main
           id="main-content"
+          data-slot="app-main"
           // §5.5: content capped at 1280px, 24px padding on desktop and 16px
           // on mobile. The bottom padding clears the mobile tab bar so the
           // last row of any list is never trapped underneath it.
