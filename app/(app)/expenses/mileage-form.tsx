@@ -1,6 +1,13 @@
 "use client";
 
-// Mileage capture: distance × org rate, amount auto-calculated live.
+// Mileage capture — the §7.1 shell with one substitution: distance takes the
+// amount field's place, and the amount below it is READ-ONLY, computed from
+// the org rate. You cannot type it, because the server derives it; a field
+// that looks editable and isn't is worse than no field.
+//
+// Same single column, same field order (distance → date → category → project
+// → purpose), same sticky bar. D2.1 restyles; the schema and action are
+// untouched.
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +26,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { SavedIndicator } from "@/components/ui/saved-indicator";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import type { Result } from "@/lib/errors";
 import { mileageInputSchema, type MileageInput } from "@/lib/schemas/expense";
 import { deleteExpenseAction } from "./actions";
@@ -43,6 +52,7 @@ export function MileageForm({
 }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const [savedAt, setSavedAt] = React.useState<number | null>(null);
   const [pending, startTransition] = React.useTransition();
   const form = useForm<MileageInput>({
     resolver: zodResolver(mileageInputSchema) as Resolver<MileageInput>,
@@ -63,6 +73,7 @@ export function MileageForm({
       if (!result.ok) {
         setServerError(result.error);
       } else {
+        setSavedAt(Date.now());
         router.push("/expenses");
         router.refresh();
       }
@@ -84,59 +95,70 @@ export function MileageForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-md gap-4">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="distanceKm"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Distance (km)</FormLabel>
-                <FormControl>
-                  <Input inputMode="numeric" placeholder="42" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-lg gap-5">
+        <FormField
+          control={form.control}
+          name="distanceKm"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Distance</FormLabel>
+              <FormControl>
+                {/* Display-size, like the amount field it stands in for — this
+                    is the number the reader is here to enter. `numeric`, not
+                    `decimal`: the schema takes whole kilometres. */}
+                <div className="border-line-strong bg-bg-surface flex items-baseline gap-2 rounded-md border px-4 py-3 focus-within:border-accent focus-within:ring-2 focus-within:ring-focus-ring focus-within:ring-offset-2 focus-within:ring-offset-bg-app transition-[border-color,box-shadow] duration-instant ease-out">
+                  <input
+                    inputMode="numeric"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="42"
+                    className="amount text-display w-full min-w-0 bg-transparent text-right outline-none placeholder:font-normal placeholder:text-text-tertiary"
+                    {...field}
+                  />
+                  <span aria-hidden="true" className="text-h3 text-text-tertiary">
+                    km
+                  </span>
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="bg-muted/50 rounded-lg border p-3 text-sm" aria-live="polite">
+        {/* Read-only, and visibly so: the server multiplies distance by the
+            org rate, and this is a preview of that, not an input. */}
+        <div className="border-line bg-bg-subtle grid gap-1 rounded-lg p-4" aria-live="polite">
+          <span className="text-label text-text-secondary">Amount</span>
           {ratePerKmMinor <= 0 ? (
-            <span className="text-destructive">
+            <span className="text-body text-status-danger-text">
               No mileage rate configured — ask a finance admin to set one in
               Settings.
             </span>
-          ) : computed !== null ? (
+          ) : (
             <>
-              Amount: <Amount value={computed} currency={currency} />{" "}
-              <span className="text-muted-foreground">
-                ({distanceRaw} km ×{" "}
+              <Amount value={computed} currency={currency} size="display" />
+              <span className="text-meta text-text-tertiary">
+                {computed !== null ? `${distanceRaw} km × ` : "Rate "}
                 <Amount value={ratePerKmMinor} currency={currency} size="meta" tone="muted" />
-                /km)
+                {" per km — calculated on save"}
               </span>
             </>
-          ) : (
-            <span className="text-muted-foreground">
-              Enter a distance to see the amount (
-              <Amount value={ratePerKmMinor} currency={currency} size="meta" tone="muted" />
-              /km)
-            </span>
           )}
         </div>
+
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -193,20 +215,22 @@ export function MileageForm({
           )}
         />
         {serverError ? (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="text-status-danger-text text-body">
             {serverError}
           </p>
         ) : null}
-        <div className="flex gap-3">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : expenseId ? "Save expense" : "Add mileage"}
-          </Button>
-          {expenseId ? (
-            <Button type="button" variant="destructive" onClick={onDelete} disabled={pending}>
-              Delete
+        {expenseId ? (
+          <div>
+            <Button type="button" variant="ghost" onClick={onDelete} disabled={pending}>
+              Delete expense
             </Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+        <StickyActionBar status={<SavedIndicator savedAt={savedAt} />}>
+          <Button type="submit" loading={pending}>
+            {expenseId ? "Save expense" : "Add mileage"}
+          </Button>
+        </StickyActionBar>
       </form>
     </Form>
   );

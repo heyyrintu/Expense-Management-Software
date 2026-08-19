@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 
 import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import { MOTION_TOKENS } from "@/lib/design/tokens";
+import { CaptureSection } from "./sections/capture-section";
 import { ComponentsSection } from "./sections/components-section";
 import { DomainSection } from "./sections/domain-section";
 import { FiltersSection } from "./sections/filters-section";
@@ -98,6 +99,8 @@ export default function DesignSystemPage() {
           <FiltersSection />
 
           <KpiSection />
+
+          <CaptureSection />
 
           <DomainSection />
 

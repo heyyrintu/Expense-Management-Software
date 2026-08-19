@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { toDateInputValue } from "@/lib/format";
@@ -16,10 +17,14 @@ export default async function NewExpensePage() {
   const today = toDateInputValue(new Date());
 
   return (
-    <section className="grid gap-4">
-      <h1 className="text-xl font-semibold">Add expense</h1>
+    <>
+      <PageHeader
+        title="Add expense"
+        description="Capture it now — you can attach the receipt and tidy the details later."
+        breadcrumbs={[{ label: "Expenses", href: "/expenses" }, { label: "Add" }]}
+      />
       {categories.length === 0 ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p className="border-status-warning-subtle bg-status-warning-subtle text-status-warning-text mb-4 rounded-lg border p-3 text-body">
           Your organization has no expense categories yet — a finance admin
           needs to add one in Settings before expenses can be filed.
         </p>
@@ -53,6 +58,6 @@ export default async function NewExpensePage() {
         currency={org.currency}
         ratePerKmMinor={org.mileageRate}
       />
-    </section>
+    </>
   );
 }

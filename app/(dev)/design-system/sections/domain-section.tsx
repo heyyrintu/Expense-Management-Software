@@ -10,7 +10,7 @@
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
 import { StatusBadge } from "@/components/status-badge";
-import { Block, DebtNote, Group, Panel, Row } from "./shared";
+import { Block, Group, Panel, Row } from "./shared";
 
 // Charts moved to the StatCard-and-charts section in D1.4, where they sit
 // beside the theme that governs them.
@@ -21,7 +21,6 @@ const DAYS = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
 
 /** §6.2 components not yet built, with the task that delivers each. */
 const ROSTER = [
-  { name: "AmountInput", purpose: "Paste-tolerant, minor-unit safe", task: "D2.1" },
   { name: "ReceiptDropzone", purpose: "Drag-and-drop and camera capture", task: "D2.2" },
   { name: "OCRReviewCard", purpose: "Extracted fields with confidence emphasis", task: "D2.2" },
   { name: "ApprovalRow", purpose: "Decide without opening; optimistic exit with undo", task: "D3.1" },
@@ -77,12 +76,12 @@ export function DomainSection() {
               ])}
             />
           </Row>
-          <DebtNote owner="D2.1">
-            FlagChips still paints raw <code>bg-amber-100</code> rather than the
-            warning token, and carries its message in a <code>title</code>
-            attribute instead of a Tooltip — so it is invisible to keyboard
-            users. Both are fixed when the capture flow is restyled.
-          </DebtNote>
+          <p className="text-meta text-text-tertiary">
+            D2.1 paid this off: the chips now read the warning token and carry
+            their rule text in a real Tooltip that keyboard users can reach.
+            components/flag-chips.tsx re-exports the new implementation, so all
+            six call sites were fixed without touching any of them.
+          </p>
         </Panel>
       </Block>
 

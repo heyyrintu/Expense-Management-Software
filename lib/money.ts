@@ -101,3 +101,84 @@ export function convertToBase(amountMinor: number, rate: string): number | null 
   if (!Number.isSafeInteger(asNumber)) return null;
   return asNumber;
 }
+
+// ---------- input normalisation (D2.1) ----------
+
+/**
+ * What a user actually typed or pasted, resolved.
+ *
+ * `text` is the plain decimal string the form stores and the Zod schema
+ * validates — the schema is unchanged, so this only ever produces something
+ * it already accepts, or admits failure.
+ */
+export type AmountInputParse = {
+  /** Plain decimal ("1234.56"), or "" when the field is empty. */
+  text: string;
+  /** Integer minor units, or null when the input isn't a usable amount. */
+  minor: number | null;
+  /** True when the input carried more precision than money has. */
+  tooPrecise: boolean;
+  /** True when there was something to read but it wasn't an amount. */
+  invalid: boolean;
+};
+
+/** Currency symbols and codes people paste along with the number. */
+const CURRENCY_NOISE = /(?:₹|rs\.?|inr|\$|usd|€|eur|£|gbp)/gi;
+
+/**
+ * Make sense of a pasted or typed amount: "1,234.56", "₹1234", "Rs 1,234.5",
+ * "1234.5", " 500 ".
+ *
+ * NEVER SILENTLY ROUNDS. "10.555" does not become ₹10.56 — it comes back with
+ * `tooPrecise` and no minor value, so the field can say what happened. A cent
+ * invented by a text field is a cent nobody can trace, and this is an app
+ * whose whole job is that the numbers reconcile.
+ *
+ * Grouping separators are stripped rather than interpreted: this app formats
+ * in en-IN, where "1,23,456.78" is normal, so any comma is a thousands mark
+ * and the last dot is the decimal point.
+ */
+export function normalizeAmountInput(raw: string): AmountInputParse {
+  const cleaned = raw
+    .replace(CURRENCY_NOISE, "")
+    .replace(/[\s  ]/g, "") // spaces, including the narrow no-break kind
+    .replace(/,/g, "")
+    .trim();
+
+  if (cleaned === "") return { text: "", minor: null, tooPrecise: false, invalid: false };
+
+  // A lone leading dot (".5") is a real way to type half a rupee.
+  const withLeadingZero = cleaned.startsWith(".") ? `0${cleaned}` : cleaned;
+
+  const match = /^(\d{1,13})(?:\.(\d*))?$/.exec(withLeadingZero);
+  if (!match) {
+    return { text: raw.trim(), minor: null, tooPrecise: false, invalid: true };
+  }
+
+  const [, whole, frac = ""] = match;
+  if (frac.length > 2) {
+    // Keep what they typed so they can see and fix it themselves.
+    return { text: raw.trim(), minor: null, tooPrecise: true, invalid: false };
+  }
+
+  const text = frac.length === 0 ? whole : `${whole}.${frac}`;
+  return {
+    text,
+    minor: Number.parseInt(whole, 10) * 100 + Number.parseInt(frac.padEnd(2, "0") || "0", 10),
+    tooPrecise: false,
+    invalid: false,
+  };
+}
+
+/**
+ * Grouped display for a resting amount field — "1,23,456.78". Numerals only:
+ * the currency symbol is a separate adornment in the input, so repeating it
+ * here would print it twice.
+ */
+export function formatAmountForDisplay(minor: number): string {
+  assertMinorUnits(minor);
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(minor / 100);
+}

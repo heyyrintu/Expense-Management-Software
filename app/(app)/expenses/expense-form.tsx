@@ -1,12 +1,29 @@
 "use client";
 
-// Mobile-first capture form (ui-screen skill): full-width fields, native
-// date + select inputs, pending state, inline server errors.
+// Add / edit expense — DESIGN-PRD §7.1, the product's front door.
+//
+// Mobile-first single column, thumb-reachable, in the order §7.1 fixes:
+// receipt → amount → merchant → category → date → project → purpose.
+// That order is not alphabetical or historical; it is the order the
+// information exists in. You are holding a receipt, so the receipt comes
+// first, and the amount is the thing you are least willing to retype.
+//
+// Everything below the purpose field — currency, FX, billable, tax, splits —
+// lives behind "More options", collapsed by default. Those fields matter to a
+// minority of expenses and were previously the majority of the form, which is
+// how a 60-second capture becomes a two-minute one.
+//
+// PRESENTATION ONLY. Same actions, same Zod schema, same policy preview. The
+// fields, their names and their validation are untouched — only the order,
+// the grouping and the chrome around them changed.
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type Resolver } from "react-hook-form";
+import { ChevronDown, Receipt as ReceiptIcon, Sparkles } from "lucide-react";
 
+import { Amount } from "@/components/ui/amount";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,11 +35,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { FlagChips } from "@/components/flag-chips";
+import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
+import { SavedIndicator } from "@/components/ui/saved-indicator";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import type { Result } from "@/lib/errors";
-import { Amount } from "@/components/ui/amount";
 import { toDecimalString } from "@/lib/money";
 import { expenseInputSchema, type ExpenseInput } from "@/lib/schemas/expense";
+import { cn } from "@/lib/utils";
 import { deleteExpenseAction, getFxRateAction } from "./actions";
 import { usePolicyPreview } from "./use-policy-preview";
 import { SUPPORTED_CURRENCIES } from "@/lib/fx";
@@ -36,6 +55,14 @@ export type OcrSuggestion = {
   date?: string;
   /** decimal string, e.g. "500.00" */
   amount?: string;
+};
+
+/** Currency symbols for the amount adornment. Falls back to the code. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  INR: "₹",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
 };
 
 export function ExpenseForm({
@@ -61,22 +88,28 @@ export function ExpenseForm({
 }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const [savedAt, setSavedAt] = React.useState<number | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [moreOpen, setMoreOpen] = React.useState(false);
   const form = useForm<ExpenseInput>({
     resolver: zodResolver(expenseInputSchema) as Resolver<ExpenseInput>,
     defaultValues: defaults,
   });
 
-  function onSubmit(values: ExpenseInput) {
-    setServerError(null);
-    startTransition(async () => {
-      const result = await action(values);
-      if (!result.ok) {
-        setServerError(result.error);
-      } else {
-        router.push("/expenses");
-        router.refresh();
-      }
+  /** `then` runs only after the action succeeds. */
+  function submit(then: () => void) {
+    return form.handleSubmit((values) => {
+      setServerError(null);
+      startTransition(async () => {
+        const result = await action(values);
+        if (!result.ok) {
+          setServerError(result.error);
+          return;
+        }
+        // The indicator reports a save that actually happened.
+        setSavedAt(Date.now());
+        then();
+      });
     });
   }
 
@@ -137,6 +170,11 @@ export function ExpenseForm({
     receiptCount,
   });
 
+  // Flags are shown under the field that caused them (§7.1). Anything the
+  // rule map doesn't attribute to a field falls through to the amount, which
+  // is where limit and duplicate rules belong anyway.
+  const flagsByField = groupFlagsByField(liveFlags);
+
   const hasOcr = !!ocr && (ocr.merchant || ocr.date || ocr.amount);
 
   function applyOcr(field: "merchant" | "date" | "amount") {
@@ -145,134 +183,87 @@ export function ExpenseForm({
     if (value) form.setValue(field, value, { shouldValidate: true, shouldDirty: true });
   }
 
+  const advancedCount = countAdvanced(form.watch());
+
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="grid max-w-md gap-4"
-      >
-        {hasOcr ? (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
-            <p className="mb-2 font-medium text-blue-900">
-              Review values read from your receipt
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ocr?.amount ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("amount")}>
-                  Amount: {ocr.amount}
+      {/* Single column, capped at a readable measure. Not a two-column grid:
+          on a phone it stacks anyway, and on desktop a 2-up money form makes
+          you read in a Z rather than straight down. */}
+      <form onSubmit={submit(() => goToList(router))} className="grid max-w-lg gap-5">
+        {/* ---- 1. Receipt ------------------------------------------------ */}
+        <section className="grid gap-2">
+          <h2 className="text-label text-text-secondary">Receipt</h2>
+          {hasOcr ? (
+            <div className="border-accent-border bg-accent-subtle grid gap-3 rounded-lg border p-4">
+              <p className="text-label text-accent-text flex items-center gap-2">
+                <Sparkles aria-hidden="true" className="size-4" />
+                Read from your receipt — check each value
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {ocr?.amount ? (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("amount")}>
+                    Amount: {ocr.amount}
+                  </Button>
+                ) : null}
+                {ocr?.date ? (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("date")}>
+                    Date: {ocr.date}
+                  </Button>
+                ) : null}
+                {ocr?.merchant ? (
+                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("merchant")}>
+                    Merchant: {ocr.merchant}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    applyOcr("amount");
+                    applyOcr("date");
+                    applyOcr("merchant");
+                  }}
+                >
+                  Use all
                 </Button>
-              ) : null}
-              {ocr?.date ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("date")}>
-                  Date: {ocr.date}
-                </Button>
-              ) : null}
-              {ocr?.merchant ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => applyOcr("merchant")}>
-                  Merchant: {ocr.merchant}
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  applyOcr("amount");
-                  applyOcr("date");
-                  applyOcr("merchant");
-                }}
-              >
-                Apply all
-              </Button>
+              </div>
             </div>
-            <p className="mt-2 text-xs text-blue-900/70">
-              Best-effort extraction — check each value before saving.
-            </p>
-          </div>
-        ) : null}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="amount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Amount ({selCurrency})</FormLabel>
-                <FormControl>
-                  <Input inputMode="decimal" placeholder="500.00" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="currency"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Currency</FormLabel>
-                <FormControl>
-                  <NativeSelect {...field}>
-                    {[currency, ...SUPPORTED_CURRENCIES.filter((c) => c !== currency)].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </NativeSelect>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        {isForeign ? (
-          <div className="grid gap-2 rounded-lg border border-blue-200 bg-blue-50/50 p-3">
-            <FormField
-              control={form.control}
-              name="fxRate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Exchange rate (1 {selCurrency} = ? {currency})
-                  </FormLabel>
-                  <FormControl>
-                    <Input inputMode="decimal" placeholder="83.50" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <p className="text-muted-foreground text-xs" aria-live="polite">
-              {(() => {
-                const a = Number.parseFloat(watchedAmount || "0");
-                const r = Number.parseFloat(fxRate || "0");
-                // The currency CODE is already in the sentence, so these are
-                // bare decimals — toDecimalString, not formatMoney.
-                const fromMinor = Math.round(a * 100);
-                const toMinor = Math.round(a * r * 100);
-                return Number.isFinite(a) &&
-                  Number.isFinite(r) &&
-                  a > 0 &&
-                  r > 0 &&
-                  Number.isSafeInteger(fromMinor) &&
-                  Number.isSafeInteger(toMinor)
-                  ? `≈ ${selCurrency} ${toDecimalString(fromMinor)} → ${currency} ${toDecimalString(toMinor)} (exact value computed on save with banker's rounding)`
-                  : "Prefilled from the daily rate when available — you can override it.";
-              })()}
-            </p>
-          </div>
-        ) : null}
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+          ) : (
+            <div className="border-line text-text-tertiary flex items-center gap-2 rounded-lg border border-dashed p-4 text-meta">
+              <ReceiptIcon aria-hidden="true" className="size-4 shrink-0" />
+              {receiptCount > 0
+                ? `${receiptCount} receipt${receiptCount === 1 ? "" : "s"} attached`
+                : "Attach a receipt after saving — drag-and-drop capture arrives with D2.2."}
+            </div>
+          )}
+        </section>
+
+        {/* ---- 2. Amount — the hero field -------------------------------- */}
+        <FormField
+          control={form.control}
+          name="amount"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Amount</FormLabel>
+              <FormControl>
+                <AmountInput
+                  value={field.value}
+                  onValueChange={(text) => field.onChange(text)}
+                  onBlur={field.onBlur}
+                  currencySymbol={CURRENCY_SYMBOLS[selCurrency] ?? ""}
+                  currencyCode={selCurrency}
+                  autoFocus={!expenseId && !hasOcr}
+                />
+              </FormControl>
+              <FormMessage />
+              <PolicyFlagChips flags={flagsByField.amount} />
+            </FormItem>
+          )}
+        />
+
+        {/* ---- 3. Merchant ----------------------------------------------- */}
         <FormField
           control={form.control}
           name="merchant"
@@ -283,9 +274,12 @@ export function ExpenseForm({
                 <Input placeholder="Uber, Taj Mahal Hotel…" {...field} />
               </FormControl>
               <FormMessage />
+              <PolicyFlagChips flags={flagsByField.merchant} />
             </FormItem>
           )}
         />
+
+        {/* ---- 4. Category ----------------------------------------------- */}
         <FormField
           control={form.control}
           name="categoryId"
@@ -303,9 +297,28 @@ export function ExpenseForm({
                 </NativeSelect>
               </FormControl>
               <FormMessage />
+              <PolicyFlagChips flags={flagsByField.categoryId} />
             </FormItem>
           )}
         />
+
+        {/* ---- 5. Date ---------------------------------------------------- */}
+        <FormField
+          control={form.control}
+          name="date"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+              <PolicyFlagChips flags={flagsByField.date} />
+            </FormItem>
+          )}
+        />
+
+        {/* ---- 6. Project -------------------------------------------------- */}
         <FormField
           control={form.control}
           name="projectId"
@@ -326,180 +339,8 @@ export function ExpenseForm({
             </FormItem>
           )}
         />
-        {/* 6.3: billable + tax */}
-        <div className="grid gap-3 rounded-lg border p-3">
-          <FormField
-            control={form.control}
-            name="billable"
-            render={({ field }) => (
-              <FormItem>
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <input
-                    type="checkbox"
-                    checked={field.value}
-                    onChange={(e) => field.onChange(e.target.checked)}
-                    className="size-4"
-                  />
-                  Billable to a client
-                </label>
-              </FormItem>
-            )}
-          />
-          {billable ? (
-            <FormField
-              control={form.control}
-              name="clientId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client</FormLabel>
-                  <FormControl>
-                    <NativeSelect {...field}>
-                      <option value="">Select a client…</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.code})
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : null}
-          <div className="grid grid-cols-2 gap-3">
-            <FormField
-              control={form.control}
-              name="taxAmount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tax amount (optional)</FormLabel>
-                  <FormControl>
-                    <Input inputMode="decimal" placeholder="18.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="taxNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>GST/VAT number (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="29AAACC1234F1Z5" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </div>
 
-        {/* 6.3: splits */}
-        <div className="grid gap-2 rounded-lg border p-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">
-              Split across categories
-              {splitArray.fields.length > 0 ? (
-                <>
-                  {" ("}
-                  <Amount value={splitTotal} currency={selCurrency} size="meta" />
-                  {" / "}
-                  <Amount value={amountMinor} currency={selCurrency} size="meta" />
-                  {")"}
-                </>
-              ) : null}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                splitArray.append(
-                  splitArray.fields.length === 0
-                    ? [
-                        { categoryId: "", projectId: "", value: "" },
-                        { categoryId: "", projectId: "", value: "" },
-                      ]
-                    : [{ categoryId: "", projectId: "", value: "" }]
-                )
-              }
-            >
-              {splitArray.fields.length === 0 ? "Split expense" : "Add line"}
-            </Button>
-          </div>
-          {splitArray.fields.map((f, idx) => (
-            <div key={f.id} className="flex flex-wrap items-end gap-2">
-              <FormField
-                control={form.control}
-                name={`splits.${idx}.categoryId`}
-                render={({ field }) => (
-                  <FormItem className="min-w-36 flex-1">
-                    <FormControl>
-                      <NativeSelect aria-label="Split category" {...field}>
-                        <option value="">Category…</option>
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`splits.${idx}.projectId`}
-                render={({ field }) => (
-                  <FormItem className="min-w-32 flex-1">
-                    <FormControl>
-                      <NativeSelect aria-label="Split project" {...field}>
-                        <option value="">No project</option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`splits.${idx}.value`}
-                render={({ field }) => (
-                  <FormItem className="w-28">
-                    <FormControl>
-                      <Input aria-label="Split amount" inputMode="decimal" placeholder="0.00" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={() =>
-                  splitArray.fields.length <= 2
-                    ? splitArray.replace([]) // a split needs ≥2 lines — clear it
-                    : splitArray.remove(idx)
-                }
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
-          {splitArray.fields.length > 0 && !splitsMatch ? (
-            <p className="text-sm text-amber-800" aria-live="polite">
-              Split lines total{" "}
-              <Amount value={splitTotal} currency={selCurrency} size="meta" /> — they
-              must equal the expense amount{" "}
-              <Amount value={amountMinor} currency={selCurrency} size="meta" />.
-            </p>
-          ) : null}
-        </div>
-
+        {/* ---- 7. Purpose -------------------------------------------------- */}
         <FormField
           control={form.control}
           name="purpose"
@@ -513,35 +354,352 @@ export function ExpenseForm({
             </FormItem>
           )}
         />
-        {liveFlags.length > 0 ? (
-          <div aria-live="polite" className="grid gap-1 rounded-lg border border-amber-200 bg-amber-50 p-2">
-            <FlagChips flags={liveFlags} />
-            <p className="text-xs text-amber-800/80">
-              Policy warnings — you can still save and submit.
-            </p>
-          </div>
-        ) : null}
+
+        {/* ---- Everything the majority of expenses don't need -------------- */}
+        <section className="border-line grid gap-4 rounded-lg border p-4">
+          <button
+            type="button"
+            onClick={() => setMoreOpen((v) => !v)}
+            aria-expanded={moreOpen}
+            className={cn(
+              "text-label text-text-secondary hover:text-text-primary flex h-11 items-center justify-between gap-2 rounded-md",
+              "transition-colors duration-instant ease-out",
+              "outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+            )}
+          >
+            <span className="flex items-center gap-2">
+              More options
+              {advancedCount > 0 ? (
+                <span className="bg-accent-subtle text-accent-text rounded-sm px-1 text-meta tabular">
+                  {advancedCount}
+                </span>
+              ) : null}
+            </span>
+            {/* A rotation is a transform, so it costs nothing to animate. */}
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "size-4 transition-transform duration-fast ease-out",
+                moreOpen && "rotate-180"
+              )}
+            />
+          </button>
+
+          {moreOpen ? (
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currency</FormLabel>
+                    <FormControl>
+                      <NativeSelect {...field}>
+                        {[currency, ...SUPPORTED_CURRENCIES.filter((c) => c !== currency)].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {isForeign ? (
+                <div className="border-line bg-bg-subtle grid gap-2 rounded-lg border p-3">
+                  <FormField
+                    control={form.control}
+                    name="fxRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Exchange rate (1 {selCurrency} = ? {currency})
+                        </FormLabel>
+                        <FormControl>
+                          <Input inputMode="decimal" placeholder="83.50" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <p className="text-meta text-text-tertiary" aria-live="polite">
+                    {(() => {
+                      const a = Number.parseFloat(watchedAmount || "0");
+                      const r = Number.parseFloat(fxRate || "0");
+                      // The currency CODE is already in the sentence, so these
+                      // are bare decimals — toDecimalString, not formatMoney.
+                      const fromMinor = Math.round(a * 100);
+                      const toMinor = Math.round(a * r * 100);
+                      return Number.isFinite(a) &&
+                        Number.isFinite(r) &&
+                        a > 0 &&
+                        r > 0 &&
+                        Number.isSafeInteger(fromMinor) &&
+                        Number.isSafeInteger(toMinor)
+                        ? `≈ ${selCurrency} ${toDecimalString(fromMinor)} → ${currency} ${toDecimalString(toMinor)} (exact value computed on save with banker's rounding)`
+                        : "Prefilled from the daily rate when available — you can override it.";
+                    })()}
+                  </p>
+                </div>
+              ) : null}
+
+              <FormField
+                control={form.control}
+                name="billable"
+                render={({ field }) => (
+                  <FormItem>
+                    <label className="text-body text-text-secondary flex min-h-11 items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        className="size-4"
+                      />
+                      Billable to a client
+                    </label>
+                  </FormItem>
+                )}
+              />
+              {billable ? (
+                <FormField
+                  control={form.control}
+                  name="clientId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client</FormLabel>
+                      <FormControl>
+                        <NativeSelect {...field}>
+                          <option value="">Select a client…</option>
+                          {clients.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({c.code})
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tax amount (optional)</FormLabel>
+                      <FormControl>
+                        <Input inputMode="decimal" placeholder="18.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="taxNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>GST/VAT number (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="29AAACC1234F1Z5" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* 6.3: splits */}
+              <div className="border-line grid gap-2 rounded-lg border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-label text-text-secondary">
+                    Split across categories
+                    {splitArray.fields.length > 0 ? (
+                      <>
+                        {" ("}
+                        <Amount value={splitTotal} currency={selCurrency} size="meta" />
+                        {" / "}
+                        <Amount value={amountMinor} currency={selCurrency} size="meta" />
+                        {")"}
+                      </>
+                    ) : null}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      splitArray.append(
+                        splitArray.fields.length === 0
+                          ? [
+                              { categoryId: "", projectId: "", value: "" },
+                              { categoryId: "", projectId: "", value: "" },
+                            ]
+                          : [{ categoryId: "", projectId: "", value: "" }]
+                      )
+                    }
+                  >
+                    {splitArray.fields.length === 0 ? "Split expense" : "Add line"}
+                  </Button>
+                </div>
+                {splitArray.fields.map((f, idx) => (
+                  <div key={f.id} className="flex flex-wrap items-end gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`splits.${idx}.categoryId`}
+                      render={({ field }) => (
+                        <FormItem className="min-w-36 flex-1">
+                          <FormControl>
+                            <NativeSelect aria-label="Split category" {...field}>
+                              <option value="">Category…</option>
+                              {categories.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </NativeSelect>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`splits.${idx}.projectId`}
+                      render={({ field }) => (
+                        <FormItem className="min-w-32 flex-1">
+                          <FormControl>
+                            <NativeSelect aria-label="Split project" {...field}>
+                              <option value="">No project</option>
+                              {projects.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                            </NativeSelect>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`splits.${idx}.value`}
+                      render={({ field }) => (
+                        <FormItem className="w-28">
+                          <FormControl>
+                            <Input aria-label="Split amount" inputMode="decimal" placeholder="0.00" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        splitArray.fields.length <= 2
+                          ? splitArray.replace([]) // a split needs ≥2 lines — clear it
+                          : splitArray.remove(idx)
+                      }
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+                {splitArray.fields.length > 0 && !splitsMatch ? (
+                  <p className="text-meta text-status-warning-text" aria-live="polite">
+                    Split lines total{" "}
+                    <Amount value={splitTotal} currency={selCurrency} size="meta" /> — they
+                    must equal the expense amount{" "}
+                    <Amount value={amountMinor} currency={selCurrency} size="meta" />.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </section>
+
         {serverError ? (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="text-status-danger-text text-body">
             {serverError}
           </p>
         ) : null}
-        <div className="flex gap-3">
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : expenseId ? "Save expense" : "Add expense"}
-          </Button>
-          {expenseId ? (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={onDelete}
-              disabled={pending}
-            >
-              Delete
+
+        {expenseId ? (
+          <div>
+            <Button type="button" variant="ghost" onClick={onDelete} disabled={pending}>
+              Delete expense
             </Button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+
+        {/* §7.1: exactly one filled button on the screen. */}
+        <StickyActionBar status={<SavedIndicator savedAt={savedAt} />}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            onClick={submit(() => goToList(router))}
+          >
+            Save draft
+          </Button>
+          <Button type="button" loading={pending} onClick={submit(() => goToReports(router))}>
+            Add to report
+          </Button>
+        </StickyActionBar>
       </form>
     </Form>
   );
+}
+
+function goToList(router: ReturnType<typeof useRouter>) {
+  router.push("/expenses");
+  router.refresh();
+}
+
+/**
+ * "Add to report" saves the expense — which is what creating it does today,
+ * a Draft — and then takes you to reports. Attaching it to a specific report
+ * without leaving the screen is the report builder's job (D2.3); the button
+ * is here because §7.1 puts it here, and it goes somewhere true rather than
+ * pretending to do something it can't yet.
+ */
+function goToReports(router: ReturnType<typeof useRouter>) {
+  router.push("/reports");
+  router.refresh();
+}
+
+type FieldFlags = {
+  amount: ReturnType<typeof usePolicyPreview>;
+  merchant: ReturnType<typeof usePolicyPreview>;
+  categoryId: ReturnType<typeof usePolicyPreview>;
+  date: ReturnType<typeof usePolicyPreview>;
+};
+
+/** Which field a policy rule is about (§7.1: "inline below the offending field"). */
+const RULE_FIELD: Record<string, keyof FieldFlags> = {
+  per_expense_limit: "amount",
+  monthly_limit: "amount",
+  receipt_required: "amount",
+  expense_age: "date",
+  duplicate: "merchant",
+};
+
+function groupFlagsByField(flags: ReturnType<typeof usePolicyPreview>): FieldFlags {
+  const out: FieldFlags = { amount: [], merchant: [], categoryId: [], date: [] };
+  for (const flag of flags) {
+    // Unattributed rules land on the amount — where limit and duplicate rules
+    // belong anyway, and never nowhere.
+    out[RULE_FIELD[flag.rule] ?? "amount"].push(flag);
+  }
+  return out;
+}
+
+/** How many advanced fields carry a non-default value, for the badge. */
+function countAdvanced(values: ExpenseInput): number {
+  let n = 0;
+  if (values.billable) n += 1;
+  if (values.clientId) n += 1;
+  if (values.taxAmount) n += 1;
+  if (values.taxNumber) n += 1;
+  if (values.splits && values.splits.length > 0) n += 1;
+  return n;
 }
