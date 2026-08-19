@@ -10,8 +10,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_SERIES } from "@/lib/design/chart-colors";
 
-const COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#6b7280"];
+// Palette lives in lib/design/chart-colors so every chart shares one list.
+const COLORS = CHART_SERIES;
 
 export function TrendAreaChart({
   series,

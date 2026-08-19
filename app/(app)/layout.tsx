@@ -125,7 +125,7 @@ export default async function AppLayout({
             >
               Inbox
               {unread > 0 ? (
-                <span className="absolute -top-2 -right-3 rounded-full bg-blue-600 px-1.5 text-[10px] font-semibold text-white">
+                <span className="absolute -top-2 -right-3 rounded-full bg-blue-600 px-1.5 text-micro font-semibold text-white">
                   {unread > 99 ? "99+" : unread}
                 </span>
               ) : null}

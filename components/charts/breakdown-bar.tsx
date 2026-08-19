@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { CHART_SECONDARY } from "@/lib/design/chart-colors";
 
 export function BreakdownBarChart({
   data,
@@ -43,7 +44,7 @@ export function BreakdownBarChart({
               "Total",
             ]}
           />
-          <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+          <Bar dataKey="value" fill={CHART_SECONDARY} radius={[0, 4, 4, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -148,7 +148,7 @@ export function WhatsAppPanel({ status, phone, optedOut = false }: WhatsAppPanel
             autoComplete="one-time-code"
             maxLength={6}
             placeholder="123456"
-            className="max-w-[10rem] tracking-widest"
+            className="max-w-40 tracking-widest"
           />
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={pending}>

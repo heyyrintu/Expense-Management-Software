@@ -66,6 +66,19 @@ npm run seed           # seed 2 demo orgs (acme, globex) with users of every rol
 4. AuditLog written for any state change
 5. PLAN.md task checked off
 
+## Design rules
+
+Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROMPTS.md`.
+
+- **Tokens only** — no raw hex, no arbitrary Tailwind values (`text-[13px]`) in `app/**` or `components/**`. Lint enforces this.
+- Light theme; indigo/violet accent; Inter with tabular numerals for all money; comfortable density (44px touch targets, 48px rows).
+- Status color is defined **only** in `StatusBadge` via the map in DESIGN-PRD §5.2 — never hand-colored elsewhere.
+- Amounts render through `<Amount>`, dates through `<DateCell>`. No `toFixed`/`toLocaleString` in components.
+- One primary (filled) button visible per screen.
+- **Motion**: enter `ease-out`, exit `ease-in`, 150–250ms (300ms ceiling), animate `transform`/`opacity` only, always interruptible, anchored to origin, `prefers-reduced-motion` respected. Decorative animation is deleted, not tuned.
+- Money movement is never optimistic. Approvals may be optimistic with a 5s Undo.
+- Any new or changed component must be added to `/design-system` in the same commit.
+
 ## Skills
 
-Use the project skills in `.claude/skills/` (see `SKILLS.md`): `add-feature-module`, `tenant-isolation-check`, `db-migration`, `ui-screen`. Invoke the relevant skill before starting matching work.
+Use the project skills in `.claude/skills/` (see `SKILLS.md`): `add-feature-module`, `tenant-isolation-check`, `db-migration`, `ui-screen`, `design-craft`. Invoke the relevant skill before starting matching work.
