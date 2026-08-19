@@ -22,6 +22,7 @@ export const GALLERY_SECTIONS = [
   { id: "receipt", label: "Receipt capture", note: "Dropzone, OCR card, viewer" },
   { id: "report", label: "Report builder", note: "Timeline, flag strip, submit dialog" },
   { id: "approval", label: "Approval queue", note: "Flagged-first rows, undo, decisions" },
+  { id: "finance", label: "Finance and proof", note: "Batch review, progress, proof viewer" },
   { id: "domain", label: "Domain components", note: "Status, flags, charts — and what's missing" },
   { id: "motion", label: "Motion", note: "Tokens and replayable variants" },
   { id: "patterns", label: "Patterns", note: "Empty, loading, error" },

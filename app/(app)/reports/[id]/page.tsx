@@ -11,6 +11,7 @@ import {
 import { Amount } from "@/components/ui/amount";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusTimeline } from "@/components/ui/status-timeline";
+import { PaymentProgress } from "@/components/ui/payment-progress";
 import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
 import { DateCell } from "@/components/ui/date-cell";
 import { asFlags, FlagChips } from "@/components/flag-chips";
@@ -239,32 +240,33 @@ export default async function ReportDetailPage({
       ) : null}
 
       {report.reimbursements.length > 0 ? (
-        <div className="grid gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
-          <p className="font-medium">
-            Payments
-            {currency && report.status === "partially_reimbursed" ? (
-              <>
-                {" — outstanding "}
-                <Amount
-                  value={outstandingBalance(report.total, report.reimbursements)}
-                  currency={currency}
-                />
-              </>
-            ) : null}
-          </p>
-          <ul className="grid gap-1">
+        <div className="border-line bg-bg-surface grid gap-3 rounded-lg border p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-h3 text-text-primary">Payments</h2>
+            <StatusBadge status={report.status} />
+          </div>
+
+          {/* Paid vs. balance, with the outstanding figure in the warning
+              token — money still owed is not neutral information (D3.2). */}
+          <PaymentProgress
+            total={report.total}
+            paid={report.total - outstandingBalance(report.total, report.reimbursements)}
+            currency={currency}
+          />
+
+          <ul className="divide-line grid divide-y">
             {paymentViews.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center gap-2">
-                <DateCell value={p.when} />
+              <li key={p.id} className="flex flex-wrap items-center gap-2 py-2">
+                <DateCell value={p.when} tone="muted" />
                 <Amount value={p.amountPaid} currency={currency} />
-                <span>{p.method}</span>
-                <span className="text-violet-900/70">ref {p.reference}</span>
+                <span className="text-meta text-text-secondary capitalize">{p.method}</span>
+                <span className="text-meta text-text-tertiary tabular">ref {p.reference}</span>
                 {p.proofUrl ? (
                   <a
                     href={p.proofUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="underline underline-offset-4"
+                    className="text-accent-text text-meta underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
                   >
                     View proof
                   </a>

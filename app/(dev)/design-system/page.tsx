@@ -24,6 +24,7 @@ import { ApprovalSection } from "./sections/approval-section";
 import { CaptureSection } from "./sections/capture-section";
 import { ComponentsSection } from "./sections/components-section";
 import { DomainSection } from "./sections/domain-section";
+import { FinanceSection } from "./sections/finance-section";
 import { FiltersSection } from "./sections/filters-section";
 import { KpiSection } from "./sections/kpi-section";
 import { MoneySection } from "./sections/money-section";
@@ -110,6 +111,8 @@ export default function DesignSystemPage() {
           <ReportSection />
 
           <ApprovalSection />
+
+          <FinanceSection />
 
           <DomainSection />
 
