@@ -1,107 +1,177 @@
 "use client";
 
-// Bank details form (6.1): the account number is never echoed back — the
-// user re-enters it in full whenever they update.
+// Bank details (D4.4, PLAN 6.1).
+//
+// Two halves, and the split is the security design:
+//
+//   READING   the stored number is shown MASKED, and the full value arrives
+//             only when the reader presses Reveal — a server action that
+//             takes no id and resolves the identity from the session.
+//
+//   WRITING   the number is never echoed into the form. Updating means
+//             typing it in full, which is deliberate: a pre-filled account
+//             number is a field people tab past, and the one thing worse
+//             than retyping sixteen digits is paying into the old ones.
+//
+// The other three fields ARE pre-filled and use the sticky save bar, because
+// an IFSC or UPI id is safe to show and tedious to retype.
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { DirtySaveBar } from "@/components/ui/dirty-save-bar";
 import { Input } from "@/components/ui/input";
-import { updateBankDetailsAction } from "./actions";
+import { MaskedValue } from "@/components/ui/masked-value";
+import { revealOwnAccountNumberAction, updateBankDetailsAction } from "./actions";
+
+type Defaults = { bankAccountName: string; bankIfsc: string; upiId: string };
 
 export function BankDetailsForm({
   defaults,
-  hasExisting,
+  maskedAccountNumber,
 }: {
-  defaults: { bankAccountName: string; bankIfsc: string; upiId: string };
-  hasExisting: boolean;
+  defaults: Defaults;
+  /** Already masked by the server. Null when nothing is on file. */
+  maskedAccountNumber: string | null;
 }) {
   const router = useRouter();
-  const [open, setOpen] = React.useState(!hasExisting);
-  const [name, setName] = React.useState(defaults.bankAccountName);
-  const [number, setNumber] = React.useState("");
-  const [ifsc, setIfsc] = React.useState(defaults.bankIfsc);
-  const [upi, setUpi] = React.useState(defaults.upiId);
-  const [message, setMessage] = React.useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [values, setValues] = React.useState<Defaults>(defaults);
+  const [accountNumber, setAccountNumber] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
 
-  if (!open) {
-    return (
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Update bank details
-      </Button>
-    );
+  const hasExisting = maskedAccountNumber !== null;
+
+  // Dirty is a real comparison against what the server last confirmed, so
+  // typing a character and deleting it puts the bar away again.
+  const dirty =
+    accountNumber !== "" ||
+    values.bankAccountName !== defaults.bankAccountName ||
+    values.bankIfsc !== defaults.bankIfsc ||
+    values.upiId !== defaults.upiId;
+
+  function set<K extends keyof Defaults>(key: K, value: string) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function discard() {
+    setValues(defaults);
+    setAccountNumber("");
+    setError(null);
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const res = await updateBankDetailsAction({
+        ...values,
+        bankAccountNumber: accountNumber,
+      });
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      // Never keep the typed number in state after a save.
+      setAccountNumber("");
+      toast.success("Bank details saved.");
+      router.refresh();
+    });
   }
 
   return (
-    <form
-      className="grid gap-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setMessage(null);
-        startTransition(async () => {
-          const res = await updateBankDetailsAction({
-            bankAccountName: name,
-            bankAccountNumber: number,
-            bankIfsc: ifsc,
-            upiId: upi,
-          });
-          if (!res.ok) {
-            setMessage({ kind: "error", text: res.error });
-          } else {
-            setMessage({ kind: "ok", text: "Bank details saved." });
-            setNumber("");
-            setOpen(false);
-            router.refresh();
-          }
-        });
-      }}
-    >
-      <div className="grid gap-1">
-        <label htmlFor="b-name" className="text-muted-foreground text-xs">Account holder name</label>
-        <Input id="b-name" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <div className="grid gap-1">
-        <label htmlFor="b-number" className="text-muted-foreground text-xs">
-          Account number {hasExisting ? "(re-enter in full to update)" : ""}
-        </label>
+    <form onSubmit={submit} className="grid max-w-lg gap-4">
+      {hasExisting ? (
+        <div className="border-line bg-bg-subtle grid gap-1 rounded-lg border p-3">
+          <span className="text-meta text-text-tertiary">
+            Account number on file
+          </span>
+          <MaskedValue
+            masked={maskedAccountNumber}
+            label="account number"
+            onReveal={revealOwnAccountNumberAction}
+          />
+        </div>
+      ) : (
+        <p className="text-body text-text-secondary">
+          No bank details on file yet — finance can&apos;t reimburse you until
+          there are.
+        </p>
+      )}
+
+      <label className="grid gap-1">
+        <span className="text-label text-text-primary">Account holder</span>
         <Input
-          id="b-number"
+          value={values.bankAccountName}
+          onChange={(e) => set("bankAccountName", e.target.value)}
+          placeholder="As printed on the passbook"
+          autoComplete="name"
+        />
+      </label>
+
+      <label className="grid gap-1">
+        <span className="text-label text-text-primary">
+          Account number
+          {hasExisting ? (
+            <span className="text-text-tertiary font-normal">
+              {" "}
+              — leave blank to keep the current one
+            </span>
+          ) : null}
+        </span>
+        <Input
+          value={accountNumber}
+          onChange={(e) => setAccountNumber(e.target.value)}
           inputMode="numeric"
           autoComplete="off"
-          value={number}
-          onChange={(e) => setNumber(e.target.value)}
-          placeholder="Full account number"
+          placeholder="6–20 digits"
+          className="tabular"
         />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1">
-          <label htmlFor="b-ifsc" className="text-muted-foreground text-xs">IFSC (optional)</label>
-          <Input id="b-ifsc" value={ifsc} onChange={(e) => setIfsc(e.target.value)} placeholder="HDFC0001234" />
-        </div>
-        <div className="grid gap-1">
-          <label htmlFor="b-upi" className="text-muted-foreground text-xs">UPI id (optional)</label>
-          <Input id="b-upi" value={upi} onChange={(e) => setUpi(e.target.value)} placeholder="name@bank" />
-        </div>
-      </div>
-      {message ? (
+      </label>
+
+      <label className="grid gap-1">
+        <span className="text-label text-text-primary">IFSC</span>
+        <Input
+          value={values.bankIfsc}
+          onChange={(e) => set("bankIfsc", e.target.value.toUpperCase())}
+          placeholder="HDFC0001234"
+          autoComplete="off"
+          className="tabular"
+        />
+      </label>
+
+      <label className="grid gap-1">
+        <span className="text-label text-text-primary">
+          UPI id <span className="text-text-tertiary font-normal">(optional)</span>
+        </span>
+        <Input
+          value={values.upiId}
+          onChange={(e) => set("upiId", e.target.value.toLowerCase())}
+          placeholder="name@bank"
+          autoComplete="off"
+        />
+      </label>
+
+      {error ? (
         <p
-          role={message.kind === "error" ? "alert" : "status"}
-          className={message.kind === "error" ? "text-destructive text-sm" : "text-sm text-green-700"}
+          role="alert"
+          className="border-status-danger-subtle bg-status-danger-subtle text-status-danger-text rounded-md border p-3 text-body"
         >
-          {message.text}
+          {error}
         </p>
       ) : null}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={pending || !name || !number}>
-          {pending ? "Saving…" : "Save bank details"}
-        </Button>
-        {hasExisting ? (
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-        ) : null}
-      </div>
+
+      <DirtySaveBar dirty={dirty} pending={pending} onDiscard={discard} />
+
+      {/* An existing record can't be saved without re-entering the number,
+          because the action requires one. Said here rather than discovered
+          from a validation error after pressing Save. */}
+      {dirty && hasExisting && accountNumber === "" ? (
+        <p className="text-meta text-text-tertiary">
+          Re-enter the account number to save any change — it is never sent
+          back to this page for editing.
+        </p>
+      ) : null}
     </form>
   );
 }

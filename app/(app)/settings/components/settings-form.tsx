@@ -1,9 +1,20 @@
 "use client";
 
 // Shared RHF + Zod + server-action form for the settings screens.
+//
+// D4.4 moved the submit button out of the form body and into a STICKY SAVE
+// BAR that appears only once the form is dirty. React Hook Form already
+// tracks `formState.isDirty` against the defaults, so "dirty" is a real
+// comparison rather than "has been focused" — typing a character and deleting
+// it again puts the bar away, which is the behaviour that makes it
+// trustworthy.
+//
+// Every settings screen using this component inherits the pattern; none of
+// them re-implement it.
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import {
   useForm,
   type DefaultValues,
@@ -13,7 +24,7 @@ import {
 } from "react-hook-form";
 import type { z } from "zod";
 
-import { Button } from "@/components/ui/button";
+import { DirtySaveBar } from "@/components/ui/dirty-save-bar";
 import {
   Form,
   FormControl,
@@ -50,7 +61,6 @@ export function SettingsForm<T extends FieldValues>({
 }) {
   const router = useRouter();
   const [serverError, setServerError] = React.useState<string | null>(null);
-  const [saved, setSaved] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const form = useForm<T>({
     // settings schemas have no transforms: input === output === T
@@ -58,25 +68,36 @@ export function SettingsForm<T extends FieldValues>({
     defaultValues: defaults,
   });
 
+  // A CREATE form starts dirty-less but has nothing to go back to, so its bar
+  // must be visible from the start; an EDIT form's bar appears on first edit.
+  const isCreate = successPath !== undefined;
+  const dirty = isCreate || form.formState.isDirty;
+
   function onSubmit(values: T) {
     setServerError(null);
-    setSaved(false);
     startTransition(async () => {
       const result = await action(values);
       if (!result.ok) {
         setServerError(result.error);
-      } else if (successPath) {
+        return;
+      }
+      if (successPath) {
         router.push(successPath);
         router.refresh();
-      } else {
-        setSaved(true);
+        return;
       }
+      // Re-baseline so the bar retracts: the saved values ARE the new
+      // defaults, and leaving the old ones in place would keep the form
+      // "dirty" against a state that no longer exists anywhere.
+      form.reset(values);
+      toast.success("Saved.");
+      router.refresh();
     });
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-md gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid max-w-lg gap-4">
         {fields.map((f) => (
           <FormField
             key={f.name}
@@ -96,21 +117,26 @@ export function SettingsForm<T extends FieldValues>({
             )}
           />
         ))}
+
         {serverError ? (
-          <p role="alert" className="text-destructive text-sm">
+          <p
+            role="alert"
+            className="border-status-danger-subtle bg-status-danger-subtle text-status-danger-text rounded-md border p-3 text-body"
+          >
             {serverError}
           </p>
         ) : null}
-        {saved ? (
-          <p role="status" className="text-sm text-green-700">
-            Saved.
-          </p>
-        ) : null}
-        <div>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : submitLabel}
-          </Button>
-        </div>
+
+        <DirtySaveBar
+          dirty={dirty}
+          pending={pending}
+          saveLabel={submitLabel}
+          // Back to the values the server last confirmed — not to empty.
+          onDiscard={() => {
+            form.reset(defaults);
+            setServerError(null);
+          }}
+        />
       </form>
     </Form>
   );

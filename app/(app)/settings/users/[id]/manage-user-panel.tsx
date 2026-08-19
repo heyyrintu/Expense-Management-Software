@@ -7,6 +7,7 @@ import { useForm, type Resolver } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDestructiveDialog } from "@/components/ui/confirm-destructive-dialog";
 import {
   Form,
   FormControl,
@@ -39,7 +40,16 @@ export function ManageUserPanel({
   departments,
   approvers,
 }: {
-  user: { id: string; role: string; status: string; departmentId: string; approverId: string };
+  // `name` is here for the destructive confirmation, which must name the
+  // exact person rather than asking about "this user" (D4.4).
+  user: {
+    id: string;
+    name: string;
+    role: string;
+    status: string;
+    departmentId: string;
+    approverId: string;
+  };
   isSelf: boolean;
   departments: Opt[];
   approvers: Opt[];
@@ -48,6 +58,7 @@ export function ManageUserPanel({
   const [message, setMessage] = React.useState<{ kind: "error" | "ok"; text: string } | null>(null);
   const [inviteLink, setInviteLink] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [deactivateOpen, setDeactivateOpen] = React.useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as Resolver<FormValues>,
     defaultValues: {
@@ -170,13 +181,13 @@ export function ManageUserPanel({
           </div>
         ) : null}
         {user.status === "active" && !isSelf ? (
+          // Secondary here; the danger styling lives on the confirm inside
+          // the dialog, where the reader has actually read what happens.
           <Button
-            variant="destructive"
+            variant="secondary"
             disabled={pending}
             className="w-fit"
-            onClick={() =>
-              run(() => deactivateUserAction({ id: user.id }), "User deactivated.")
-            }
+            onClick={() => setDeactivateOpen(true)}
           >
             Deactivate user
           </Button>
@@ -216,6 +227,28 @@ export function ManageUserPanel({
           </Button>
         </div>
       ) : null}
+
+      <ConfirmDestructiveDialog
+        open={deactivateOpen}
+        onOpenChange={setDeactivateOpen}
+        pending={pending}
+        entityName={user.name}
+        verb="Deactivate"
+        description="They lose access immediately. Nothing they have filed is removed — deactivation is an access change, not a deletion."
+        consequences={[
+          "they can no longer sign in",
+          "reports still waiting on them as approver need reassigning",
+        ]}
+        preserved={[
+          "every expense, report and payment in their history",
+          "their ledger, which finance can still open and export",
+          "the account itself — you can reactivate it later",
+        ]}
+        onConfirm={() => {
+          setDeactivateOpen(false);
+          run(() => deactivateUserAction({ id: user.id }), "User deactivated.");
+        }}
+      />
 
       {message ? (
         <p

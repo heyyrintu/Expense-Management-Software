@@ -37,6 +37,7 @@ import { ReceiptSection } from "./sections/receipt-section";
 import { ReconSection } from "./sections/recon-section";
 import { ReportSection } from "./sections/report-section";
 import { ScalesSection } from "./sections/scales-section";
+import { SettingsSectionDemo } from "./sections/settings-section";
 import { ShellSection } from "./sections/shell-section";
 import { TableSection } from "./sections/table-section";
 import { TokensSection } from "./sections/tokens-section";
@@ -125,6 +126,8 @@ export default function DesignSystemPage() {
           <ReconSection />
 
           <ComplaintsSection />
+
+          <SettingsSectionDemo />
 
           <DomainSection />
 

@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { DepartmentsPanel } from "./departments-panel";
 
 type DeptRow = { id: string; name: string; _count: { users: number } };
@@ -12,13 +13,10 @@ export default async function DepartmentsPage() {
   });
 
   return (
-    <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Departments</h1>
-        <p className="text-muted-foreground text-sm">
-          Departments group users for reporting and dashboards.
-        </p>
-      </div>
+    <SettingsPanel
+      title="Departments"
+      description="Departments group users for reporting, dashboards and ledger rollups."
+    >
       <DepartmentsPanel
         departments={departments.map((d) => ({
           id: d.id,
@@ -26,6 +24,6 @@ export default async function DepartmentsPage() {
           userCount: d._count.users,
         }))}
       />
-    </section>
+    </SettingsPanel>
   );
 }

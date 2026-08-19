@@ -1,54 +1,33 @@
-import Link from "next/link";
+// Settings shell (D4.4) — left section nav, right form panel, one column
+// under md.
+//
+// The nav is role-filtered by `visibleSettingsGroups`, which MIRRORS the
+// guards already on each route — the redirect below and the `requireRole`
+// inside every page. Hiding a link is not a permission; typing the URL still
+// hits the real check.
 import { redirect } from "next/navigation";
 
+import { SettingsNav } from "@/components/settings/settings-nav";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
+import { visibleSettingsGroups } from "@/lib/settings/nav";
 
 export default async function SettingsLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const ctx = await getSessionCtx();
   if (!ctx) redirect("/login");
-  // UI gate only — every action re-checks with requireRole("finance_admin").
+  // UI gate only — every action re-checks with requireRole(...).
   if (!roleAtLeast(ctx.role, "finance_admin")) redirect("/dashboard");
 
-  const admin = roleAtLeast(ctx.role, "org_admin");
   return (
-    <div className="grid gap-6">
-      <nav className="flex flex-wrap gap-4 border-b pb-2 text-sm">
-        <Link href="/settings/organization" className="hover:underline">
-          Organization
-        </Link>
-        <Link href="/settings/categories" className="hover:underline">
-          Categories
-        </Link>
-        <Link href="/settings/clients" className="hover:underline">
-          Clients
-        </Link>
-        {admin ? (
-          <>
-            <Link href="/settings/users" className="hover:underline">
-              Users
-            </Link>
-            <Link href="/settings/departments" className="hover:underline">
-              Departments
-            </Link>
-            <Link href="/settings/approval-chains" className="hover:underline">
-              Approval chains
-            </Link>
-            <Link href="/settings/delegations" className="hover:underline">
-              Delegations
-            </Link>
-            <Link href="/settings/email-ingestion" className="hover:underline">
-              Email ingestion
-            </Link>
-            <Link href="/settings/whatsapp" className="hover:underline">
-              WhatsApp
-            </Link>
-          </>
-        ) : null}
-      </nav>
-      {children}
+    // 12 columns from md, nav taking three. Below md the nav flows above the
+    // panel as a horizontal scroller — same DOM, different layout.
+    <div className="grid gap-6 md:grid-cols-12 md:gap-8">
+      <div className="md:col-span-3">
+        <SettingsNav groups={visibleSettingsGroups(ctx.role)} />
+      </div>
+      <div className="min-w-0 md:col-span-9">{children}</div>
     </div>
   );
 }

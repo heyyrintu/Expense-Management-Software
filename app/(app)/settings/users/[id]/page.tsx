@@ -44,6 +44,7 @@ export default async function ManageUserPage({
       <ManageUserPanel
         user={{
           id: user.id,
+          name: user.name,
           role: user.role,
           status: user.status,
           departmentId: user.departmentId ?? "",

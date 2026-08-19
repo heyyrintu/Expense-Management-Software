@@ -9,10 +9,11 @@ import {
 } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { usersListQuerySchema } from "@/lib/schemas/user";
-import { InviteUserDialog } from "./invite-user-dialog";
+import { InviteUserSheet } from "./invite-user-sheet";
 
 const PAGE_SIZE = 50;
 
@@ -101,19 +102,11 @@ export default async function UsersPage({
   };
 
   return (
-    <section className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Users</h1>
-          <p className="text-muted-foreground text-sm">
-            {total} user{total === 1 ? "" : "s"} in your organization
-          </p>
-        </div>
-        <InviteUserDialog
-          departments={departments}
-          approvers={activeUsers}
-        />
-      </div>
+    <SettingsPanel
+      title="Users"
+      description={`${total} user${total === 1 ? "" : "s"} in your organisation.`}
+      action={<InviteUserSheet departments={departments} approvers={activeUsers} />}
+    >
 
       <form className="flex flex-wrap items-end gap-2" action="/settings/users" method="GET">
         <div className="grid gap-1">
@@ -216,6 +209,6 @@ export default async function UsersPage({
           </div>
         </div>
       ) : null}
-    </section>
+    </SettingsPanel>
   );
 }

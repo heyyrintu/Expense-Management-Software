@@ -4,6 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDestructiveDialog } from "@/components/ui/confirm-destructive-dialog";
+import { toast } from "sonner";
 import { deleteCategoryAction } from "../actions";
 import { categoryInputSchema, type CategoryInput } from "@/lib/schemas/category";
 import { SettingsForm } from "../components/settings-form";
@@ -41,6 +43,7 @@ export function CategoryForm({
   categoryId?: string;
 }) {
   const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
 
@@ -51,7 +54,9 @@ export function CategoryForm({
       const res = await deleteCategoryAction({ id: categoryId });
       if (!res.ok) {
         setDeleteError(res.error);
+        setConfirmOpen(false);
       } else {
+        toast.success(`Deleted ${defaults.name}.`);
         router.push("/settings/categories");
         router.refresh();
       }
@@ -59,7 +64,7 @@ export function CategoryForm({
   }
 
   return (
-    <div className="grid max-w-md gap-6">
+    <div className="grid max-w-lg gap-6">
       <SettingsForm
         schema={categoryInputSchema}
         defaults={defaults}
@@ -69,21 +74,43 @@ export function CategoryForm({
         fields={FIELDS}
       />
       {categoryId ? (
-        <div className="grid gap-2 border-t pt-4">
+        <div className="border-line grid gap-2 border-t pt-4">
+          {/* Secondary, not destructive-filled: the danger styling belongs on
+              the CONFIRM inside the dialog, not on the control that merely
+              opens it. A red button on the page invites a misclick that the
+              dialog then has to catch. */}
           <Button
             type="button"
-            variant="destructive"
-            onClick={onDelete}
+            variant="secondary"
+            onClick={() => setConfirmOpen(true)}
             disabled={pending}
             className="w-fit"
           >
-            {pending ? "Deleting…" : "Delete category"}
+            Delete category
           </Button>
           {deleteError ? (
-            <p role="alert" className="text-destructive text-sm">
+            <p role="alert" className="text-status-danger-text text-meta">
               {deleteError}
             </p>
           ) : null}
+
+          <ConfirmDestructiveDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            onConfirm={onDelete}
+            pending={pending}
+            entityName={defaults.name}
+            verb="Delete"
+            description="Categories are only deletable while nothing uses them. If any expense references this one, the server will refuse and say so."
+            consequences={[
+              "it disappears from the category picker on new expenses",
+              "its limits and receipt threshold stop applying",
+            ]}
+            preserved={[
+              "every expense already filed — none are deleted or recategorised",
+              "reports, approvals and payments, all untouched",
+            ]}
+          />
         </div>
       ) : null}
     </div>

@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Amount } from "@/components/ui/amount";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 
@@ -28,19 +29,15 @@ export default async function CategoriesPage() {
   ]);
 
   return (
-    <section className="grid gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Categories</h1>
-          <p className="text-muted-foreground text-sm">
-            Spend limits and receipt thresholds flag violations — they never
-            block submission.
-          </p>
-        </div>
+    <SettingsPanel
+      title="Categories"
+      description="Spend limits and receipt thresholds FLAG violations — they never block submission."
+      action={
         <Button asChild>
           <Link href="/settings/categories/new">New category</Link>
         </Button>
-      </div>
+      }
+    >
 
       {categories.length === 0 ? (
         <Card>
@@ -115,6 +112,6 @@ export default async function CategoriesPage() {
           </div>
         </>
       )}
-    </section>
+    </SettingsPanel>
   );
 }

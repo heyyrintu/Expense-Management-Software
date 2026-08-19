@@ -62,3 +62,35 @@ export async function updateBankDetailsAction(input: unknown): Promise<Result> {
     throw e;
   }
 }
+
+/**
+ * Reveal the CALLER'S OWN account number (D4.4).
+ *
+ * ── WHY THIS IS SAFE, AND WHY IT IS NEEDED ────────────────────────────────
+ * Take no argument. There is no `userId` parameter to tamper with, and there
+ * never should be: the identity comes from the session, so this action
+ * structurally cannot be aimed at somebody else's row. `scopedDb` pins the
+ * org on top of that.
+ *
+ * It is needed because "masked forever" means an employee can never check
+ * the number finance will pay into — and a wrong digit there is exactly the
+ * dispute the complaints screen exists to handle. Being able to verify your
+ * own bank details is not a privilege escalation.
+ *
+ * What does NOT change: finance's view of somebody else's bank details stays
+ * presence-only (a boolean, never a digit) on the payment run, and the number
+ * is still never written to AuditLog.
+ */
+export async function revealOwnAccountNumberAction(): Promise<string | null> {
+  try {
+    const ctx = await requireSession();
+    const user = (await scopedDb(ctx.orgId).user.findUnique({
+      where: { id: ctx.userId },
+      select: { bankAccountNumber: true },
+    })) as { bankAccountNumber: string | null } | null;
+    return user?.bankAccountNumber ?? null;
+  } catch (e) {
+    if (e instanceof AuthenticationError || e instanceof AuthorizationError) return null;
+    throw e;
+  }
+}

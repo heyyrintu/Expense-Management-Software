@@ -6,6 +6,7 @@ import {
   secondApprovalThreshold,
 } from "@/lib/domain/org-settings";
 import { toDecimalString } from "@/lib/money";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { OrgSettingsForm } from "./org-settings-form";
 
 export default async function OrgSettingsPage() {
@@ -15,13 +16,10 @@ export default async function OrgSettingsPage() {
   });
 
   return (
-    <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Organization settings</h1>
-        <p className="text-muted-foreground text-sm">
-          Currency and mileage rate apply to all expenses in /{org.slug}.
-        </p>
-      </div>
+    <SettingsPanel
+      title="Organization"
+      description={`Currency, mileage rate and approval thresholds for every expense in /${org.slug}.`}
+    >
       <OrgSettingsForm
         defaults={{
           name: org.name,
@@ -39,6 +37,6 @@ export default async function OrgSettingsPage() {
           tallyBankLedger: parseOrgSettings(org.settings).tallyBankLedger ?? "",
         }}
       />
-    </section>
+    </SettingsPanel>
   );
 }
