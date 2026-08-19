@@ -114,6 +114,7 @@
      which is why it is a token and not a utility class repeated twice. */
   --row-height: 48px;
   --ledger-viewport-height: 32rem; /* D4.1: bounds the sticky-ends scroll area */
+  --bucket-height: 24rem;          /* D4.2: bounds a reconciliation bucket's list */
 }
 
 /* Dark theme hook. Only colour tokens change — no component is aware of it.
@@ -492,6 +493,11 @@
    footer work. position:sticky pins to the nearest scroll container, so
    without a bounded height the "sticky" ends are just ordinary table ends. */
 @utility max-h-ledger { max-height: var(--ledger-viewport-height); }
+
+/* A reconciliation bucket's scrollable list (D4.2). Bounded so a 200-line
+   statement cannot push the other two buckets off screen — seeing all three
+   at once is the entire point of a board. */
+@utility max-h-bucket { max-height: var(--bucket-height); }
 
 /* Alternating rows at 40% of --bg-subtle (§7.5): enough to carry the eye
    across six columns, well short of zebra striping, which turns a dense

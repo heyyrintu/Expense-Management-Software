@@ -19,10 +19,15 @@ import { Block, Group, Panel, Row } from "./shared";
 const NOW = new Date("2026-08-19T10:00:00Z");
 const DAYS = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
 
-/** §6.2 components not yet built, with the task that delivers each. */
-const ROSTER = [
-  { name: "ReconcileBuckets", purpose: "Three-column board with counts", task: "D4.2" },
-] as const;
+/**
+ * §6.2 components not yet built, with the task that delivers each.
+ *
+ * Empty as of D4.2 — LedgerTable landed in D4.1 and ReconcileBuckets in D4.2.
+ * The array stays rather than being deleted along with its block: the next
+ * component someone defers belongs here, and a roster that has to be
+ * reinvented is a roster nobody adds to.
+ */
+const ROSTER: ReadonlyArray<{ name: string; purpose: string; task: string }> = [];
 
 export function DomainSection() {
   return (
@@ -82,30 +87,40 @@ export function DomainSection() {
 
       <Block
         title="Not built yet"
-        description="The rest of §6.2, with the task that delivers each. These rows move up into the gallery as they land — that is what “added to /design-system in the same commit” means in practice. Amount and DateCell left this table in D1.1; they now have their own section above."
+        description="The rest of §6.2, with the task that delivers each. Rows move up into the gallery as they land — that is what “added to /design-system in the same commit” means in practice."
       >
-        <div className="border-line bg-bg-surface overflow-hidden rounded-lg border">
-          <table className="w-full text-body">
-            <thead className="bg-bg-subtle text-text-secondary text-label">
-              <tr>
-                <th className="p-3 text-left font-medium">Component</th>
-                <th className="p-3 text-left font-medium">Purpose</th>
-                <th className="p-3 text-left font-medium">Task</th>
-              </tr>
-            </thead>
-            <tbody className="divide-line divide-y">
-              {ROSTER.map((row) => (
-                <tr key={row.name}>
-                  <td className="text-text-primary p-3">{row.name}</td>
-                  <td className="text-text-secondary p-3">{row.purpose}</td>
-                  <td className="p-3">
-                    <code className="text-label text-text-tertiary">{row.task}</code>
-                  </td>
+        {ROSTER.length === 0 ? (
+          <p className="text-body text-text-secondary">
+            Every §6.2 component is built and on this page. Amount and DateCell
+            left this table in D1.1, PaymentProofViewer in D3.2, LedgerTable in
+            D4.1 and ReconcileBuckets in D4.2. The next component someone defers
+            goes back in ROSTER above — an empty list here means nothing is
+            outstanding, not that nobody is keeping score.
+          </p>
+        ) : (
+          <div className="border-line bg-bg-surface overflow-hidden rounded-lg border">
+            <table className="w-full text-body">
+              <thead className="bg-bg-subtle text-text-secondary text-label">
+                <tr>
+                  <th className="p-3 text-left font-medium">Component</th>
+                  <th className="p-3 text-left font-medium">Purpose</th>
+                  <th className="p-3 text-left font-medium">Task</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-line divide-y">
+                {ROSTER.map((row) => (
+                  <tr key={row.name}>
+                    <td className="text-text-primary p-3">{row.name}</td>
+                    <td className="text-text-secondary p-3">{row.purpose}</td>
+                    <td className="p-3">
+                      <code className="text-label text-text-tertiary">{row.task}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Block>
     </Group>
   );

@@ -25,6 +25,7 @@ export const GALLERY_SECTIONS = [
   { id: "finance", label: "Finance and proof", note: "Batch review, progress, proof viewer" },
   { id: "dashboard", label: "Dashboards", note: "KPI strip, rank list, skeleton" },
   { id: "ledger", label: "Ledger", note: "Tally table, segmented control, export" },
+  { id: "recon", label: "Reconciliation", note: "Buckets, match dialog, period lock" },
   { id: "domain", label: "Domain components", note: "Status, flags, charts — and what's missing" },
   { id: "motion", label: "Motion", note: "Tokens and replayable variants" },
   { id: "patterns", label: "Patterns", note: "Empty, loading, error" },

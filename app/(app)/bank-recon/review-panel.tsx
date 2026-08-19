@@ -1,189 +1,302 @@
 "use client";
 
-// Three-bucket review (7.2): Matched · In-app-not-in-bank (red flags) ·
-// In-bank-not-in-app (record payment / manual match).
+// Reconciliation results board (D4.2) — DESIGN-PRD §7.6.
+//
+// Three buckets, and every row in them is either finished or has exactly one
+// obvious next action:
+//
+//   Matched      — nothing to do; "Undo" is there but quiet.
+//   Not in bank   — DANGER, and deliberately actionless. The app says a
+//                   payment was made and the bank disagrees; no button on
+//                   this screen can resolve that, and offering one would
+//                   imply otherwise. It is a list to investigate.
+//   Not in app    — WARNING, with the two ways to explain a debit: match it
+//                   to a payment already recorded, or record the payment it
+//                   represents.
+//
+// Nothing here is optimistic. Reconciliation writes payment records and
+// changes report status (CLAUDE.md: money movement is never optimistic), so
+// every action waits for the server and the board re-renders from it.
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { DateCell } from "@/components/ui/date-cell";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Bucket, BucketBoard, BucketEmpty } from "@/components/recon/bucket-board";
 import {
   lockImportAction,
   manualMatchAction,
   recordPaymentFromLineAction,
   unmatchLineAction,
 } from "./actions";
+import { LockDialog, UnmatchDialog } from "./confirm-dialogs";
+import { MatchDialog, type MatchCandidate, type StatementLineView } from "./match-dialog";
 
 export type BucketData = {
   importId: string;
   locked: boolean;
+  periodLabel: string;
   /** Org base currency — every line on a statement is in it. */
   currency: string;
-  /** `date` is an ISO instant, `amount` integer minor units: DateCell/Amount render them. */
-  matched: Array<{ id: string; date: string; amount: number; reference: string; matchType: string; paymentLabel: string }>;
+  /** `date` is an ISO instant, `amount` integer minor units (D1.1). */
+  matched: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    reference: string;
+    matchType: string;
+    paymentLabel: string;
+  }>;
   inBankOnly: Array<{ id: string; date: string; amount: number; reference: string }>;
-  inAppOnly: Array<{ id: string; date: string; amount: number; label: string }>;
+  inAppOnly: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    reportTitle: string;
+    ownerName: string;
+    reference: string;
+  }>;
   payableReports: Array<{ id: string; label: string }>;
-  unmatchedPaymentOptions: Array<{ id: string; label: string }>;
+  candidates: MatchCandidate[];
 };
 
 export function ReviewPanel({ data }: { data: BucketData }) {
   const router = useRouter();
-  const [error, setError] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [matching, setMatching] = React.useState<StatementLineView | null>(null);
+  const [unmatching, setUnmatching] = React.useState<string | null>(null);
+  const [lockOpen, setLockOpen] = React.useState(false);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
-    setError(null);
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? "Something went wrong.");
-      else router.refresh();
+      if (!res.ok) {
+        // The server's own sentence, not a generic one — it knows whether the
+        // period is locked, the line already matched, or the report unpayable.
+        toast.error(res.error ?? "That didn't work.");
+        return;
+      }
+      toast.success(success);
+      setMatching(null);
+      setUnmatching(null);
+      setLockOpen(false);
+      router.refresh();
     });
   }
 
   return (
-    <div className="grid gap-6">
-      {!data.locked ? (
-        <div>
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() => run(() => lockImportAction({ importId: data.importId }))}
-          >
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-meta text-text-tertiary">
+          {data.locked
+            ? "This period is locked. Matches are read-only."
+            : "Explain every line, then lock the period."}
+        </p>
+        {!data.locked ? (
+          <Button variant="secondary" onClick={() => setLockOpen(true)} disabled={pending}>
             Lock this period
           </Button>
-        </div>
-      ) : (
-        <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
-          This period is locked — matches can no longer be changed.
-        </p>
-      )}
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+        ) : null}
+      </div>
 
-      <section className="grid gap-2">
-        <h2 className="text-sm font-medium">Matched ({data.matched.length})</h2>
-        <ul className="grid gap-1">
-          {data.matched.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-green-200 bg-green-50/50 p-2 text-sm">
-              <DateCell value={l.date} tone="muted" />
-              <Amount value={l.amount} currency={data.currency} />
-              <span className="text-muted-foreground min-w-0 flex-1 truncate">
-                {l.reference} → {l.paymentLabel}
+      <BucketBoard>
+        <Bucket
+          title="Matched"
+          description="Bank debit and recorded payment agree."
+          count={data.matched.length}
+          tone="success"
+        >
+          {data.matched.map((line) => (
+            <li key={line.id} className="grid gap-1 py-3">
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <DateCell value={line.date} tone="muted" />
+                <Amount value={line.amount} currency={data.currency} align="right" />
               </span>
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-800">{l.matchType}</span>
-              {!data.locked ? (
-                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => unmatchLineAction({ lineId: l.id }))}>
-                  Unmatch
-                </Button>
-              ) : null}
+              <span className="text-meta text-text-secondary truncate">
+                {line.paymentLabel}
+              </span>
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="bg-status-success-subtle text-status-success-text rounded-sm px-1.5 py-0.5 text-meta">
+                  {line.matchType === "auto" ? "auto-matched" : "matched by hand"}
+                </span>
+                {!data.locked ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending}
+                    onClick={() => setUnmatching(line.id)}
+                  >
+                    Undo
+                  </Button>
+                ) : null}
+              </span>
             </li>
           ))}
-          {data.matched.length === 0 ? <li className="text-muted-foreground text-sm">None yet.</li> : null}
-        </ul>
-      </section>
+          {data.matched.length === 0 ? (
+            <BucketEmpty>Nothing has been matched yet.</BucketEmpty>
+          ) : null}
+        </Bucket>
 
-      <section className="grid gap-2">
-        <h2 className="text-sm font-medium text-red-700">
-          Paid in app, missing in bank ({data.inAppOnly.length})
-        </h2>
-        <ul className="grid gap-1">
-          {data.inAppOnly.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50/50 p-2 text-sm">
-              <DateCell value={p.date} tone="muted" />
-              <Amount value={p.amount} currency={data.currency} />
-              <span className="text-muted-foreground min-w-0 flex-1 truncate">{p.label}</span>
+        <Bucket
+          title="Not in bank"
+          description="Recorded as paid, but the bank has no such debit."
+          count={data.inAppOnly.length}
+          tone="danger"
+        >
+          {data.inAppOnly.map((payment) => (
+            <li key={payment.id} className="grid gap-1 py-3">
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <DateCell value={payment.date} tone="muted" />
+                <Amount value={payment.amount} currency={data.currency} align="right" />
+              </span>
+              <span className="text-meta text-text-secondary truncate">
+                {payment.reportTitle} · {payment.ownerName}
+              </span>
+              <span className="text-meta text-text-tertiary tabular truncate">
+                {payment.reference}
+              </span>
             </li>
           ))}
           {data.inAppOnly.length === 0 ? (
-            <li className="text-muted-foreground text-sm">Every recorded payment appears in the bank. </li>
+            <BucketEmpty>Every recorded payment appears in the bank.</BucketEmpty>
           ) : null}
-        </ul>
-      </section>
+        </Bucket>
 
-      <section className="grid gap-2">
-        <h2 className="text-sm font-medium">
-          In bank, not in app ({data.inBankOnly.length})
-        </h2>
-        <ul className="grid gap-2">
-          {data.inBankOnly.map((l) => (
-            <OpenLine key={l.id} line={l} data={data} pending={pending} run={run} />
+        <Bucket
+          title="Not in app"
+          description="A bank debit with no matching payment record."
+          count={data.inBankOnly.length}
+          tone="warning"
+        >
+          {data.inBankOnly.map((line) => (
+            <li key={line.id} className="grid gap-2 py-3">
+              <span className="flex flex-wrap items-baseline justify-between gap-2">
+                <DateCell value={line.date} tone="muted" />
+                <Amount value={line.amount} currency={data.currency} align="right" />
+              </span>
+              <span className="text-meta text-text-tertiary tabular truncate">
+                {line.reference || "no reference"}
+              </span>
+              {!data.locked ? (
+                <OpenLineActions
+                  payableReports={data.payableReports}
+                  pending={pending}
+                  onMatch={() => setMatching(line)}
+                  onRecord={(reportId) =>
+                    run(
+                      () => recordPaymentFromLineAction({ lineId: line.id, reportId }),
+                      "Payment recorded and matched."
+                    )
+                  }
+                />
+              ) : null}
+            </li>
           ))}
           {data.inBankOnly.length === 0 ? (
-            <li className="text-muted-foreground text-sm">Every bank debit is explained.</li>
+            <BucketEmpty>Every bank debit is explained.</BucketEmpty>
           ) : null}
-        </ul>
-      </section>
+        </Bucket>
+      </BucketBoard>
+
+      <MatchDialog
+        line={matching}
+        candidates={data.candidates}
+        currency={data.currency}
+        open={matching !== null}
+        onOpenChange={(open) => !open && setMatching(null)}
+        pending={pending}
+        onConfirm={(reimbursementId) =>
+          matching &&
+          run(
+            () => manualMatchAction({ lineId: matching.id, reimbursementId }),
+            "Matched."
+          )
+        }
+      />
+
+      <UnmatchDialog
+        open={unmatching !== null}
+        onOpenChange={(open) => !open && setUnmatching(null)}
+        pending={pending}
+        onConfirm={() =>
+          unmatching &&
+          run(() => unmatchLineAction({ lineId: unmatching }), "Match undone.")
+        }
+      />
+
+      <LockDialog
+        open={lockOpen}
+        onOpenChange={setLockOpen}
+        pending={pending}
+        periodLabel={data.periodLabel}
+        matchedCount={data.matched.length}
+        openCount={data.inBankOnly.length}
+        onConfirm={() =>
+          run(
+            () => lockImportAction({ importId: data.importId }),
+            "Period locked."
+          )
+        }
+      />
     </div>
   );
 }
 
-function OpenLine({
-  line,
-  data,
+/**
+ * The two ways to explain a debit.
+ *
+ * "Record this payment" is one click once a report is chosen — §7.6 asks for
+ * one-click, and the report is the one thing the app genuinely cannot infer:
+ * the line says how much left the bank, never who it was for. The amount,
+ * date and reference all come from the line itself, which is why there is no
+ * form here.
+ */
+function OpenLineActions({
+  payableReports,
   pending,
-  run,
+  onMatch,
+  onRecord,
 }: {
-  line: { id: string; date: string; amount: number; reference: string };
-  data: BucketData;
+  payableReports: Array<{ id: string; label: string }>;
   pending: boolean;
-  run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
+  onMatch: () => void;
+  onRecord: (reportId: string) => void;
 }) {
-  const [paymentId, setPaymentId] = React.useState("");
   const [reportId, setReportId] = React.useState("");
 
   return (
-    <li className="grid gap-2 rounded-lg border p-2 text-sm">
+    <div className="grid gap-2">
+      <Button size="sm" variant="secondary" disabled={pending} onClick={onMatch}>
+        Match to a payment…
+      </Button>
+
       <div className="flex flex-wrap items-center gap-2">
-        <DateCell value={line.date} tone="muted" />
-        <Amount value={line.amount} currency={data.currency} />
-        <span className="text-muted-foreground min-w-0 flex-1 truncate">{line.reference}</span>
-      </div>
-      {!data.locked ? (
-        <div className="flex flex-wrap items-center gap-2 pl-1">
-          <label htmlFor={`mm-${line.id}`} className="sr-only">Match with payment</label>
+        <label className="min-w-0 flex-1">
+          <span className="sr-only">Record payment against report</span>
           <NativeSelect
-            id={`mm-${line.id}`}
-            value={paymentId}
-            onChange={(e) => setPaymentId(e.target.value)}
-            className="h-8 w-72"
-          >
-            <option value="">Match existing payment…</option>
-            {data.unmatchedPaymentOptions.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </NativeSelect>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pending || !paymentId}
-            onClick={() => run(() => manualMatchAction({ lineId: line.id, reimbursementId: paymentId }))}
-          >
-            Match
-          </Button>
-          <span className="text-muted-foreground text-xs">or</span>
-          <label htmlFor={`rp-${line.id}`} className="sr-only">Record payment against report</label>
-          <NativeSelect
-            id={`rp-${line.id}`}
             value={reportId}
             onChange={(e) => setReportId(e.target.value)}
-            className="h-8 w-72"
+            className="w-full"
           >
-            <option value="">Record payment against report…</option>
-            {data.payableReports.map((r) => (
-              <option key={r.id} value={r.id}>{r.label}</option>
+            <option value="">Record against report…</option>
+            {payableReports.map((report) => (
+              <option key={report.id} value={report.id}>
+                {report.label}
+              </option>
             ))}
           </NativeSelect>
-          <Button
-            size="sm"
-            disabled={pending || !reportId}
-            onClick={() => run(() => recordPaymentFromLineAction({ lineId: line.id, reportId }))}
-          >
-            Record payment
-          </Button>
-        </div>
-      ) : null}
-    </li>
+        </label>
+        <Button
+          size="sm"
+          disabled={pending || !reportId}
+          onClick={() => onRecord(reportId)}
+        >
+          Record
+        </Button>
+      </div>
+    </div>
   );
 }
