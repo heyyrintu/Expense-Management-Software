@@ -43,6 +43,12 @@ export interface WhatsAppProvider {
     to: string,
     media: { mediaId?: string; link?: string; caption?: string; kind: "image" | "document" }
   ): Promise<SendResult>;
+  /** Interactive reply buttons (max 3, Meta's limit) — 8.2 capture actions. */
+  sendButtons(
+    to: string,
+    body: string,
+    buttons: Array<{ id: string; title: string }>
+  ): Promise<SendResult>;
   downloadMedia(mediaId: string): Promise<MediaDownload>;
   /** GET handshake: returns the challenge to echo, or null to reject. */
   verifyWebhook(query: {

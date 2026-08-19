@@ -293,6 +293,7 @@ model Expense {
   cardTransaction CardTransaction?
   client       Client?        @relation(fields: [clientId], references: [id])
   splits       ExpenseSplit[]
+  whatsappInbound WhatsAppInbound[]
 
   // duplicate detection probe: org + user + amount + date (+ merchant, compared case-insensitively in app)
   @@index([orgId, userId, amount, date])
@@ -882,6 +883,8 @@ model WhatsAppInbound {
   messageType   String                @map("message_type") // text | image | document | ...
   text          String?
   mediaId       String?               @map("media_id")
+  /** Draft created from this message (8.2) — the button callbacks act on it. */
+  expenseId     String?               @map("expense_id") @db.Uuid
   payload       Json                  @default("{}")
   status        WhatsAppInboundStatus @default(pending)
   error         String?
@@ -891,6 +894,7 @@ model WhatsAppInbound {
 
   organization Organization @relation(fields: [orgId], references: [id])
   user         User?        @relation(fields: [userId], references: [id])
+  expense      Expense?     @relation(fields: [expenseId], references: [id])
 
   @@index([orgId, status, receivedAt])
   @@index([orgId, fromPhone, receivedAt])

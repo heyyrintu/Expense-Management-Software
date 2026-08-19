@@ -1,4 +1,4 @@
-// WhatsApp Cloud API webhook (PLAN 8.1).
+// WhatsApp Cloud API webhook (PLAN 8.1 infra, 8.2 capture).
 //
 // GET  — Meta's subscription handshake (hub.mode / hub.verify_token / hub.challenge).
 // POST — inbound messages. Order of operations matters:
@@ -7,21 +7,36 @@
 //      the same personal number may be linked in several orgs)
 //   3. verify X-Hub-Signature-256 against that org's app secret
 //   4. match the sender to a verified WhatsAppLink inside the org
-//   5. persist to WhatsAppInbound for 8.2; unknown numbers get one canned,
-//      rate-limited "link your number" reply and nothing is stored
+//   5. button tap  -> idempotent capture callback (8.2)
+//      receipt/text -> draft expense + summary reply with buttons (8.2)
+//   Unknown numbers get one canned, rate-limited "link your number" reply
+//   and nothing is stored.
 //
 // Meta retries on any non-200, so all soft failures answer 200.
 import { NextResponse } from "next/server";
 import { scopedDb } from "@/lib/db/scoped";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { orgForPhoneNumberId } from "@/lib/whatsapp";
-import { parseInbound } from "@/lib/whatsapp/meta";
+import { handleCaptureCallback } from "@/lib/whatsapp/callbacks";
+import {
+  captureButtons,
+  decodeButtonPayload,
+  HELP_REPLY,
+} from "@/lib/whatsapp/capture";
+import {
+  captureMediaMessage,
+  captureTextMessage,
+  type CaptureOutcome,
+} from "@/lib/whatsapp/ingest";
+import { buttonPayloadOf, parseInbound } from "@/lib/whatsapp/meta";
 import type { InboundMessage, WhatsAppProvider } from "@/lib/whatsapp/types";
 
 export const runtime = "nodejs";
 
 const NOT_LINKED_REPLY =
   "This number isn't linked to an expense account yet. Sign in to the expenses app, open your profile and add this WhatsApp number to get started.";
+
+const MEDIA_TYPES = new Set(["image", "document"]);
 
 /** Meta's handshake. Any mismatch is a flat 403 with no detail. */
 export async function GET(request: Request): Promise<Response> {
@@ -118,16 +133,90 @@ async function handleMessage(
     return;
   }
 
-  // Persisted for 8.2 to turn into a draft expense. waMessageId is unique, so
-  // Meta's at-least-once delivery cannot produce duplicates.
+  // Record the message first. The unique waMessageId means a redelivery from
+  // Meta stops here, before any expense is created or deleted.
+  const stored = await storeInbound(db, orgId, message, link.userId);
+  if (!stored) return; // duplicate delivery — already handled
+
+  // ---- Button tap (8.2 capture actions) ------------------------------------
+  const callback = decodeButtonPayload(buttonPayloadOf(message));
+  if (callback) {
+    const result = await handleCaptureCallback(
+      db,
+      orgId,
+      link.userId,
+      callback.action,
+      callback.inboundId
+    );
+    await db.whatsAppInbound.update({
+      where: { id: stored.id },
+      data: { status: "processed", processedAt: new Date() },
+    });
+    await provider.sendText(message.from, result.reply);
+    return;
+  }
+
+  // ---- Receipt or text -> draft expense ------------------------------------
+  const org = (await db.organization.findUniqueOrThrow({
+    where: { id: orgId },
+    select: { currency: true },
+  })) as { currency: string };
+
+  const ctx = {
+    db,
+    orgId,
+    orgCurrency: org.currency,
+    userId: link.userId,
+    message,
+  };
+
+  let outcome: CaptureOutcome;
+  if (MEDIA_TYPES.has(message.type)) {
+    outcome = await captureMediaMessage(ctx, provider);
+  } else if (message.type === "text") {
+    outcome = await captureTextMessage(ctx);
+  } else {
+    outcome = { reply: HELP_REPLY, status: "ignored" };
+  }
+
+  await db.whatsAppInbound.update({
+    where: { id: stored.id },
+    data: {
+      status: outcome.status,
+      error: outcome.error ?? null,
+      expenseId: outcome.expenseId ?? null,
+      processedAt: new Date(),
+    },
+  });
+
+  // A draft gets the Confirm / Edit / Discard buttons; anything else is a
+  // plain reply.
+  if (outcome.expenseId) {
+    await provider.sendButtons(
+      message.from,
+      outcome.reply,
+      captureButtons(stored.id)
+    );
+  } else {
+    await provider.sendText(message.from, outcome.reply);
+  }
+}
+
+/** Returns null when this exact message has already been stored. */
+async function storeInbound(
+  db: ReturnType<typeof scopedDb>,
+  orgId: string,
+  message: InboundMessage,
+  userId: string
+): Promise<{ id: string } | null> {
   try {
-    await db.whatsAppInbound.create({
+    return (await db.whatsAppInbound.create({
       data: {
         orgId,
         waMessageId: message.waMessageId,
         fromPhone: message.from,
         phoneNumberId: message.phoneNumberId,
-        userId: link.userId,
+        userId,
         messageType: message.type,
         text: message.text,
         mediaId: message.mediaId,
@@ -135,10 +224,10 @@ async function handleMessage(
         status: "pending",
         receivedAt: message.receivedAt,
       },
-    });
+      select: { id: true },
+    })) as { id: string };
   } catch (e) {
-    // Unique violation = we already have it; anything else is worth logging.
-    const code = (e as { code?: string }).code;
-    if (code !== "P2002") throw e;
+    if ((e as { code?: string }).code === "P2002") return null;
+    throw e;
   }
 }

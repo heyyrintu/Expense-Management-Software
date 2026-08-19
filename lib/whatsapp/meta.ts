@@ -111,6 +111,34 @@ export class MetaCloudProvider implements WhatsAppProvider {
     });
   }
 
+  /**
+   * Interactive buttons. Meta allows at most 3 and truncates titles at 20
+   * characters, so we enforce both here rather than failing the send.
+   */
+  async sendButtons(
+    to: string,
+    body: string,
+    buttons: Array<{ id: string; title: string }>
+  ): Promise<SendResult> {
+    if (buttons.length === 0) return this.sendText(to, body);
+    return this.post({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: toWaId(to),
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: body.slice(0, 1024) },
+        action: {
+          buttons: buttons.slice(0, 3).map((b) => ({
+            type: "reply",
+            reply: { id: b.id.slice(0, 256), title: b.title.slice(0, 20) },
+          })),
+        },
+      },
+    });
+  }
+
   /** Two hops: metadata lookup for the signed URL, then the binary itself. */
   async downloadMedia(mediaId: string): Promise<MediaDownload> {
     try {

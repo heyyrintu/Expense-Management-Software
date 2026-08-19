@@ -105,6 +105,25 @@ number (Indian numbers work without the country code), receive a 6-digit code
 over WhatsApp, confirm. Codes are stored only as SHA-256 hashes, expire in 10
 minutes, and allow 5 attempts.
 
+**Capturing expenses (8.2).** Once linked, a person can send:
+
+- a **photo or PDF receipt** — it is downloaded, stored under the org's receipt
+  prefix, OCR'd, and becomes a Draft expense;
+- a **quick note with an amount** — "lunch 450", "₹1,250 client dinner" — which
+  becomes a Draft with the message as its purpose.
+
+The bot replies with a summary ("Blue Tokai, ₹450.00, 12 Aug — correct?") and
+three buttons: **Looks right** (keeps the draft), **Edit** (deep link into the
+app) and **Discard** (deletes the draft and its receipt). Callbacks are
+idempotent — Meta redelivery is stopped by the unique `wa_message_id`, and a
+second tap simply reports that it was already handled. Discard only ever
+touches a Draft; anything already on a report is left alone.
+
+Everything arrives as a Draft flagged "created from WhatsApp", so the normal
+report and approval path is unchanged. Messages with no readable amount get a
+short help reply; files over 10 MB or of an unsupported type are politely
+refused. Every action is audit-logged with `channel: "whatsapp"`.
+
 ## Non-negotiables (see CLAUDE.md)
 
 - Every table has `org_id`; all DB access via `scopedDb(orgId)`; RLS as defense-in-depth
