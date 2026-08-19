@@ -74,6 +74,16 @@ export type DataTableProps<TData> = {
   /** Row click target. Makes the whole row (and card) activate. */
   onRowClick?: (row: TData) => void;
 
+  /**
+   * Per-row emphasis (D4.3) — an overdue complaint, a flagged import.
+   *
+   * Returns classes, and they must not change the row's BOX. Use the inset
+   * shadow utilities (`flagged-edge`, `overdue-edge`) rather than a border:
+   * a border would shift every cell sideways the moment a row qualifies, so
+   * the table would jitter as ages tick over.
+   */
+  rowClassName?: (row: TData) => string | undefined;
+
   /** Renders one mobile card. Falls back to the table when omitted. */
   renderCard?: (row: Row<TData>) => React.ReactNode;
 
@@ -95,6 +105,7 @@ export function DataTable<TData>({
   toolbar,
   enableColumnVisibility = true,
   onRowClick,
+  rowClassName,
   renderCard,
   label,
   className,
@@ -271,7 +282,8 @@ export function DataTable<TData>({
                             selected
                               ? "bg-accent-subtle"
                               : "hover:bg-bg-subtle",
-                            onRowClick && "cursor-pointer"
+                            onRowClick && "cursor-pointer",
+                            rowClassName?.(row.original)
                           )}
                         >
                           {row.getVisibleCells().map((cell, cellIndex) => {

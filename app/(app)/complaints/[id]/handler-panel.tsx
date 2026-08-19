@@ -1,12 +1,31 @@
 "use client";
 
-// Finance-side controls: assign to an eligible handler and drive the status
-// machine. The assignee list is already filtered server-side (the disputed
-// approver is never in it) and the action re-checks the same rule.
+// Finance-side controls (D4.3): assign an eligible handler, drive the status
+// machine, and close with a mandatory resolution note.
+//
+// The assignee list is filtered SERVER-side — the disputed approver and the
+// complainant are never in it — and the action re-checks the same rule. This
+// panel only presents what it was handed.
+//
+// Closing moves into a dialog (§7.7: "Resolve opens a dialog demanding a
+// resolution note"). It was an inline textarea that appeared under the
+// buttons, which is the wrong shape for the action: closing a dispute is the
+// decision the whole screen exists for, it is one-way, and the note becomes
+// the answer the employee reads. A dialog takes the focus and makes writing
+// it the only thing on screen.
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ComplaintAction } from "@/lib/domain/complaint";
@@ -26,6 +45,22 @@ const ACTION_LABELS: Record<ComplaintAction, string> = {
   wont_fix: "Won't fix",
 };
 
+/** What each closing action tells the employee, in the dialog. */
+const CLOSING_COPY: Record<"resolve" | "wont_fix", { title: string; description: string; placeholder: string }> = {
+  resolve: {
+    title: "Resolve this complaint",
+    description:
+      "Your note is what the employee reads as the answer, and it is kept with the complaint permanently.",
+    placeholder: "What you found, and what happens next — ₹1,300 short-paid on 14 Aug, topping up in Friday's run.",
+  },
+  wont_fix: {
+    title: "Close without changing anything",
+    description:
+      "Say why no action is being taken. This is the explanation the employee gets, so it needs to stand on its own.",
+    placeholder: "The ₹450 difference is the per-diem cap in the travel policy, applied correctly here.",
+  },
+};
+
 export function HandlerPanel({
   complaintId,
   assignedToId,
@@ -35,30 +70,28 @@ export function HandlerPanel({
 }: HandlerPanelProps) {
   const router = useRouter();
   const [assignee, setAssignee] = React.useState(assignedToId ?? "");
-  const [closing, setClosing] = React.useState<ComplaintAction | null>(null);
+  const [closing, setClosing] = React.useState<"resolve" | "wont_fix" | null>(null);
   const [note, setNote] = React.useState("");
-  const [error, setError] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
-    setError(null);
+  // Each opening starts clean — carrying a previous note over is a very easy
+  // way to send someone the wrong explanation.
+  React.useEffect(() => {
+    if (closing) setNote("");
+  }, [closing]);
+
+  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     startTransition(async () => {
       const res = await fn();
-      if (!res.ok) setError(res.error ?? "Something went wrong.");
-      else {
-        setClosing(null);
-        setNote("");
-        router.refresh();
+      if (!res.ok) {
+        toast.error(res.error ?? "That didn't work.");
+        return;
       }
+      toast.success(success);
+      setClosing(null);
+      setNote("");
+      router.refresh();
     });
-  }
-
-  function assign() {
-    if (!assignee) return;
-    const form = new FormData();
-    form.set("complaintId", complaintId);
-    form.set("assigneeId", assignee);
-    run(() => assignComplaintAction(form));
   }
 
   function transition(action: ComplaintAction, resolutionNote?: string) {
@@ -66,106 +99,145 @@ export function HandlerPanel({
     form.set("complaintId", complaintId);
     form.set("action", action);
     if (resolutionNote) form.set("resolutionNote", resolutionNote);
-    run(() => transitionComplaintAction(form));
+    run(
+      () => transitionComplaintAction(form),
+      action === "start_review" ? "Review started." : "Complaint closed."
+    );
   }
 
+  const noteReady = note.trim().length > 0;
+
   return (
-    <div className="grid gap-4 rounded-lg border p-4">
+    <section className="border-line bg-bg-surface grid gap-4 rounded-lg border p-5">
       <div className="grid gap-2">
-        <label htmlFor="assignee" className="text-sm font-medium">
-          Assigned to
+        <label className="grid gap-1">
+          <span className="text-label text-text-primary">Assigned to</span>
+          <span className="flex flex-wrap gap-2">
+            <NativeSelect
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              className="min-w-48 flex-1"
+            >
+              <option value="">Unassigned</option>
+              {assignees.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.role.replace("_", " ")})
+                </option>
+              ))}
+            </NativeSelect>
+            <Button
+              variant="secondary"
+              disabled={pending || !assignee || assignee === assignedToId}
+              onClick={() => {
+                const form = new FormData();
+                form.set("complaintId", complaintId);
+                form.set("assigneeId", assignee);
+                run(() => assignComplaintAction(form), "Assigned.");
+              }}
+            >
+              Assign
+            </Button>
+          </span>
         </label>
-        <div className="flex flex-wrap gap-2">
-          <NativeSelect
-            id="assignee"
-            value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
-            className="max-w-xs"
-          >
-            <option value="">Unassigned</option>
-            {assignees.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.role.replace("_", " ")})
-              </option>
-            ))}
-          </NativeSelect>
-          <Button size="sm" onClick={assign} disabled={pending || !assignee}>
-            Assign
-          </Button>
-        </div>
+
         {excludedCount > 0 ? (
-          <p className="text-muted-foreground text-xs">
-            {excludedCount} {excludedCount === 1 ? "approver is" : "approvers are"} hidden
-            from this list — their decision is what&apos;s being disputed.
+          <p className="text-meta text-text-tertiary">
+            {excludedCount} {excludedCount === 1 ? "approver is" : "approvers are"}{" "}
+            hidden from this list — their decision is what&apos;s being disputed.
           </p>
         ) : null}
         {assignees.length === 0 ? (
-          <p className="text-xs text-amber-700">
+          <p className="text-meta text-status-warning-text">
             Nobody in the finance pool is eligible to handle this complaint.
           </p>
         ) : null}
       </div>
 
       {actions.length > 0 ? (
-        <div className="grid gap-2">
-          <p className="text-sm font-medium">Next step</p>
+        <div className="border-line grid gap-2 border-t pt-4">
+          <span className="text-label text-text-primary">Next step</span>
           <div className="flex flex-wrap gap-2">
-            {actions.map((a) =>
-              a === "start_review" ? (
+            {actions.map((action) =>
+              action === "start_review" ? (
                 <Button
-                  key={a}
-                  size="sm"
-                  variant="outline"
+                  key={action}
+                  variant="secondary"
                   disabled={pending}
-                  onClick={() => transition(a)}
+                  onClick={() => transition(action)}
                 >
-                  {ACTION_LABELS[a]}
+                  {ACTION_LABELS[action]}
                 </Button>
               ) : (
                 <Button
-                  key={a}
-                  size="sm"
-                  variant={a === "resolve" ? "default" : "outline"}
+                  key={action}
+                  // Resolve is the screen's single primary action; won't-fix
+                  // is a legitimate outcome but not the one to encourage.
+                  variant={action === "resolve" ? "primary" : "secondary"}
                   disabled={pending}
-                  onClick={() => setClosing(closing === a ? null : a)}
+                  onClick={() => setClosing(action as "resolve" | "wont_fix")}
                 >
-                  {ACTION_LABELS[a]}
+                  {ACTION_LABELS[action]}
                 </Button>
               )
             )}
           </div>
-          {closing ? (
-            <div className="grid gap-2">
-              <label htmlFor="resolution" className="text-sm font-medium">
-                Resolution note (required)
-              </label>
-              <Textarea
-                id="resolution"
-                rows={3}
-                value={note}
-                maxLength={2000}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="What did you find, and what happens next?"
-              />
-              <div>
-                <Button
-                  size="sm"
-                  disabled={pending || note.trim().length === 0}
-                  onClick={() => transition(closing, note.trim())}
-                >
-                  {pending ? "Saving…" : `Confirm ${ACTION_LABELS[closing].toLowerCase()}`}
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
-        </p>
-      ) : null}
-    </div>
+      <Dialog
+        open={closing !== null}
+        onOpenChange={(open) => {
+          if (pending) return;
+          if (!open) setClosing(null);
+        }}
+      >
+        <DialogContent>
+          {closing ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{CLOSING_COPY[closing].title}</DialogTitle>
+                <DialogDescription>
+                  {CLOSING_COPY[closing].description}
+                </DialogDescription>
+              </DialogHeader>
+
+              <label className="grid gap-1">
+                <span className="text-label text-text-primary">
+                  Resolution note
+                </span>
+                <Textarea
+                  rows={4}
+                  value={note}
+                  maxLength={2000}
+                  autoFocus
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={CLOSING_COPY[closing].placeholder}
+                />
+              </label>
+
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setClosing(null)}
+                  disabled={pending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  // Disabled until there is a note — the requirement is the
+                  // point of the dialog, and the server enforces it too.
+                  disabled={!noteReady || pending}
+                  onClick={() => transition(closing, note.trim())}
+                >
+                  {pending
+                    ? "Saving…"
+                    : `Confirm ${ACTION_LABELS[closing].toLowerCase()}`}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }

@@ -1,32 +1,38 @@
-// Complaints (7.3). Employees see their own disputes; finance_admin+ get the
-// inbox with status / type / age filters and SLA badges. Both views read the
-// same lib/complaints/queries module.
+// Complaints (D4.3) — DESIGN-PRD §7.7, PLAN 7.3.
+//
+// Two screens behind one route, decided by role and nothing else:
+//
+//   finance_admin+  an INBOX — the shared DataTable, status/type/age facets,
+//                   an SLA column and a danger edge on breached rows. It is a
+//                   work queue, and a queue is a table.
+//   everyone else   THEIR OWN disputes, as cards. Most employees have one or
+//                   two ever; a seven-column table of two rows is a filing
+//                   cabinet for a pair of letters.
+//
+// Both read the same lib/complaints/queries module, so the two views can
+// never disagree about what a complaint is or how old it is.
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
+
+import { AnimatedStatusBadge } from "@/components/complaints/animated-status-badge";
+import { SlaBadge } from "@/components/sla-badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import { DateCell } from "@/components/ui/date-cell";
 import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
-import { listComplaints, complaintSummary } from "@/lib/complaints/queries";
+import { complaintSummary, listComplaints } from "@/lib/complaints/queries";
 import { scopedDb } from "@/lib/db/scoped";
 import {
-  COMPLAINT_STATUSES,
-  COMPLAINT_STATUS_LABELS,
-  COMPLAINT_TYPES,
+  complaintAgeBusinessDays,
   COMPLAINT_TYPE_LABELS,
-  type ComplaintStatus,
-  type ComplaintType,
+  SLA_BUSINESS_DAYS,
 } from "@/lib/domain/complaint";
-
-function one(v: string | string[] | undefined): string | undefined {
-  return typeof v === "string" && v !== "" ? v : undefined;
-}
+import {
+  ageFloorBusinessDays,
+  parseComplaintFilters,
+} from "@/lib/domain/complaint-filters";
+import { ComplaintsTable, type ComplaintTableRow } from "./complaints-table";
 
 export default async function ComplaintsPage({
   searchParams,
@@ -39,194 +45,142 @@ export default async function ComplaintsPage({
   const isFinance = roleAtLeast(ctx.role, "finance_admin");
   const now = new Date();
 
-  const status = (one(raw.status) ?? "all") as ComplaintStatus | "all" | "open_only";
-  const type = (one(raw.type) ?? "all") as ComplaintType | "all";
-  const age = (one(raw.age) ?? "all") as "all" | "breached" | "warning";
-  const mine = one(raw.mine) === "1";
+  const filters = parseComplaintFilters(raw);
 
   const rows = await listComplaints(
     db,
     {
+      // The scope pin. An employee's inbox is their own complaints, decided
+      // server-side from the role — never from the query string.
       raisedById: isFinance ? undefined : ctx.userId,
-      assignedToId: isFinance && mine ? ctx.userId : undefined,
-      status,
-      type,
-      age,
+      assignedToId: isFinance && filters.mine ? ctx.userId : undefined,
+      status: filters.status,
+      type: filters.type,
+      ageFloorBusinessDays: ageFloorBusinessDays(filters.age),
     },
     now
   );
+
   const summary = isFinance ? await complaintSummary(db, {}, now) : null;
 
-  const qs = (patch: Record<string, string>) => {
-    const params = new URLSearchParams();
-    const base: Record<string, string> = {
-      status: status === "all" ? "" : status,
-      type: type === "all" ? "" : type,
-      age: age === "all" ? "" : age,
-      mine: mine ? "1" : "",
-      ...patch,
-    };
-    for (const [k, v] of Object.entries(base)) if (v) params.set(k, v);
-    const s = params.toString();
-    return s ? `/complaints?${s}` : "/complaints";
-  };
+  const header = (
+    <PageHeader
+      title={isFinance ? "Complaints" : "My complaints"}
+      description={
+        isFinance
+          ? `Disputes about reports and payments. Target for a first response is ${SLA_BUSINESS_DAYS} business days.`
+          : "Disputes you have raised about your own reports and payments."
+      }
+    />
+  );
+
+  if (!isFinance) {
+    return (
+      <>
+        {header}
+        {rows.length === 0 ? (
+          <EmptyState
+            headline="Nothing in dispute"
+            description="If a report or a payment doesn't look right, open it and choose “Raise complaint”."
+          />
+        ) : (
+          <ul className="grid gap-3">
+            {rows.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`/complaints/${c.id}`}
+                  className="border-line bg-bg-surface hover:bg-bg-subtle grid gap-2 rounded-lg border p-4 transition-colors duration-instant ease-out outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-label text-text-primary">
+                      {COMPLAINT_TYPE_LABELS[c.type]}
+                    </span>
+                    <AnimatedStatusBadge status={c.status} />
+                    <SlaBadge
+                      createdAt={c.createdAt}
+                      resolvedAt={c.resolvedAt}
+                      status={c.status}
+                      now={now}
+                    />
+                  </span>
+                  <span className="text-body text-text-secondary line-clamp-2">
+                    {c.description}
+                  </span>
+                  <span className="text-meta text-text-tertiary flex flex-wrap items-center gap-2">
+                    {targetLabel(c)}
+                    <span aria-hidden="true">·</span>
+                    <DateCell value={c.createdAt} format="relative" tone="muted" />
+                    {c.messageCount > 0 ? (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>
+                          {c.messageCount} {c.messageCount === 1 ? "reply" : "replies"}
+                        </span>
+                      </>
+                    ) : null}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    );
+  }
+
+  const tableRows: ComplaintTableRow[] = rows.map((c) => ({
+    id: c.id,
+    type: c.type,
+    status: c.status,
+    description: c.description,
+    createdAt: c.createdAt.toISOString(),
+    resolvedAt: c.resolvedAt?.toISOString() ?? null,
+    raisedByName: c.raisedBy.name,
+    assignedToName: c.assignedTo?.name ?? null,
+    targetLabel: targetLabel(c),
+    messageCount: c.messageCount,
+    // Computed here, from the same business-day function the badge uses, so
+    // the row's emphasis and its SLA column can never disagree.
+    breached:
+      complaintAgeBusinessDays(
+        { createdAt: c.createdAt, resolvedAt: c.resolvedAt },
+        now
+      ) >= SLA_BUSINESS_DAYS,
+  }));
 
   return (
-    <section className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {isFinance ? "Complaints inbox" : "My complaints"}
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          {isFinance
-            ? "Disputes raised by employees about reports and payments. Target: 5 business days."
-            : "Disputes you've raised about your reports and payments."}
-        </p>
-      </div>
+    <>
+      {header}
 
-      {summary ? (
-        <div className="grid gap-3 sm:grid-cols-4">
-          {[
-            { label: "Open", value: summary.open, tone: "text-foreground" },
-            { label: "In review", value: summary.inReview, tone: "text-foreground" },
-            { label: "Past SLA", value: summary.breached, tone: "text-red-700" },
-            { label: "Unassigned", value: summary.unassigned, tone: "text-amber-700" },
-          ].map((s) => (
-            <Card key={s.label}>
-              <CardHeader className="pb-2">
-                <CardDescription>{s.label}</CardDescription>
-                <CardTitle className={`text-2xl ${s.tone}`}>{s.value}</CardTitle>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-4 text-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-xs uppercase">Status</span>
-          {(["all", "open_only", ...COMPLAINT_STATUSES] as const).map((s) => (
-            <Link
-              key={s}
-              href={qs({ status: s === "all" ? "" : s })}
-              className={`rounded-full border px-2 py-0.5 text-xs ${
-                status === s ? "border-foreground font-medium" : "text-muted-foreground"
-              }`}
-            >
-              {s === "all"
-                ? "All"
-                : s === "open_only"
-                  ? "Still open"
-                  : COMPLAINT_STATUS_LABELS[s as ComplaintStatus]}
-            </Link>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-xs uppercase">Type</span>
-          {(["all", ...COMPLAINT_TYPES] as const).map((t) => (
-            <Link
-              key={t}
-              href={qs({ type: t === "all" ? "" : t })}
-              className={`rounded-full border px-2 py-0.5 text-xs ${
-                type === t ? "border-foreground font-medium" : "text-muted-foreground"
-              }`}
-            >
-              {t === "all" ? "All" : COMPLAINT_TYPE_LABELS[t as ComplaintType]}
-            </Link>
-          ))}
-        </div>
-        {isFinance ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs uppercase">Age</span>
-            {(
-              [
-                ["all", "Any"],
-                ["warning", "3+ days"],
-                ["breached", "Past SLA"],
-              ] as const
-            ).map(([value, label]) => (
-              <Link
-                key={value}
-                href={qs({ age: value === "all" ? "" : value })}
-                className={`rounded-full border px-2 py-0.5 text-xs ${
-                  age === value ? "border-foreground font-medium" : "text-muted-foreground"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-            <Link
-              href={qs({ mine: mine ? "" : "1" })}
-              className={`rounded-full border px-2 py-0.5 text-xs ${
-                mine ? "border-foreground font-medium" : "text-muted-foreground"
-              }`}
-            >
-              Assigned to me
-            </Link>
+      <div className="grid gap-6">
+        {summary ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* No hrefs: these count complaints, and the table below is
+                already the list they'd open. A card that links to the screen
+                it sits on is a button that does nothing (§7.4). */}
+            <StatCard label="Open" value={summary.open} />
+            <StatCard label="In review" value={summary.inReview} />
+            <StatCard
+              label="Past SLA"
+              value={summary.breached}
+              hint={summary.breached > 0 ? "needs attention today" : undefined}
+            />
+            <StatCard label="Unassigned" value={summary.unassigned} />
           </div>
         ) : null}
-      </div>
 
-      {rows.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">No complaints here</CardTitle>
-            <CardDescription>
-              {isFinance
-                ? "Nothing matches these filters. Clear them to see everything."
-                : "If a report or payment doesn't look right, open it and choose “Raise complaint”."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link
-              href={isFinance ? "/complaints" : "/reports"}
-              className="text-sm underline"
-            >
-              {isFinance ? "Clear filters" : "Go to my reports"}
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <ul className="grid gap-3">
-          {rows.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/complaints/${c.id}`}
-                className="hover:bg-accent/40 block rounded-lg border p-3"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">
-                    {COMPLAINT_TYPE_LABELS[c.type]}
-                  </span>
-                  <ComplaintStatusBadge status={c.status} />
-                  <SlaBadge
-                    createdAt={c.createdAt}
-                    resolvedAt={c.resolvedAt}
-                    status={c.status}
-                    now={now}
-                  />
-                  {c.messageCount > 0 ? (
-                    <span className="text-muted-foreground text-xs">
-                      {c.messageCount} {c.messageCount === 1 ? "reply" : "replies"}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 line-clamp-2 text-sm">{c.description}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {isFinance ? `${c.raisedBy.name} · ` : ""}
-                  {c.reportTitle
-                    ? `Report “${c.reportTitle}”`
-                    : c.reimbursementReference
-                      ? `Payment ${c.reimbursementReference}`
-                      : "—"}{" "}
-                  · raised <DateCell value={c.createdAt} tone="muted" /> ·{" "}
-                  {c.assignedTo ? `with ${c.assignedTo.name}` : "unassigned"}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+        <ComplaintsTable rows={tableRows} filters={filters} />
+      </div>
+    </>
   );
+}
+
+/** What the complaint is about, in one phrase. */
+function targetLabel(c: {
+  reportTitle: string | null;
+  reimbursementReference: string | null;
+}): string {
+  if (c.reportTitle) return `Report “${c.reportTitle}”`;
+  if (c.reimbursementReference) return `Payment ${c.reimbursementReference}`;
+  return "—";
 }

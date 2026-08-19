@@ -1,12 +1,14 @@
 // Complaint detail (7.3). Visible to the person who raised it and to
 // finance_admin+ — canViewComplaint decides, and a complaint from another org
 // simply does not resolve (scopedDb + RLS).
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
-import { Amount } from "@/components/ui/amount";
-import { DateCell } from "@/components/ui/date-cell";
+import {
+  ComplaintHeaderCard,
+  ResolutionCard,
+  type ComplaintHeaderProps,
+} from "@/components/complaints/complaint-header-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { disputedApproverIds, financePool } from "@/lib/complaints/queries";
 import { scopedDb } from "@/lib/db/scoped";
@@ -15,6 +17,7 @@ import {
   canManageComplaint,
   canViewComplaint,
   eligibleAssignees,
+  isClosed as isComplaintClosed,
   COMPLAINT_TYPE_LABELS,
   type ComplaintStatus,
   type ComplaintType,
@@ -135,94 +138,83 @@ export default async function ComplaintDetailPage({
     mine: m.authorId === ctx.userId,
   }));
 
-  const targetHref = complaint.report
-    ? `/reports/${complaint.report.id}`
+  // The header card renders amounts and dates itself, so it gets structured
+  // values rather than a pre-formatted sentence (D1.1).
+  const target: ComplaintHeaderProps["target"] = complaint.report
+    ? {
+        kind: "report",
+        href: `/reports/${complaint.report.id}`,
+        title: complaint.report.title,
+      }
     : complaint.reimbursement
-      ? `/reports/${complaint.reimbursement.reportId}`
+      ? {
+          kind: "payment",
+          href: `/reports/${complaint.reimbursement.reportId}`,
+          reference: complaint.reimbursement.reference,
+          amount: complaint.reimbursement.amountPaid,
+          currency: org.currency,
+          paidAt: complaint.reimbursement.paidAt.toISOString(),
+          method: complaint.reimbursement.method,
+        }
       : null;
 
   return (
-    <section className="grid max-w-3xl gap-6">
-      <div>
-        <Link href="/complaints" className="text-muted-foreground text-sm hover:underline">
-          ← All complaints
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">
-            {COMPLAINT_TYPE_LABELS[complaint.type]}
-          </h1>
-          <ComplaintStatusBadge status={complaint.status} />
-          <SlaBadge
-            createdAt={complaint.createdAt}
-            resolvedAt={complaint.resolvedAt}
+    <>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Complaints", href: "/complaints" },
+          { label: COMPLAINT_TYPE_LABELS[complaint.type] },
+        ]}
+        title={COMPLAINT_TYPE_LABELS[complaint.type]}
+        description="Everything about this dispute, and the conversation it started."
+      />
+
+      {/* Two columns on desktop: the dispute and its conversation on the
+          left, the handler's controls beside them. One column below lg —
+          and the controls come LAST there, because a handler on a phone
+          still has to read the complaint before acting on it. */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid content-start gap-4 lg:col-span-8">
+          <ComplaintHeaderCard
+            type={complaint.type}
             status={complaint.status}
+            description={complaint.description}
+            createdAt={complaint.createdAt.toISOString()}
+            resolvedAt={complaint.resolvedAt?.toISOString() ?? null}
+            raisedByName={complaint.raisedBy.name}
+            assignedToName={complaint.assignedTo?.name ?? null}
+            target={target}
+            attachmentUrl={attachmentUrl}
+            proofUrl={proofUrl}
+          />
+
+          {complaint.resolutionNote ? (
+            <ResolutionCard
+              status={complaint.status}
+              note={complaint.resolutionNote}
+              resolvedAt={complaint.resolvedAt?.toISOString() ?? null}
+            />
+          ) : null}
+
+          <ComplaintThread
+            complaintId={complaint.id}
+            messages={messages}
+            closed={isComplaintClosed(complaint.status)}
           />
         </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Raised by {complaint.raisedBy.name} on{" "}
-          <DateCell value={complaint.createdAt} tone="muted" /> ·{" "}
-          {complaint.assignedTo
-            ? `handled by ${complaint.assignedTo.name}`
-            : "not yet assigned"}
-        </p>
+
+        {isHandler ? (
+          <div className="lg:col-span-4">
+            <HandlerPanel
+              complaintId={complaint.id}
+              assignedToId={complaint.assignedToId}
+              assignees={assignees.map((a) => ({ id: a.id, name: a.name, role: a.role }))}
+              actions={availableActions(complaint.status)}
+              excludedCount={excluded.length}
+            />
+          </div>
+        ) : null}
       </div>
-
-      <div className="grid gap-2 rounded-lg border p-4">
-        <p className="text-sm whitespace-pre-wrap">{complaint.description}</p>
-        <div className="text-muted-foreground flex flex-wrap gap-3 text-sm">
-          {targetHref ? (
-            <Link href={targetHref} className="underline">
-              {complaint.report
-                ? `Report “${complaint.report.title}”`
-                : `Payment ${complaint.reimbursement?.reference}`}
-            </Link>
-          ) : null}
-          {complaint.reimbursement ? (
-            <span className="flex flex-wrap items-center gap-1">
-              <Amount value={complaint.reimbursement.amountPaid} currency={org.currency} />
-              <span>via {complaint.reimbursement.method.replace("_", " ")} on</span>
-              <DateCell value={complaint.reimbursement.paidAt} tone="muted" />
-            </span>
-          ) : null}
-          {attachmentUrl ? (
-            <a href={attachmentUrl} target="_blank" rel="noreferrer" className="underline">
-              Attachment
-            </a>
-          ) : null}
-          {proofUrl ? (
-            <a href={proofUrl} target="_blank" rel="noreferrer" className="underline">
-              Payment proof (auto-attached)
-            </a>
-          ) : null}
-        </div>
-      </div>
-
-      {complaint.resolutionNote ? (
-        <div className="grid gap-1 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
-          <p className="font-medium">
-            {complaint.status === "resolved" ? "Resolved" : "Closed as won't fix"}
-            {complaint.resolvedAt ? (
-              <>
-                {" on "}
-                <DateCell value={complaint.resolvedAt} />
-              </>
-            ) : null}
-          </p>
-          <p className="whitespace-pre-wrap">{complaint.resolutionNote}</p>
-        </div>
-      ) : null}
-
-      {isHandler ? (
-        <HandlerPanel
-          complaintId={complaint.id}
-          assignedToId={complaint.assignedToId}
-          assignees={assignees.map((a) => ({ id: a.id, name: a.name, role: a.role }))}
-          actions={availableActions(complaint.status)}
-          excludedCount={excluded.length}
-        />
-      ) : null}
-
-      <ComplaintThread complaintId={complaint.id} messages={messages} />
-    </section>
+    </>
   );
 }

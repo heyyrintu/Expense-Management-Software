@@ -10,11 +10,21 @@ export type FacetOption = {
   label: string;
 };
 
-/** Which filter key a facet writes to. */
+/** Which EXPENSE filter key a facet writes to. */
 export type FacetKey = "status" | "categoryId" | "projectId" | "departmentId" | "userId";
 
-export type FacetConfig = {
-  key: FacetKey;
+/**
+ * A facet's key is generic (D4.3) so screens with their own URL contract can
+ * reuse the real control instead of hand-assembling one.
+ *
+ * `FilterBar` still pins it to `FacetKey`, because that component indexes an
+ * `ExpenseFilters` object by it. `FacetSelect` does not — it takes a label,
+ * some options and a value — so the complaints inbox composes it directly
+ * with `status` / `type` / `age` keys of its own. Same menu, same chips, same
+ * behaviour; a different bag of state behind it.
+ */
+export type FacetConfig<K extends string = FacetKey> = {
+  key: K;
   /** Menu and chip label, singular — "Category", not "Categories". */
   label: string;
   options: FacetOption[];
@@ -27,5 +37,5 @@ export type FilterBarConfig = {
   search?: { placeholder: string };
   /** Omit to hide the date-range control. */
   dateRange?: boolean;
-  facets: FacetConfig[];
+  facets: FacetConfig<FacetKey>[];
 };

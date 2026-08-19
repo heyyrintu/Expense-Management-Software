@@ -18,7 +18,9 @@ export function FacetSelect({
   selected,
   onChange,
 }: {
-  facet: FacetConfig;
+  // Generic in the key (D4.3): this control never indexes anything by it, so
+  // any screen with its own filter state can use it.
+  facet: FacetConfig<string>;
   selected: string[];
   onChange: (next: string[]) => void;
 }) {

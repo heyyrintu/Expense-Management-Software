@@ -15,10 +15,15 @@ import type { Role } from "@/lib/auth/roles";
 export type ComplaintListFilters = {
   /** Restrict to complaints raised by this user (employee view). */
   raisedById?: string;
-  status?: ComplaintStatus | "all" | "open_only";
-  type?: ComplaintType | "all";
-  /** "breached" = past SLA, "warning" = amber or worse. */
-  age?: "all" | "breached" | "warning";
+  /**
+   * Multi-select (D4.3). An empty array means "no filter" — NOT "match
+   * nothing" — which is what makes clearing a facet widen the list rather
+   * than empty it.
+   */
+  status?: ComplaintStatus[];
+  type?: ComplaintType[];
+  /** SLA floor in business days; null for no age filter. */
+  ageFloorBusinessDays?: number | null;
   assignedToId?: string;
 };
 
@@ -97,12 +102,12 @@ export async function listComplaints(
   const where: Record<string, unknown> = {};
   if (filters.raisedById) where.raisedById = filters.raisedById;
   if (filters.assignedToId) where.assignedToId = filters.assignedToId;
-  if (filters.status === "open_only") {
-    where.status = { in: [...OPEN_STATUSES] };
-  } else if (filters.status && filters.status !== "all") {
-    where.status = filters.status;
+  // `in` with one element is the same query plan as equality, so single and
+  // multi select need no separate code path.
+  if (filters.status && filters.status.length > 0) {
+    where.status = { in: filters.status };
   }
-  if (filters.type && filters.type !== "all") where.type = filters.type;
+  if (filters.type && filters.type.length > 0) where.type = { in: filters.type };
 
   const rows = (await db.complaint.findMany({
     where,
@@ -112,10 +117,15 @@ export async function listComplaints(
   })) as unknown as RawComplaint[];
 
   const mapped = rows.map(toRow);
-  if (!filters.age || filters.age === "all") return mapped;
-  const floor = filters.age === "breached" ? 5 : 3;
+  const floor = filters.ageFloorBusinessDays;
+  // Age is business-day maths, not a column, so it filters after the query.
+  if (floor === null || floor === undefined) return mapped;
   return mapped.filter(
-    (r) => complaintAgeBusinessDays({ createdAt: r.createdAt, resolvedAt: r.resolvedAt }, now) >= floor
+    (r) =>
+      complaintAgeBusinessDays(
+        { createdAt: r.createdAt, resolvedAt: r.resolvedAt },
+        now
+      ) >= floor
   );
 }
 
@@ -134,7 +144,9 @@ export async function complaintSummary(
   filters: ComplaintListFilters = {},
   now: Date = new Date()
 ): Promise<ComplaintSummary> {
-  const rows = await listComplaints(db, { ...filters, status: "open_only" }, now);
+  // The summary is about work still to do, so it reads the open statuses
+  // explicitly rather than through a magic "open_only" token.
+  const rows = await listComplaints(db, { ...filters, status: [...OPEN_STATUSES] }, now);
   let breached = 0;
   let warning = 0;
   let oldest = 0;

@@ -323,6 +323,13 @@
   box-shadow: inset 2px 0 0 0 var(--status-warning);
 }
 
+/* The 2px DANGER left edge on a past-SLA complaint row (D4.3, §7.7). Same
+   inset trick, same reason: an overdue row and a fresh one must have
+   identical boxes, or the inbox jitters as ages tick over at midnight. */
+@utility overdue-edge {
+  box-shadow: inset 2px 0 0 0 var(--status-danger);
+}
+
 /* Safe-area insets (§ mobile). iOS home-indicator territory: the tab bar
    paints into it (so the bar reaches the screen edge) but its controls sit
    above it. `env()` resolves to 0 everywhere else, so there is no cost on
