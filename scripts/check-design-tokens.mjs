@@ -33,15 +33,23 @@ const EXTENSIONS = [".ts", ".tsx", ".css"];
 /** Files where the token layer itself lives — literals are the point there. */
 const TOKEN_SOURCES = ["app/globals.css"];
 
-const ALLOWED_EXCEPTIONS = [
-  {
-    file: "components/ui",
-    pattern: /ring-\[3px\]/,
-    reason:
-      "Vendored shadcn primitives ship a 3px focus ring; DESIGN-PRD §5.1 wants 2px. Restyling primitives is D0.3's job, not D0.1's.",
-    removedBy: "D0.3 Primitive components",
-  },
-];
+// Empty on purpose. The D0.1 ring-[3px] exception was retired in D0.3 when
+// the primitives were restyled to the 2px spec ring.
+const ALLOWED_EXCEPTIONS = [];
+
+/**
+ * Directories where TAILWIND PALETTE COLOURS are banned as well — bg-red-50,
+ * text-green-800 and friends. These bypass the token layer just as surely as
+ * a raw hex: they don't follow the theme and can't be changed centrally.
+ *
+ * Scope grows as screens are restyled. Feature screens still carry palette
+ * classes from before the design system existed; D1–D5 clear them screen by
+ * screen and add each directory here as it lands.
+ */
+const TOKEN_ONLY_DIRS = ["components/ui", "components/status-badge.tsx", "components/sla-badge.tsx"];
+
+const PALETTE_COLOUR =
+  /\b(?:bg|text|border|ring|fill|stroke|from|via|to|divide|outline|shadow|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/;
 
 const HEX = /#[0-9a-fA-F]{3,8}\b/;
 // A bracket preceded by a utility stem. Variants are filtered separately.
@@ -59,6 +67,14 @@ function isPropertyList(stem, value) {
     (stem === "transition" || stem === "will-change") &&
     /^[a-z-]+(,[a-z-]+)*$/.test(value.replace(/\s/g, ""))
   );
+}
+
+/**
+ * `content-['']` and friends carry a STRING, not a measurement — the empty
+ * content marker that makes a pseudo-element render is structural.
+ */
+function isContentString(stem) {
+  return stem === "content";
 }
 
 /**
@@ -113,6 +129,19 @@ for (const dir of SCAN_DIRS) {
       const at = `${relPath}:${i + 1}`;
       if (isExcepted(relPath, line)) return;
 
+      const inTokenOnlyDir = TOKEN_ONLY_DIRS.some((d) => relPath.startsWith(d));
+      if (inTokenOnlyDir) {
+        const palette = PALETTE_COLOUR.exec(line);
+        if (palette) {
+          violations.push({
+            at,
+            rule: "palette-colour",
+            found: palette[0],
+            hint: "Primitives are token-only. Use bg-*/text-*/accent-*/status-* from the token layer.",
+          });
+        }
+      }
+
       const hex = HEX.exec(line);
       if (hex) {
         violations.push({
@@ -130,6 +159,7 @@ for (const dir of SCAN_DIRS) {
         if (VARIANT_STEMS.has(stem)) continue;
         if (isPropertyList(stem, value)) continue;
         if (isIntrinsicGridTemplate(stem, value)) continue;
+        if (isContentString(stem)) continue;
         violations.push({
           at,
           rule: "arbitrary-value",

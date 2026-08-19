@@ -267,6 +267,57 @@
 @utility duration-base { transition-duration: var(--dur-base); }
 @utility duration-slow { transition-duration: var(--dur-slow); }
 
+/* A bottom sheet stops short of the top edge so the page behind stays
+   visible and the sheet reads as a layer, not a new screen. svh (not vh)
+   so mobile browser chrome doesn't push it off-screen. */
+@utility max-h-sheet {
+  max-height: 85svh;
+}
+
+/* Skeleton pulse: opacity only, 1.6s (§6.1). Reduced motion stops it —
+   a skeleton that breathes is decoration, and decoration is optional. */
+@utility skeleton-pulse {
+  animation: skeleton-pulse 1.6s var(--ease-enter) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Anchor an overlay's growth to the thing that opened it (§4.4 "elements
+   animate from their origin"). Radix computes the origin as a CSS variable
+   per placement; these name it so call sites stay token-only. */
+@utility origin-popover {
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+@utility origin-dropdown {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+@utility origin-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
+/* The press. DESIGN-PRD §6.1 puts the pressed state at scale 0.98 — a
+   transform, so it costs nothing to animate. Named here rather than inlined
+   as scale-[0.98] at every call site. */
+@utility press-scale {
+  transition-property: transform;
+  transition-duration: var(--dur-instant);
+  transition-timing-function: var(--ease-enter);
+  &:active {
+    transform: scale(0.98);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    &:active {
+      transform: none;
+    }
+  }
+}
+
 /* Tabular figures. Every numeric context — amounts, dates, counts — so
    columns of numbers line up and never jitter while updating (§5.3). */
 @utility tabular {

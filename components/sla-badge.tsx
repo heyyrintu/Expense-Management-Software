@@ -1,12 +1,15 @@
 // SLA chip for complaints (7.3). Colour comes from lib/domain/complaint so the
 // badge can never drift from the business-day maths behind it.
 import { slaBadge, type ComplaintStatus } from "@/lib/domain/complaint";
+import { TONE_CLASSES } from "@/lib/design/status";
 import { cn } from "@/lib/utils";
 
+// SLA level maps onto the same semantic tones every other status uses —
+// no separate colour vocabulary for complaints (§5.2).
 const STYLES: Record<string, string> = {
-  green: "border-green-200 bg-green-50 text-green-800",
-  amber: "border-amber-200 bg-amber-50 text-amber-900",
-  red: "border-red-200 bg-red-50 text-red-800",
+  green: TONE_CLASSES.success.chip,
+  amber: TONE_CLASSES.warning.chip,
+  red: TONE_CLASSES.danger.chip,
 };
 
 export function SlaBadge({
@@ -28,7 +31,7 @@ export function SlaBadge({
       role="status"
       aria-label={`Service level: ${badge.label}`}
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-sm px-2 py-0.5 text-meta font-medium",
         STYLES[badge.level],
         className
       )}
@@ -39,10 +42,10 @@ export function SlaBadge({
 }
 
 const STATUS_STYLES: Record<ComplaintStatus, string> = {
-  open: "border-blue-200 bg-blue-50 text-blue-800",
-  in_review: "border-amber-200 bg-amber-50 text-amber-900",
-  resolved: "border-green-200 bg-green-50 text-green-800",
-  wont_fix: "border-gray-200 bg-gray-100 text-gray-700",
+  open: TONE_CLASSES.info.chip,
+  in_review: TONE_CLASSES.warning.chip,
+  resolved: TONE_CLASSES.success.chip,
+  wont_fix: TONE_CLASSES.neutral.chip,
 };
 
 export function ComplaintStatusBadge({ status }: { status: ComplaintStatus }) {
@@ -55,7 +58,7 @@ export function ComplaintStatusBadge({ status }: { status: ComplaintStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-sm px-2 py-0.5 text-meta font-medium",
         STATUS_STYLES[status]
       )}
     >

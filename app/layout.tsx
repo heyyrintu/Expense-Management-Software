@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { MotionProvider } from "@/components/motion-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Inter, variable weight, latin subset. `display: swap` so text is readable
@@ -26,7 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <MotionProvider>{children}</MotionProvider>
+        <MotionProvider>
+          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          <Toaster />
+        </MotionProvider>
       </body>
     </html>
   );

@@ -10,6 +10,7 @@
 import type { Metadata } from "next";
 
 import { MotionDemos } from "./motion-demos";
+import { PrimitiveSpecimens } from "./primitives";
 import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import {
   BRAND_FILL_PAIRS,
@@ -88,6 +89,13 @@ export default function DesignSystemPage() {
             fails on raw hex and arbitrary Tailwind values.
           </p>
         </header>
+
+        <Section
+          title="Primitives"
+          description="Every component and every state. Tab through them: each has a 2px accent focus ring at 2px offset, and every interactive control clears a 44px touch target."
+        >
+          <PrimitiveSpecimens />
+        </Section>
 
         {COLOR_GROUPS.map((group) => (
           <Section key={group.title} title={group.title} description={group.description}>
