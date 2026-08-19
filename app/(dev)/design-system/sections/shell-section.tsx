@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ROLES, type Role } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
 
-export function ShellSpecimens() {
+export function ShellSection() {
   const [role, setRole] = React.useState<Role>("finance_admin");
   const sections = visibleSections(role);
 

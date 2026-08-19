@@ -202,6 +202,17 @@ export function contrastRatio(foreground: string, background: string): number {
   return Math.round(((light + 0.05) / (dark + 0.05)) * 100) / 100;
 }
 
+/**
+ * The two backgrounds every colour token is measured against in the gallery
+ * (D0.5): the surface it will most often sit on, and the ink that will most
+ * often sit on it. Together they answer "can this hold text, and can text
+ * hold it" for any swatch without hunting through the contrast contract.
+ */
+export const REFERENCE_COLORS = {
+  surface: "#FFFFFF",
+  textPrimary: "#18181B",
+} as const;
+
 export type ContrastLevel = "AAA" | "AA" | "AA Large" | "Fail";
 
 /** Grade a ratio for normal-size text (the only size we make claims about). */

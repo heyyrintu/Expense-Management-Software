@@ -11,7 +11,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 - [ ] **D0.2 Motion primitives**: install Framer Motion, Sonner, Vaul. `lib/motion.ts` exporting duration/easing/spring constants + shared variants (fadeScale, slideUp, collapse). Global `prefers-reduced-motion` handling. Motion usage rules added to CLAUDE.md.
 - [x] **D0.3 Primitive components**: restyle shadcn Button, Input, Select, DatePicker, Badge/StatusBadge (reading the §5.2 status map), Card, Tabs, Dialog, Sheet (Vaul on mobile), Toast (Sonner), Tooltip, Skeleton, EmptyState. All states incl. focus-visible and loading-without-layout-shift.
 - [x] **D0.4 App shell**: sidebar (240px, collapsible icon rail), top bar (org switcher if multi-org user, search, notifications, avatar menu), mobile bottom tab bar with center Add action, breadcrumbs, page header pattern (title + description + primary action slot). Role-aware nav.
-- [ ] **D0.5 Storybook-lite gallery**: `/design-system` route (dev-only, org_admin-gated in prod) rendering every component, every state, the token palette, and the type scale. This is the review surface for all later tasks.
+- [x] **D0.5 Storybook-lite gallery**: `/design-system` route (dev-only, org_admin-gated in prod) rendering every component, every state, the token palette, and the type scale. This is the review surface for all later tasks.
 
 ## Milestone D1 — Money & data presentation
 

@@ -78,7 +78,7 @@ Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROM
 - One primary (filled) button visible per screen.
 - **Motion**: see the Motion rules section below.
 - Money movement is never optimistic. Approvals may be optimistic with a 5s Undo.
-- Any new or changed component must be added to `/design-system` in the same commit.
+- **Any new or changed component must be added to `/design-system` in the same commit.** The gallery is the review surface: look at a component there before changing it and again after. Every state goes on the page — a state that isn't there isn't specified. If a component ships still deviating from the token layer, mark it with `DebtNote` and the task that fixes it rather than leaving the gap invisible. The gallery is open in development and requires `org_admin` in production (`lib/design/gallery-access.ts`).
 - **App shell**: screens render inside `components/shell/AppShell` — they must not add their own header, sidebar, page padding or max-width. Start every screen with `<PageHeader title description action />`; `action` holds the screen's single primary button.
 - **Navigation**: `components/shell/nav.ts` is the only nav model, and its `minRole` mirrors each route's existing server guard — it never replaces one. Add a route's guard first, then mirror it there and in `tests/unit/nav.test.ts`.
 

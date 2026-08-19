@@ -1,8 +1,8 @@
 "use client";
 
-// Every primitive, every state (D0.3). If a state isn't on this page it
-// isn't specified, and if it looks wrong here it looks wrong everywhere —
-// this is the page to check before touching a component.
+// Every primitive, every state (D0.3, regrouped in D0.5). If a state isn't
+// on this page it isn't specified, and if it looks wrong here it looks
+// wrong everywhere — this is the page to check before touching a component.
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
@@ -47,24 +47,7 @@ import { notify } from "@/components/ui/toaster";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge, StatusBadge } from "@/components/status-badge";
 import { STATUS_MAP } from "@/lib/design/status";
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-2">
-      <span className="text-meta text-text-tertiary">{label}</span>
-      <div className="flex flex-wrap items-center gap-3">{children}</div>
-    </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="border-line bg-bg-surface grid gap-4 rounded-lg border p-5">
-      <h3 className="text-h3 text-text-primary">{title}</h3>
-      {children}
-    </div>
-  );
-}
+import { Panel, Row } from "./shared";
 
 // ---------------------------------------------------------------------------
 
@@ -382,7 +365,7 @@ function SurfaceSpecimens() {
   );
 }
 
-export function PrimitiveSpecimens() {
+export function ComponentsSection() {
   return (
     <div className="grid gap-6">
       <ButtonSpecimens />
