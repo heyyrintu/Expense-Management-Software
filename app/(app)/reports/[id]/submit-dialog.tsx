@@ -23,7 +23,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PolicyFlagChips, type FlagLike } from "@/components/ui/policy-flag-chip";
+import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
+import type { FlagLike } from "@/lib/domain/policy-flags";
 
 export type SubmitPreview = {
   expenseCount: number;

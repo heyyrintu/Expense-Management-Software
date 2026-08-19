@@ -314,6 +314,13 @@
   box-shadow: inset 2px 0 0 0 var(--accent-base);
 }
 
+/* The 2px WARNING left edge on a flagged approval row (§7.3). Same inset
+   trick and the same reason: a flagged row and a clean one must have
+   identical boxes, or the queue jitters as flags load. */
+@utility flagged-edge {
+  box-shadow: inset 2px 0 0 0 var(--status-warning);
+}
+
 /* Safe-area insets (§ mobile). iOS home-indicator territory: the tab bar
    paints into it (so the bar reaches the screen edge) but its controls sit
    above it. `env()` resolves to 0 everywhere else, so there is no cost on

@@ -22,35 +22,12 @@ import { AlertTriangle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DURATION, EASE, seconds } from "@/lib/motion";
 import { TONE_CLASSES } from "@/lib/design/status";
+import { asFlags, ruleLabel, type FlagLike } from "@/lib/domain/policy-flags";
 import { cn } from "@/lib/utils";
 
-export type FlagLike = { rule: string; message: string };
-
-/** Short labels for the chip; the full rule text lives in the tooltip. */
-const RULE_LABELS: Record<string, string> = {
-  per_expense_limit: "Over limit",
-  monthly_limit: "Monthly limit",
-  receipt_required: "Receipt needed",
-  expense_age: "Too old",
-  duplicate: "Possible duplicate",
-  auto_created: "Auto-created",
-  email_ingested: "From email",
-};
-
-export function ruleLabel(rule: string): string {
-  return RULE_LABELS[rule] ?? rule.replace(/_/g, " ");
-}
-
-export function asFlags(value: unknown): FlagLike[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter(
-    (f): f is FlagLike =>
-      typeof f === "object" &&
-      f !== null &&
-      typeof (f as FlagLike).rule === "string" &&
-      typeof (f as FlagLike).message === "string"
-  );
-}
+// Re-exported so the six screens importing from here keep working; the
+// definitions live in lib/domain/policy-flags.ts (D3.1).
+export { asFlags, ruleLabel, type FlagLike };
 
 export function PolicyFlagChip({ flag, className }: { flag: FlagLike; className?: string }) {
   return (

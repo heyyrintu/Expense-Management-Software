@@ -21,7 +21,6 @@ const DAYS = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000);
 
 /** §6.2 components not yet built, with the task that delivers each. */
 const ROSTER = [
-  { name: "ApprovalRow", purpose: "Decide without opening; optimistic exit with undo", task: "D3.1" },
   { name: "PaymentProofViewer", purpose: "Lightbox with zoom and metadata sidebar", task: "D3.2" },
   { name: "LedgerTable", purpose: "Tally-style running balance, sticky totals, print", task: "D4.1" },
   { name: "ReconcileBuckets", purpose: "Three-column board with counts", task: "D4.2" },

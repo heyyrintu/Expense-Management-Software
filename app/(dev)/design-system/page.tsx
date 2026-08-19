@@ -20,6 +20,7 @@ import type { Metadata } from "next";
 
 import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import { MOTION_TOKENS } from "@/lib/design/tokens";
+import { ApprovalSection } from "./sections/approval-section";
 import { CaptureSection } from "./sections/capture-section";
 import { ComponentsSection } from "./sections/components-section";
 import { DomainSection } from "./sections/domain-section";
@@ -107,6 +108,8 @@ export default function DesignSystemPage() {
           <ReceiptSection />
 
           <ReportSection />
+
+          <ApprovalSection />
 
           <DomainSection />
 
