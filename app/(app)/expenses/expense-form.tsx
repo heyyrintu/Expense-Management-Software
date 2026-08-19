@@ -20,7 +20,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, type Resolver } from "react-hook-form";
-import { ChevronDown, Receipt as ReceiptIcon, Sparkles } from "lucide-react";
+import { ChevronDown, Receipt as ReceiptIcon } from "lucide-react";
 
 import { Amount } from "@/components/ui/amount";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { OcrReviewCard, type OcrField, type OcrValues } from "@/components/ui/ocr-review-card";
 import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
 import { SavedIndicator } from "@/components/ui/saved-indicator";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
@@ -175,12 +176,27 @@ export function ExpenseForm({
   // is where limit and duplicate rules belong anyway.
   const flagsByField = groupFlagsByField(liveFlags);
 
+  // The card is editable, so what OCR read becomes local state the reader can
+  // correct BEFORE it touches the form. Correcting a wrong guess in place is
+  // faster than accepting it and then hunting for the field to fix.
+  const [ocrValues, setOcrValues] = React.useState<OcrValues>(() => ({
+    merchant: ocr?.merchant,
+    date: ocr?.date,
+    amount: ocr?.amount,
+  }));
+  const [ocrDismissed, setOcrDismissed] = React.useState(false);
   const hasOcr = !!ocr && (ocr.merchant || ocr.date || ocr.amount);
+  // A receipt with nothing read still gets the card — that is where the
+  // "couldn't read this" copy lives, and silence would leave the reader
+  // wondering whether anything happened.
+  const showOcrCard = !ocrDismissed && (receiptCount > 0 || hasOcr);
 
-  function applyOcr(field: "merchant" | "date" | "amount") {
-    if (!ocr) return;
-    const value = ocr[field];
-    if (value) form.setValue(field, value, { shouldValidate: true, shouldDirty: true });
+  function acceptOcr() {
+    for (const field of ["merchant", "date", "amount"] as const) {
+      const value = ocrValues[field];
+      if (value) form.setValue(field, value, { shouldValidate: true, shouldDirty: true });
+    }
+    setOcrDismissed(true);
   }
 
   const advancedCount = countAdvanced(form.watch());
@@ -194,48 +210,21 @@ export function ExpenseForm({
         {/* ---- 1. Receipt ------------------------------------------------ */}
         <section className="grid gap-2">
           <h2 className="text-label text-text-secondary">Receipt</h2>
-          {hasOcr ? (
-            <div className="border-accent-border bg-accent-subtle grid gap-3 rounded-lg border p-4">
-              <p className="text-label text-accent-text flex items-center gap-2">
-                <Sparkles aria-hidden="true" className="size-4" />
-                Read from your receipt — check each value
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {ocr?.amount ? (
-                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("amount")}>
-                    Amount: {ocr.amount}
-                  </Button>
-                ) : null}
-                {ocr?.date ? (
-                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("date")}>
-                    Date: {ocr.date}
-                  </Button>
-                ) : null}
-                {ocr?.merchant ? (
-                  <Button type="button" variant="secondary" size="sm" onClick={() => applyOcr("merchant")}>
-                    Merchant: {ocr.merchant}
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    applyOcr("amount");
-                    applyOcr("date");
-                    applyOcr("merchant");
-                  }}
-                >
-                  Use all
-                </Button>
-              </div>
-            </div>
+          {showOcrCard ? (
+            <OcrReviewCard
+              values={ocrValues}
+              onChange={(field: OcrField, value) =>
+                setOcrValues((prev) => ({ ...prev, [field]: value }))
+              }
+              onAccept={acceptOcr}
+              onDismiss={() => setOcrDismissed(true)}
+            />
           ) : (
             <div className="border-line text-text-tertiary flex items-center gap-2 rounded-lg border border-dashed p-4 text-meta">
               <ReceiptIcon aria-hidden="true" className="size-4 shrink-0" />
               {receiptCount > 0
                 ? `${receiptCount} receipt${receiptCount === 1 ? "" : "s"} attached`
-                : "Attach a receipt after saving — drag-and-drop capture arrives with D2.2."}
+                : "Save the expense first, then attach a receipt on its page."}
             </div>
           )}
         </section>

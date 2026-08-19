@@ -24,7 +24,7 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 ## Milestone D2 — Capture flow (highest-impact screens)
 
 - [x] **D2.1 Add/Edit Expense**: mobile-first single column per DESIGN-PRD §7.1; AmountInput (paste-tolerant, minor-unit safe); sticky action bar; inline policy chips; autosave draft indicator.
-- [ ] **D2.2 ReceiptDropzone + OCRReviewCard**: drag-over states, camera capture on mobile, thumbnail grid, upload progress without layout shift, OCR "extracted" chips with low-confidence emphasis, graceful OCR-failure copy.
+- [x] **D2.2 ReceiptDropzone + OCRReviewCard**: drag-over states, camera capture on mobile, thumbnail grid, upload progress without layout shift, OCR "extracted" chips with low-confidence emphasis, graceful OCR-failure copy.
 - [ ] **D2.3 My Expenses & report builder**: list → bulk select → floating action bar → add to report; report detail with expense rows, totals footer, submit confirmation dialog showing what will be sent.
 
 ## Milestone D3 — Review & finance screens
