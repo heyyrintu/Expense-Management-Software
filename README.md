@@ -124,6 +124,39 @@ report and approval path is unchanged. Messages with no readable amount get a
 short help reply; files over 10 MB or of an unsupported type are politely
 refused. Every action is audit-logged with `channel: "whatsapp"`.
 
+## WhatsApp notifications & quick approve (8.3)
+
+Once someone links a number, the events they already receive in-app and by
+email also reach WhatsApp: report submitted (to the approver), approved /
+rejected / sent back, payment done with the UTR, and complaint status changes.
+The channel is strictly **additive** — in-app and email always fire first, so
+turning WhatsApp off, opting out, or losing the link never costs a
+notification.
+
+**24-hour rule.** Meta only allows free-form messages within 24 hours of the
+user's last inbound message. `lib/whatsapp/templates.ts` decides per send:
+in-session → plain text (and quick-reply buttons); out of session → one of the
+approved templates listed in `TEMPLATE_NAMES`. Register those names in Meta
+Business Manager with body parameters in the order documented there.
+
+**Quick approve.** A submitted-report message carries **Approve** and **Open in
+app**. Tapping Approve runs `decideReport()` — the exact function the web
+screen calls — so the approval chain, self-approval block, state machine,
+Approval row and AuditLog are identical, with `channel: "whatsapp"` recorded.
+Two things chat can never do: approve a **policy-flagged** report (the button
+is replaced by Open in app, and the handler refuses even a stale tap), and
+reject or send back (a written reason is mandatory, so those stay in the app).
+
+**Opt-out.** Each person has a "Send me updates on WhatsApp" toggle on their
+profile. Opting out stops outbound notifications but keeps the link, so
+sending receipts from the phone still works.
+
+**Ops.** Every send is logged to `whatsapp_outbound` with attempt count and
+error. Transient failures retry up to 3 times with exponential backoff;
+permanent ones (unknown template, bad token, recipient not allowed) are
+recorded and dropped rather than retried. Meta's delivery receipts update the
+same row to sent / delivered / read / failed.
+
 ## Non-negotiables (see CLAUDE.md)
 
 - Every table has `org_id`; all DB access via `scopedDb(orgId)`; RLS as defense-in-depth

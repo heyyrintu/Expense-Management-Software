@@ -265,6 +265,48 @@ export function parseInbound(body: unknown): InboundMessage[] {
   return out;
 }
 
+/** Delivery receipts from Meta's status webhook (8.3). */
+export type DeliveryStatus = {
+  waMessageId: string;
+  status: string; // sent | delivered | read | failed
+  timestamp: Date;
+  error: string | null;
+};
+
+export function parseStatuses(body: unknown): DeliveryStatus[] {
+  const parsed = body as {
+    entry?: Array<{
+      changes?: Array<{
+        value?: {
+          statuses?: Array<{
+            id?: string;
+            status?: string;
+            timestamp?: string;
+            errors?: Array<{ title?: string; message?: string }>;
+          }>;
+        };
+      }>;
+    }>;
+  };
+  const out: DeliveryStatus[] = [];
+  for (const entry of parsed?.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      for (const st of change.value?.statuses ?? []) {
+        if (!st.id || !st.status) continue;
+        const ts = Number(st.timestamp ?? 0);
+        const firstError = st.errors?.[0];
+        out.push({
+          waMessageId: st.id,
+          status: st.status,
+          timestamp: ts > 0 ? new Date(ts * 1000) : new Date(),
+          error: firstError?.message ?? firstError?.title ?? null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 /** Quick-reply / button payload, used by 8.3's approve action. */
 export function buttonPayloadOf(message: InboundMessage): string | null {
   const raw = message.raw as {

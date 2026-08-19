@@ -193,7 +193,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       await notify(db, ctx.orgId, recipient, "report.reimbursed", {
         reportId: report.id,
         reportTitle: report.title,
-        totalFormatted: formatMoney(report.total, org.currency),
+        totalFormatted: formatMoney(amountPaid, org.currency),
+        reference: item.reference,
       });
     } else {
       // partial — custom notification with the balance

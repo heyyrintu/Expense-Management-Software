@@ -32,8 +32,18 @@ export default async function ProfilePage() {
   const link = whatsappEnabled
     ? ((await scopedDb(ctx.orgId).whatsAppLink.findUnique({
         where: { userId: ctx.userId },
-        select: { phoneE164: true, verifiedAt: true, otpHash: true },
-      })) as { phoneE164: string; verifiedAt: Date | null; otpHash: string | null } | null)
+        select: {
+          phoneE164: true,
+          verifiedAt: true,
+          otpHash: true,
+          optedOut: true,
+        },
+      })) as {
+        phoneE164: string;
+        verifiedAt: Date | null;
+        otpHash: string | null;
+        optedOut: boolean;
+      } | null)
     : null;
   const waStatus: "none" | "pending" | "linked" = !link
     ? "none"
@@ -100,6 +110,7 @@ export default async function ProfilePage() {
             <WhatsAppPanel
               status={waStatus}
               phone={link ? formatPhone(link.phoneE164) : null}
+              optedOut={link?.optedOut ?? false}
             />
           </CardContent>
         </Card>

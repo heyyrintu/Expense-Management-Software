@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   confirmWhatsAppLinkAction,
+  setWhatsAppOptOutAction,
   startWhatsAppLinkAction,
   unlinkWhatsAppAction,
 } from "./whatsapp-actions";
@@ -16,9 +17,10 @@ import {
 export type WhatsAppPanelProps = {
   status: "none" | "pending" | "linked";
   phone: string | null;
+  optedOut?: boolean;
 };
 
-export function WhatsAppPanel({ status, phone }: WhatsAppPanelProps) {
+export function WhatsAppPanel({ status, phone, optedOut = false }: WhatsAppPanelProps) {
   const router = useRouter();
   const [step, setStep] = React.useState<"number" | "code">(
     status === "pending" ? "code" : "number"
@@ -55,6 +57,26 @@ export function WhatsAppPanel({ status, phone }: WhatsAppPanelProps) {
         <p className="text-muted-foreground">
           Send a receipt photo to our WhatsApp number and it becomes a draft expense.
         </p>
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4"
+            checked={!optedOut}
+            disabled={pending}
+            onChange={(e) => {
+              const form = new FormData();
+              form.set("optedOut", e.target.checked ? "false" : "true");
+              run(() => setWhatsAppOptOutAction(form));
+            }}
+          />
+          <span>
+            Send me updates on WhatsApp
+            <span className="text-muted-foreground block text-xs">
+              Approvals, payments and complaint updates. Turn this off and you&apos;ll
+              still get them by email and in the app.
+            </span>
+          </span>
+        </label>
         {error ? (
           <p role="alert" className="text-red-700">
             {error}

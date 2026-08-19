@@ -185,3 +185,31 @@ export async function unlinkWhatsAppAction(): Promise<Result> {
     return guardError(e) ?? err(userErrors.unknown);
   }
 }
+
+/**
+ * Per-user opt-out (8.3). The link stays verified — receipts sent from the
+ * phone still work — but the app stops pushing notifications to WhatsApp and
+ * falls back to in-app + email only.
+ */
+export async function setWhatsAppOptOutAction(formData: FormData): Promise<Result> {
+  try {
+    const ctx = await requireSession();
+    const optedOut = formData.get("optedOut") === "true";
+    const db = scopedDb(ctx.orgId);
+    const updated = await db.whatsAppLink.updateMany({
+      where: { userId: ctx.userId },
+      data: { optedOut },
+    });
+    if (updated.count === 0) return err("Link your number first.");
+
+    await logAudit(db, ctx, {
+      entity: "WhatsAppLink",
+      entityId: ctx.userId,
+      action: optedOut ? "whatsapp.opted_out" : "whatsapp.opted_in",
+    });
+    revalidatePath("/profile");
+    return ok(undefined);
+  } catch (e) {
+    return guardError(e) ?? err(userErrors.unknown);
+  }
+}

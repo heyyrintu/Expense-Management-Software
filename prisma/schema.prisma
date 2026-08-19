@@ -146,6 +146,7 @@ model Organization {
   whatsappAccount   WhatsAppAccount?
   whatsappLinks     WhatsAppLink[]
   whatsappInbound   WhatsAppInbound[]
+  whatsappOutbound  WhatsAppOutbound[]
 
   @@map("organizations")
 }
@@ -202,6 +203,7 @@ model User {
   complaintMessages  ComplaintMessage[] @relation("ComplaintMessageAuthor")
   whatsappLink       WhatsAppLink?
   whatsappInbound    WhatsAppInbound[]
+  whatsappOutbound   WhatsAppOutbound[]
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -851,6 +853,8 @@ model WhatsAppLink {
   otpExpiresAt DateTime? @map("otp_expires_at")
   otpAttempts  Int       @default(0) @map("otp_attempts")
   optedOut     Boolean   @default(false) @map("opted_out")
+  /** Last message FROM this person — opens Meta's 24-hour session window (8.3). */
+  lastInboundAt DateTime? @map("last_inbound_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -899,4 +903,45 @@ model WhatsAppInbound {
   @@index([orgId, status, receivedAt])
   @@index([orgId, fromPhone, receivedAt])
   @@map("whatsapp_inbound")
+}
+
+
+enum WhatsAppOutboundStatus {
+  queued
+  sent
+  delivered
+  read
+  failed
+
+  @@map("whatsapp_outbound_status")
+}
+
+// Outbound send log (8.3): retries with backoff, plus delivery receipts from
+// Meta's status webhook. Notifications must never fail a workflow, so this is
+// where failures land instead of being thrown.
+model WhatsAppOutbound {
+  id           String                 @id @default(uuid(7)) @db.Uuid
+  orgId        String                 @map("org_id") @db.Uuid
+  userId       String?                @map("user_id") @db.Uuid
+  toPhone      String                 @map("to_phone")
+  event        String
+  /** template name, or null for a free-form (in-session) message */
+  templateName String?                @map("template_name")
+  waMessageId  String?                @unique @map("wa_message_id")
+  status       WhatsAppOutboundStatus @default(queued)
+  attempts     Int                    @default(0)
+  error        String?
+  entityType   String?                @map("entity_type")
+  entityId     String?                @map("entity_id")
+  sentAt       DateTime?              @map("sent_at")
+  deliveredAt  DateTime?              @map("delivered_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([orgId, status, createdAt])
+  @@index([orgId, userId, createdAt])
+  @@map("whatsapp_outbound")
 }

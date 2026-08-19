@@ -26,6 +26,8 @@ import { scopedDb, type ScopedDb } from "@/lib/db/scoped";
 import { userErrors, type Result, ok, err } from "@/lib/errors";
 import { formatMoney } from "@/lib/money";
 import { notify } from "@/lib/notifications";
+import { isReportFlagged } from "@/lib/domain/approvals";
+import { approvalButtons } from "@/lib/whatsapp/templates";
 import {
   reportCreateSchema,
   reportExpenseSchema,
@@ -42,7 +44,9 @@ function guardError(e: unknown): Result | null {
 async function ownReport(db: ScopedDb, id: string, userId: string) {
   return db.expenseReport.findUnique({
     where: { id, userId },
-    include: { expenses: { select: { id: true, baseAmount: true } } },
+    // flags are needed at submit time to decide whether a WhatsApp
+    // quick-approve button may be offered at all (8.3).
+    include: { expenses: { select: { id: true, baseAmount: true, flags: true } } },
   });
 }
 
@@ -244,12 +248,26 @@ export async function submitReportAction(input: unknown): Promise<Result> {
         select: { id: true, email: true },
       })) as { id: string; email: string } | null;
       if (approver) {
-        await notify(db, ctx.orgId, [approver], "report.submitted", {
-          reportId: report.id,
-          reportTitle: report.title,
-          actorName: me.name,
-          totalFormatted: formatMoney(total, org.currency),
-        });
+        // 8.3: quick-approve buttons ride along on WhatsApp. A policy-flagged
+        // report only ever gets "Open in app" — approvalButtons() decides.
+        const flagged = isReportFlagged(
+          report.expenses.map((e: { flags: unknown }) => e.flags)
+        );
+        await notify(
+          db,
+          ctx.orgId,
+          [approver],
+          "report.submitted",
+          {
+            reportId: report.id,
+            reportTitle: report.title,
+            actorName: me.name,
+            totalFormatted: formatMoney(total, org.currency),
+          },
+          {
+            whatsappButtons: approvalButtons({ reportId: report.id, flagged }),
+          }
+        );
       }
     }
     // budget 80%/100% alerts (5.1) — never blocks submission

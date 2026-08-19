@@ -28,8 +28,12 @@ import {
   captureTextMessage,
   type CaptureOutcome,
 } from "@/lib/whatsapp/ingest";
-import { buttonPayloadOf, parseInbound } from "@/lib/whatsapp/meta";
+import { handleQuickApprove } from "@/lib/whatsapp/approve";
+import { decodeApprovalPayload } from "@/lib/whatsapp/templates";
+import { buttonPayloadOf, parseInbound, parseStatuses } from "@/lib/whatsapp/meta";
 import type { InboundMessage, WhatsAppProvider } from "@/lib/whatsapp/types";
+import type { DeliveryStatus } from "@/lib/whatsapp/meta";
+import type { Role } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
 
@@ -70,12 +74,14 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const messages = parseInbound(payload);
-  if (messages.length === 0) {
-    return NextResponse.json({ ok: true }); // delivery statuses, edits, etc.
+  const statuses = parseStatuses(payload);
+  if (messages.length === 0 && statuses.length === 0) {
+    return NextResponse.json({ ok: true }); // edits, reactions, etc.
   }
 
   // Every message in one webhook shares the receiving business number.
-  const phoneNumberId = messages[0].phoneNumberId;
+  const phoneNumberId =
+    messages[0]?.phoneNumberId ?? businessNumberOf(payload) ?? "";
   const resolved = await orgForPhoneNumberId(phoneNumberId);
   if (!resolved) {
     console.warn("[whatsapp] no org for phone_number_id", phoneNumberId);
@@ -89,6 +95,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const db = scopedDb(resolved.orgId);
+
+  // Delivery receipts for messages WE sent (8.3 ops visibility).
+  for (const status of statuses) {
+    try {
+      await recordDeliveryStatus(db, status);
+    } catch (e) {
+      console.error("[whatsapp] status update failed:", e);
+    }
+  }
 
   for (const message of messages) {
     try {
@@ -121,8 +136,8 @@ async function handleMessage(
       verifiedAt: { not: null },
       optedOut: false,
     },
-    select: { userId: true, user: { select: { status: true } } },
-  })) as { userId: string; user: { status: string } } | null;
+    select: { userId: true, user: { select: { status: true, role: true } } },
+  })) as { userId: string; user: { status: string; role: Role } } | null;
 
   if (!link || link.user.status !== "active") {
     // One canned reply per number per window — never say whether the number
@@ -133,13 +148,40 @@ async function handleMessage(
     return;
   }
 
+  // Any inbound message opens Meta's 24-hour session window for this person,
+  // which is what lets 8.3 send free-form messages instead of templates.
+  await db.whatsAppLink.updateMany({
+    where: { userId: link.userId },
+    data: { lastInboundAt: message.receivedAt },
+  });
+
   // Record the message first. The unique waMessageId means a redelivery from
   // Meta stops here, before any expense is created or deleted.
   const stored = await storeInbound(db, orgId, message, link.userId);
   if (!stored) return; // duplicate delivery — already handled
 
+  const buttonPayload = buttonPayloadOf(message);
+
+  // ---- Quick approve (8.3) -------------------------------------------------
+  const approval = decodeApprovalPayload(buttonPayload);
+  if (approval) {
+    const result = await handleQuickApprove(
+      db,
+      orgId,
+      { userId: link.userId, role: link.user.role },
+      approval.action,
+      approval.reportId
+    );
+    await db.whatsAppInbound.update({
+      where: { id: stored.id },
+      data: { status: "processed", processedAt: new Date() },
+    });
+    await provider.sendText(message.from, result.reply);
+    return;
+  }
+
   // ---- Button tap (8.2 capture actions) ------------------------------------
-  const callback = decodeButtonPayload(buttonPayloadOf(message));
+  const callback = decodeButtonPayload(buttonPayload);
   if (callback) {
     const result = await handleCaptureCallback(
       db,
@@ -230,4 +272,44 @@ async function storeInbound(
     if ((e as { code?: string }).code === "P2002") return null;
     throw e;
   }
+}
+
+/** Business number for a statuses-only webhook (no messages to read it from). */
+function businessNumberOf(payload: unknown): string | null {
+  const parsed = payload as {
+    entry?: Array<{
+      changes?: Array<{ value?: { metadata?: { phone_number_id?: string } } }>;
+    }>;
+  };
+  for (const entry of parsed?.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      const id = change.value?.metadata?.phone_number_id;
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+/** Delivery receipt -> the outbound row we logged when sending. */
+async function recordDeliveryStatus(
+  db: ReturnType<typeof scopedDb>,
+  status: DeliveryStatus
+): Promise<void> {
+  const mapped =
+    status.status === "delivered"
+      ? "delivered"
+      : status.status === "read"
+        ? "read"
+        : status.status === "failed"
+          ? "failed"
+          : "sent";
+  await db.whatsAppOutbound.updateMany({
+    where: { waMessageId: status.waMessageId },
+    data: {
+      status: mapped,
+      error: status.error,
+      deliveredAt:
+        mapped === "delivered" || mapped === "read" ? status.timestamp : undefined,
+    },
+  });
 }

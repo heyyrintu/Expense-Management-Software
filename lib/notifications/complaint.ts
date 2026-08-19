@@ -5,7 +5,12 @@ import {
   complaintMessageFor,
   type ComplaintNotificationEvent,
 } from "./complaint-messages";
-import type { ComplaintStatus, ComplaintType } from "@/lib/domain/complaint";
+import {
+  COMPLAINT_STATUS_LABELS,
+  type ComplaintStatus,
+  type ComplaintType,
+} from "@/lib/domain/complaint";
+import { notifyWhatsApp } from "@/lib/whatsapp/notify";
 
 export async function notifyComplaint(
   db: ScopedDb,
@@ -40,6 +45,30 @@ export async function notifyComplaint(
       });
     } catch (e) {
       console.error("[notifyComplaint] failed:", e);
+    }
+
+    // Status changes also reach the employee on WhatsApp when linked (8.3).
+    if (event !== "complaint.status_changed") continue;
+    try {
+      const user = (await db.user.findUnique({
+        where: { id: recipient.id },
+        select: { name: true },
+      })) as { name: string } | null;
+      if (!user) continue;
+      await notifyWhatsApp(
+        db,
+        orgId,
+        { id: recipient.id, name: user.name },
+        "complaint.status_changed",
+        {
+          status: payload.status ? COMPLAINT_STATUS_LABELS[payload.status] : undefined,
+          reason: payload.resolutionNote ?? undefined,
+          complaintId: payload.complaintId,
+        },
+        { entity: { type: "Complaint", id: payload.complaintId } }
+      );
+    } catch (e) {
+      console.error("[notifyComplaint] whatsapp fan-out failed:", e);
     }
   }
 }
