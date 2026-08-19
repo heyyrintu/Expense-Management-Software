@@ -9,6 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Amount } from "@/components/ui/amount";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusTimeline } from "@/components/ui/status-timeline";
+import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
 import { DateCell } from "@/components/ui/date-cell";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
@@ -22,6 +25,10 @@ import {
 import { scopedDb } from "@/lib/db/scoped";
 import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
+import { buildReportTimeline, hasTimeline } from "@/lib/domain/report-timeline";
+import { resolveChain } from "@/lib/domain/approval-chain";
+import { secondApprovalThreshold } from "@/lib/domain/org-settings";
+import type { SubmitPreview } from "./submit-dialog";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
 import { RaiseComplaint } from "../../complaints/raise-complaint";
 // inside template literals — lib/money is the sanctioned string formatter.
@@ -70,6 +77,11 @@ export default async function ReportDetailPage({
       comments: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { name: true } } },
+      },
+      // For the timeline: when it was approved, not just that it was.
+      approvals: {
+        orderBy: { actedAt: "asc" },
+        select: { action: true, actedAt: true },
       },
     },
   });
@@ -136,24 +148,94 @@ export default async function ReportDetailPage({
       })
     : [];
 
+  // Every flag on the report, for the summary strip and the submit dialog.
+  const reportFlags = attached.flatMap((e) => asFlags(e.flags));
+
+  // The approver the SUBMIT ACTION will route to — same resolveChain, same
+  // inputs. Naming a different person in the dialog than the one who gets the
+  // notification would be worse than naming nobody.
+  const me = await db.user.findUniqueOrThrow({
+    where: { id: acting.effectiveUserId },
+    select: { approverId: true, departmentId: true },
+  });
+  const chain = resolveChain({
+    ownerAssignedApproverId: me.approverId,
+    ownerDepartmentId: me.departmentId,
+    total: runningTotal,
+    orgThreshold: secondApprovalThreshold(org.settings),
+    rules: await db.approvalRule.findMany({ orderBy: { createdAt: "asc" } }),
+  });
+  const approver = chain.level1ApproverId
+    ? ((await db.user.findUnique({
+        where: { id: chain.level1ApproverId, status: "active" },
+        select: { name: true },
+      })) as { name: string } | null)
+    : null;
+
+  const submitPreview: SubmitPreview = {
+    expenseCount: attached.length,
+    total: runningTotal,
+    currency,
+    approverName: approver?.name ?? null,
+    needsSecondApproval: chain.level2 !== null,
+    flags: reportFlags,
+  };
+
+  const approvedAt =
+    report.approvals.find((a: { action: string }) => a.action === "approve")?.actedAt ?? null;
+  const paidAt = report.reimbursements.at(-1)?.paidAt ?? null;
+  const timeline = buildReportTimeline({
+    status: report.status as ReportStatus,
+    submittedAt: report.submittedAt,
+    approvedAt,
+    paidAt,
+  });
+
   return (
-    <section className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold">{report.title}</h1>
-          <StatusBadge status={report.status} />
+    <>
+      <PageHeader
+        breadcrumbs={[{ label: "Reports", href: "/reports" }, { label: report.title }]}
+        title={report.title}
+        description={`${attached.length} expense${attached.length === 1 ? "" : "s"}`}
+        action={
+          <ReportControls
+            reportId={report.id}
+            status={report.status as ReportStatus}
+            expenseCount={attached.length}
+            preview={submitPreview}
+          />
+        }
+      />
+
+      {/* The total is the report's headline figure, so it gets the display
+          size (§4.3: the number is the hero) rather than being one line of a
+          card three screens down. */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="grid gap-1">
+          <span className="text-label text-text-secondary">Total</span>
+          <Amount value={runningTotal} currency={currency} size="display" />
         </div>
-        <ReportControls
-          reportId={report.id}
-          status={report.status as ReportStatus}
-          expenseCount={attached.length}
-        />
+        <StatusBadge status={report.status} />
       </div>
 
-      {report.submittedAt ? (
-        <p className="text-muted-foreground -mt-4 text-sm">
-          Submitted <DateCell value={report.submittedAt} tone="muted" />
-        </p>
+      <section className="grid gap-6">
+      {hasTimeline(report.status as ReportStatus) ? (
+        <StatusTimeline steps={timeline} />
+      ) : null}
+
+      {reportFlags.length > 0 ? (
+        // A summary strip, so the reader knows BEFORE scrolling that something
+        // on this report is flagged. Informational: flags never block (§6.2).
+        <div className="border-status-warning-subtle bg-status-warning-subtle grid gap-2 rounded-lg border p-3">
+          <p className="text-label text-status-warning-text">
+            {reportFlags.length} policy flag{reportFlags.length === 1 ? "" : "s"} on this
+            report
+          </p>
+          <PolicyFlagChips flags={reportFlags} />
+          <p className="text-meta text-status-warning-text">
+            Your approver sees these and can approve anyway.
+          </p>
+        </div>
       ) : null}
 
       {report.reimbursements.length > 0 ? (
@@ -270,6 +352,15 @@ export default async function ReportDetailPage({
                 </li>
               ))}
             </ul>
+            {/* Totals footer — the same figure as the header, from the same
+                computeReportTotal, so a reader who scrolled can't be told a
+                different number than the one at the top. */}
+            <div className="border-line mt-3 flex items-center justify-between gap-4 border-t pt-3">
+              <span className="text-label text-text-secondary">
+                {attached.length} expense{attached.length === 1 ? "" : "s"}
+              </span>
+              <Amount value={runningTotal} currency={currency} align="right" />
+            </div>
           </CardContent>
         ) : null}
       </Card>
@@ -314,6 +405,7 @@ export default async function ReportDetailPage({
       ) : null}
 
       <CommentThread reportId={report.id} comments={commentViews} />
-    </section>
+      </section>
+    </>
   );
 }

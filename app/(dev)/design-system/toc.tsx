@@ -20,6 +20,7 @@ export const GALLERY_SECTIONS = [
   { id: "kpi", label: "StatCard and charts", note: "KPIs, delta chips, chart theme" },
   { id: "capture", label: "Capture flow", note: "AmountInput, policy chips, sticky bar" },
   { id: "receipt", label: "Receipt capture", note: "Dropzone, OCR card, viewer" },
+  { id: "report", label: "Report builder", note: "Timeline, flag strip, submit dialog" },
   { id: "domain", label: "Domain components", note: "Status, flags, charts — and what's missing" },
   { id: "motion", label: "Motion", note: "Tokens and replayable variants" },
   { id: "patterns", label: "Patterns", note: "Empty, loading, error" },

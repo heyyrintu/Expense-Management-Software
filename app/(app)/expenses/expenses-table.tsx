@@ -33,6 +33,7 @@ import {
   hasActiveFilters,
 } from "@/lib/schemas/expense-filters";
 import { cn } from "@/lib/utils";
+import { AddToReport, type OpenReport } from "./add-to-report";
 
 /** §6.1: pagination past 50 rows. The page's query slices by this too. */
 export const EXPENSE_PAGE_SIZE = 50;
@@ -58,6 +59,7 @@ export function ExpensesTable({
   stats,
   totalRows,
   pageIndex,
+  openReports,
 }: {
   rows: ExpenseTableRow[];
   orgCurrency: string;
@@ -66,6 +68,7 @@ export function ExpensesTable({
   stats: ExpenseStat[];
   totalRows: number;
   pageIndex: number;
+  openReports: OpenReport[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -273,14 +276,19 @@ export function ExpensesTable({
           </span>
         </button>
       )}
-      renderBulkActions={() => (
-        // "Add to report" (§7.2) needs the draft-report picker that D2.3
-        // builds, and the read to populate it — which would be a query change.
-        // The bar, its animation and its selection state ship here; the
-        // action it will carry ships with the report builder.
-        <span className="text-meta text-text-tertiary">
-          Add to report arrives with the report builder
-        </span>
+      renderBulkActions={({ rows: selected, clear }) => (
+        // The action D1.2's bar was built for. Only DRAFT expenses can join a
+        // report, so the button counts what is actually attachable rather
+        // than what is ticked — and says so, instead of failing per row after
+        // the reader has committed.
+        <AddToReport
+          expenseIds={selected
+            .filter((row) => row.original.status === "draft")
+            .map((row) => row.original.id)}
+          skippedCount={selected.filter((row) => row.original.status !== "draft").length}
+          reports={openReports}
+          onDone={clear}
+        />
       )}
       />
     </div>

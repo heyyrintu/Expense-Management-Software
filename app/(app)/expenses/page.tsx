@@ -12,6 +12,7 @@ import {
   type StatusGroup,
 } from "@/lib/domain/expense-stats";
 import { parseExpenseFilters } from "@/lib/schemas/expense-filters";
+import type { OpenReport } from "./add-to-report";
 import { EXPENSE_PAGE_SIZE, ExpensesTable, type ExpenseTableRow } from "./expenses-table";
 
 type ExpenseRow = {
@@ -48,7 +49,8 @@ export default async function ExpensesPage({
   // only ever narrow (see lib/domain/expense-query.ts).
   const where = applyExpenseFilters({ userId: acting.effectiveUserId }, filters);
 
-  const [org, categories, projects, totalRows, statusGroups, expenses] = await Promise.all([
+  const [org, categories, projects, totalRows, statusGroups, expenses, openReportRows] =
+    await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
     db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }) as Promise<
       Array<{ id: string; name: string }>
@@ -74,9 +76,26 @@ export default async function ExpensesPage({
       take: EXPENSE_PAGE_SIZE,
       include: { category: { select: { name: true } } },
     }) as Promise<ExpenseRow[]>,
+    // Reports the bulk bar can attach to: the acting user's own, and only
+    // those a report can still accept rows into (D2.3). A submitted report
+    // in this list would offer an action the action layer rightly refuses.
+    db.expenseReport.findMany({
+      where: {
+        userId: acting.effectiveUserId,
+        status: { in: ["draft", "sent_back"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: { id: true, title: true, _count: { select: { expenses: true } } },
+    }) as Promise<Array<{ id: string; title: string; _count: { expenses: number } }>>,
   ]);
 
   const stats = buildExpenseStats(statusGroups, filters);
+  const openReports: OpenReport[] = openReportRows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    expenseCount: r._count.expenses,
+  }));
 
   // Dates cross into a client component as ISO strings; <DateCell> parses
   // them back. Never pre-formatted display text (D1.1).
@@ -116,6 +135,7 @@ export default async function ExpensesPage({
         stats={stats}
         totalRows={totalRows}
         pageIndex={pageIndex}
+        openReports={openReports}
       />
     </>
   );

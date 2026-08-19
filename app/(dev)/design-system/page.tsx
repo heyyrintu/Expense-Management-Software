@@ -29,6 +29,7 @@ import { MoneySection } from "./sections/money-section";
 import { MotionDemos } from "./sections/motion-section";
 import { PatternsSection } from "./sections/patterns-section";
 import { ReceiptSection } from "./sections/receipt-section";
+import { ReportSection } from "./sections/report-section";
 import { ScalesSection } from "./sections/scales-section";
 import { ShellSection } from "./sections/shell-section";
 import { TableSection } from "./sections/table-section";
@@ -104,6 +105,8 @@ export default function DesignSystemPage() {
           <CaptureSection />
 
           <ReceiptSection />
+
+          <ReportSection />
 
           <DomainSection />
 

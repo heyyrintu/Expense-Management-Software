@@ -1,11 +1,17 @@
 "use client";
 
 // Submit / withdraw / delete + attach/detach buttons for a report.
+//
+// D2.3 puts a confirmation between the reader and submission (§7.2: never be
+// surprised by what was submitted). The preview is computed on the SERVER and
+// passed in, so the approver it names is the one resolveChain will actually
+// notify, not a second guess made in the browser.
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import type { ReportStatus } from "@/lib/domain/report-workflow";
+import { SubmitDialog, type SubmitPreview } from "./submit-dialog";
 import {
   addExpenseToReportAction,
   deleteReportAction,
@@ -39,27 +45,31 @@ export function ReportControls({
   reportId,
   status,
   expenseCount,
+  preview,
 }: {
   reportId: string;
   status: ReportStatus;
   expenseCount: number;
+  preview: SubmitPreview;
 }) {
   const { error, pending, act } = useAct();
+  const [confirming, setConfirming] = React.useState(false);
+  const submittable = status === "draft" || status === "sent_back";
 
   return (
     <div className="grid justify-items-end gap-1">
       <div className="flex gap-2">
-        {status === "draft" || status === "sent_back" ? (
+        {submittable ? (
           <Button
             disabled={pending || expenseCount === 0}
-            onClick={() => act(() => submitReportAction({ id: reportId }))}
+            onClick={() => setConfirming(true)}
           >
-            {pending ? "Working…" : status === "sent_back" ? "Resubmit" : "Submit for approval"}
+            {status === "sent_back" ? "Resubmit" : "Submit for approval"}
           </Button>
         ) : null}
         {status === "submitted" ? (
           <Button
-            variant="outline"
+            variant="secondary"
             disabled={pending}
             onClick={() => act(() => withdrawReportAction({ id: reportId }))}
           >
@@ -68,7 +78,7 @@ export function ReportControls({
         ) : null}
         {status === "draft" ? (
           <Button
-            variant="destructive"
+            variant="ghost"
             disabled={pending}
             onClick={() => act(() => deleteReportAction({ id: reportId }), "/reports")}
           >
@@ -76,8 +86,22 @@ export function ReportControls({
           </Button>
         ) : null}
       </div>
+
+      {submittable ? (
+        <SubmitDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          preview={preview}
+          pending={pending}
+          resubmit={status === "sent_back"}
+          onConfirm={() => {
+            setConfirming(false);
+            act(() => submitReportAction({ id: reportId }));
+          }}
+        />
+      ) : null}
       {error ? (
-        <p role="alert" className="text-destructive text-sm">
+        <p role="alert" className="text-status-danger-text text-body">
           {error}
         </p>
       ) : null}
@@ -91,13 +115,13 @@ function AddButton({ reportId, expenseId }: { reportId: string; expenseId: strin
     <span className="grid justify-items-end gap-1">
       <Button
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={pending}
         onClick={() => act(() => addExpenseToReportAction({ reportId, expenseId }))}
       >
         Add
       </Button>
-      {error ? <span className="text-destructive text-xs">{error}</span> : null}
+      {error ? <span className="text-status-danger-text text-meta">{error}</span> : null}
     </span>
   );
 }
@@ -110,12 +134,11 @@ function RemoveButton({ reportId, expenseId }: { reportId: string; expenseId: st
         size="sm"
         variant="ghost"
         disabled={pending}
-        className="text-destructive"
         onClick={() => act(() => removeExpenseFromReportAction({ reportId, expenseId }))}
       >
         Remove
       </Button>
-      {error ? <span className="text-destructive text-xs">{error}</span> : null}
+      {error ? <span className="text-status-danger-text text-meta">{error}</span> : null}
     </span>
   );
 }
