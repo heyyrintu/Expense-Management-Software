@@ -70,26 +70,39 @@ export function statusEntry(status: string): StatusEntry {
   };
 }
 
-/** Token classes per tone. Text uses the accessible `-text` shade (D0.1). */
-export const TONE_CLASSES: Record<StatusTone, { chip: string; dot: string }> = {
+/**
+ * Token classes per tone. Text uses the accessible `-text` shade (D0.1).
+ *
+ * `text` (D1.1) is the bare foreground, for the rare case where a semantic
+ * colour belongs on plain text rather than in a chip — a negative amount in
+ * the ledger being the only one so far (DESIGN-PRD §6.2). It is exported
+ * here rather than written at the call site for the same reason `chip` is:
+ * so status colour has exactly one definition.
+ */
+export const TONE_CLASSES: Record<StatusTone, { chip: string; dot: string; text: string }> = {
   success: {
     chip: "bg-status-success-subtle text-status-success-text",
     dot: "bg-status-success",
+    text: "text-status-success-text",
   },
   warning: {
     chip: "bg-status-warning-subtle text-status-warning-text",
     dot: "bg-status-warning",
+    text: "text-status-warning-text",
   },
   danger: {
     chip: "bg-status-danger-subtle text-status-danger-text",
     dot: "bg-status-danger",
+    text: "text-status-danger-text",
   },
   info: {
     chip: "bg-status-info-subtle text-status-info-text",
     dot: "bg-status-info",
+    text: "text-status-info-text",
   },
   neutral: {
     chip: "bg-status-neutral-subtle text-status-neutral-text",
     dot: "bg-status-neutral",
+    text: "text-status-neutral-text",
   },
 };

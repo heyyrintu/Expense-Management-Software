@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -18,8 +19,10 @@ export type BudgetView = {
   scopeType: "department" | "project" | "category";
   label: string;
   period: "monthly" | "quarterly" | "yearly";
-  amountFormatted: string;
-  spentFormatted: string;
+  /** Org base currency; `amount`/`spent` are integer minor units for <Amount>. */
+  currency: string;
+  amount: number;
+  spent: number;
   pct: number;
   level: "ok" | "warn" | "over";
 };
@@ -92,8 +95,10 @@ export function BudgetsPanel({
                       Over budget
                     </span>
                   ) : null}
-                  <span>
-                    {b.spentFormatted} / <span className="font-semibold">{b.amountFormatted}</span>
+                  <span className="flex items-center gap-1">
+                    <Amount value={b.spent} currency={b.currency} size="meta" />
+                    <span className="text-muted-foreground">/</span>
+                    <Amount value={b.amount} currency={b.currency} />
                   </span>
                 </span>
               </div>

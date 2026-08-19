@@ -6,6 +6,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { Textarea } from "@/components/ui/textarea";
 import { postComplaintMessageAction } from "../actions";
 
@@ -13,6 +14,7 @@ export type ThreadMessage = {
   id: string;
   authorName: string;
   body: string;
+  /** ISO instant — DateCell formats it. */
   when: string;
   mine: boolean;
 };
@@ -61,7 +63,7 @@ export function ComplaintThread({
               className={`rounded-lg border p-3 text-sm ${m.mine ? "bg-accent/40" : ""}`}
             >
               <p className="text-muted-foreground text-xs">
-                {m.authorName} · {m.when}
+                {m.authorName} · <DateCell value={m.when} tone="muted" />
               </p>
               <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
             </li>

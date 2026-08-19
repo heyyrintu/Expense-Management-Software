@@ -10,6 +10,8 @@ import {
 import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireRole } from "@/lib/auth/guard";
 import {
   resolveChain,
@@ -23,8 +25,6 @@ import {
 } from "@/lib/domain/approvals";
 import { secondApprovalThreshold } from "@/lib/domain/org-settings";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { DecisionPanel } from "./decision-panel";
 
 export default async function ApprovalReviewPage({
@@ -66,7 +66,8 @@ export default async function ApprovalReviewPage({
       id: c.id,
       authorName: c.author.name,
       body: c.body,
-      when: formatDate(c.createdAt),
+      // Raw timestamp — CommentThread renders it through <DateCell>.
+      when: c.createdAt,
       mine: c.authorId === ctx.userId,
     })
   );
@@ -123,13 +124,16 @@ export default async function ApprovalReviewPage({
           </div>
           <p className="text-muted-foreground text-sm">
             {report.user.name}
-            {report.submittedAt ? ` · submitted ${formatDate(report.submittedAt)}` : ""}
+            {report.submittedAt ? (
+              <>
+                {" · submitted "}
+                <DateCell value={report.submittedAt} tone="muted" />
+              </>
+            ) : null}
             {required === 2 ? ` · needs 2 approvals` : ""}
           </p>
         </div>
-        <span className="text-lg font-semibold">
-          {formatMoney(report.total, org.currency)}
-        </span>
+        <Amount value={report.total} currency={org.currency} size="display" align="right" />
       </div>
 
       <Card>
@@ -148,23 +152,23 @@ export default async function ApprovalReviewPage({
                   <span className="grid">
                     <span className="font-medium">{e.merchant}</span>
                     <span className="text-muted-foreground">
-                      {formatDate(e.date)} · {e.category.name} ·{" "}
+                      <DateCell value={e.date} /> · {e.category.name} ·{" "}
                       {e._count.receipts} receipt{e._count.receipts === 1 ? "" : "s"}
                       {e.purpose ? ` · ${e.purpose}` : ""}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
                     <FlagChips flags={flags} />
-                    <span className="grid text-right">
-                      <span className="font-semibold">
-                        {formatMoney(e.amount, e.currency)}
-                      </span>
-                      {e.currency !== org.currency ? (
-                        <span className="text-muted-foreground text-xs">
-                          → {formatMoney(e.baseAmount, org.currency)}
-                        </span>
-                      ) : null}
-                    </span>
+                    <Amount
+                      value={e.amount}
+                      currency={e.currency}
+                      align="right"
+                      converted={
+                        e.currency !== org.currency
+                          ? { value: e.baseAmount, currency: org.currency }
+                          : null
+                      }
+                    />
                   </span>
                 </li>
               );
@@ -191,7 +195,7 @@ export default async function ApprovalReviewPage({
                   approver: { name: string };
                 }) => (
                   <li key={a.id} className="flex flex-wrap gap-2">
-                    <span className="text-muted-foreground">{formatDate(a.actedAt)}</span>
+                    <DateCell value={a.actedAt} tone="muted" />
                     <span className="font-medium">{a.approver.name}</span>
                     <span>
                       {a.action.replace("_", " ")} (level {a.level})

@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
 import { NotificationList } from "./notification-list";
 
 type NotificationRow = {
@@ -57,7 +56,8 @@ export default async function NotificationsPage() {
           body: n.body,
           link: n.link,
           read: n.readAt !== null,
-          when: formatDate(n.createdAt),
+          // Raw timestamp — the list renders it through <DateCell>.
+          when: n.createdAt,
         }))}
       />
     </section>

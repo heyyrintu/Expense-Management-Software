@@ -9,11 +9,11 @@ import {
 } from "@/components/ui/card";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 
 type ExpenseRow = {
   id: string;
@@ -82,19 +82,19 @@ export default async function ExpensesPage() {
                     <CardHeader>
                       <div className="flex items-center justify-between gap-2">
                         <CardTitle className="truncate">{e.merchant}</CardTitle>
-                        <span className="grid text-right">
-                          <span className="font-semibold whitespace-nowrap">
-                            {formatMoney(e.amount, e.currency)}
-                          </span>
-                          {e.currency !== org.currency ? (
-                            <span className="text-muted-foreground text-xs">
-                              → {formatMoney(e.baseAmount, org.currency)}
-                            </span>
-                          ) : null}
-                        </span>
+                        <Amount
+                          value={e.amount}
+                          currency={e.currency}
+                          align="right"
+                          converted={
+                            e.currency !== org.currency
+                              ? { value: e.baseAmount, currency: org.currency }
+                              : null
+                          }
+                        />
                       </div>
                       <CardDescription className="flex flex-wrap items-center gap-2">
-                        {formatDate(e.date)} · {e.category.name}
+                        <DateCell value={e.date} /> · {e.category.name}
                         <StatusBadge status={e.status} />
                         <FlagChips flags={asFlags(e.flags)} />
                       </CardDescription>
@@ -120,16 +120,22 @@ export default async function ExpensesPage() {
               <tbody>
                 {expenses.map((e) => (
                   <tr key={e.id} className="border-t">
-                    <td className="p-3 whitespace-nowrap">{formatDate(e.date)}</td>
+                    <td className="p-3 whitespace-nowrap">
+                      <DateCell value={e.date} />
+                    </td>
                     <td className="p-3 font-medium">{e.merchant}</td>
                     <td className="p-3">{e.category.name}</td>
                     <td className="p-3 text-right whitespace-nowrap">
-                      {formatMoney(e.amount, e.currency)}
-                      {e.currency !== org.currency ? (
-                        <span className="text-muted-foreground block text-xs">
-                          → {formatMoney(e.baseAmount, org.currency)}
-                        </span>
-                      ) : null}
+                      <Amount
+                        value={e.amount}
+                        currency={e.currency}
+                        align="right"
+                        converted={
+                          e.currency !== org.currency
+                            ? { value: e.baseAmount, currency: org.currency }
+                            : null
+                        }
+                      />
                     </td>
                     <td className="p-3">
                       <span className="flex flex-wrap items-center gap-1">

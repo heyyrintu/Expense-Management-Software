@@ -4,8 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
-import { formatMoney } from "@/lib/money";
 import { bulkApproveAction } from "./actions";
 
 type Item = {
@@ -112,9 +112,12 @@ export function QueueList({ items, currency }: { items: Item[]; currency: string
                 Flagged
               </span>
             ) : null}
-            <span className="font-semibold whitespace-nowrap">
-              {formatMoney(i.total, currency)}
-            </span>
+            <Amount
+              value={i.total}
+              currency={currency}
+              align="right"
+              className="whitespace-nowrap"
+            />
             <Button asChild variant="outline" size="sm">
               <Link href={`/approvals/${i.id}`}>Review</Link>
             </Button>

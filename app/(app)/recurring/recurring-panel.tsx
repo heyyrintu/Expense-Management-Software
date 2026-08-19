@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -15,11 +17,13 @@ import {
 export type TemplateView = {
   id: string;
   schedule: string;
-  amount: string;
+  /** Integer MINOR units — rendered through <Amount>, never pre-formatted. */
+  amount: number;
+  currency: string;
   merchant: string;
   category: string;
   active: boolean;
-  lastRun: string | null;
+  lastRun: Date | string | null;
 };
 
 type Opt = { id: string; name: string };
@@ -143,10 +147,15 @@ export function RecurringPanel({
                 </span>
                 <span className="text-muted-foreground">
                   {t.schedule} · {t.category}
-                  {t.lastRun ? ` · last drafted ${t.lastRun}` : ""}
+                  {t.lastRun ? (
+                    <>
+                      {" · last drafted "}
+                      <DateCell value={t.lastRun} tone="muted" />
+                    </>
+                  ) : null}
                 </span>
               </span>
-              <span className="font-semibold whitespace-nowrap">{t.amount}</span>
+              <Amount value={t.amount} currency={t.currency} className="whitespace-nowrap" />
               <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleTemplateAction({ id: t.id }))}>
                 {t.active ? "Pause" : "Resume"}
               </Button>

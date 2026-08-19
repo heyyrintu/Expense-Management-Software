@@ -22,6 +22,7 @@ import { ReducedMotionIndicator } from "@/components/reduced-motion-indicator";
 import { MOTION_TOKENS } from "@/lib/design/tokens";
 import { ComponentsSection } from "./sections/components-section";
 import { DomainSection } from "./sections/domain-section";
+import { MoneySection } from "./sections/money-section";
 import { MotionDemos } from "./sections/motion-section";
 import { PatternsSection } from "./sections/patterns-section";
 import { ScalesSection } from "./sections/scales-section";
@@ -68,6 +69,7 @@ export default function DesignSystemPage() {
 
           <TokensSection />
           <TypographySection />
+          <MoneySection />
           <ScalesSection />
 
           <Group

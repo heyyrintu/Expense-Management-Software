@@ -5,7 +5,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
   lockImportAction,
@@ -17,9 +19,12 @@ import {
 export type BucketData = {
   importId: string;
   locked: boolean;
-  matched: Array<{ id: string; date: string; amount: string; reference: string; matchType: string; paymentLabel: string }>;
-  inBankOnly: Array<{ id: string; date: string; amount: string; reference: string }>;
-  inAppOnly: Array<{ id: string; date: string; amount: string; label: string }>;
+  /** Org base currency — every line on a statement is in it. */
+  currency: string;
+  /** `date` is an ISO instant, `amount` integer minor units: DateCell/Amount render them. */
+  matched: Array<{ id: string; date: string; amount: number; reference: string; matchType: string; paymentLabel: string }>;
+  inBankOnly: Array<{ id: string; date: string; amount: number; reference: string }>;
+  inAppOnly: Array<{ id: string; date: string; amount: number; label: string }>;
   payableReports: Array<{ id: string; label: string }>;
   unmatchedPaymentOptions: Array<{ id: string; label: string }>;
 };
@@ -62,8 +67,8 @@ export function ReviewPanel({ data }: { data: BucketData }) {
         <ul className="grid gap-1">
           {data.matched.map((l) => (
             <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-green-200 bg-green-50/50 p-2 text-sm">
-              <span className="text-muted-foreground">{l.date}</span>
-              <span className="font-semibold">{l.amount}</span>
+              <DateCell value={l.date} tone="muted" />
+              <Amount value={l.amount} currency={data.currency} />
               <span className="text-muted-foreground min-w-0 flex-1 truncate">
                 {l.reference} → {l.paymentLabel}
               </span>
@@ -86,8 +91,8 @@ export function ReviewPanel({ data }: { data: BucketData }) {
         <ul className="grid gap-1">
           {data.inAppOnly.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-red-200 bg-red-50/50 p-2 text-sm">
-              <span className="text-muted-foreground">{p.date}</span>
-              <span className="font-semibold">{p.amount}</span>
+              <DateCell value={p.date} tone="muted" />
+              <Amount value={p.amount} currency={data.currency} />
               <span className="text-muted-foreground min-w-0 flex-1 truncate">{p.label}</span>
             </li>
           ))}
@@ -120,7 +125,7 @@ function OpenLine({
   pending,
   run,
 }: {
-  line: { id: string; date: string; amount: string; reference: string };
+  line: { id: string; date: string; amount: number; reference: string };
   data: BucketData;
   pending: boolean;
   run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void;
@@ -131,8 +136,8 @@ function OpenLine({
   return (
     <li className="grid gap-2 rounded-lg border p-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground">{line.date}</span>
-        <span className="font-semibold">{line.amount}</span>
+        <DateCell value={line.date} tone="muted" />
+        <Amount value={line.amount} currency={data.currency} />
         <span className="text-muted-foreground min-w-0 flex-1 truncate">{line.reference}</span>
       </div>
       {!data.locked ? (

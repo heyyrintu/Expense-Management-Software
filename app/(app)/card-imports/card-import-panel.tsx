@@ -3,15 +3,19 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { matchTransactionAction, unmatchTransactionAction } from "./actions";
 
 export type UnmatchedTxn = {
   id: string;
+  /** ISO instant + integer minor units — DateCell/Amount do the formatting. */
   date: string;
-  amount: string;
+  amount: number;
+  currency: string;
   merchant: string;
   suggestions: Array<{ id: string; label: string }>;
 };
@@ -138,9 +142,9 @@ function UnmatchedRow({
     <li className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
       <span className="grid min-w-0 flex-1">
         <span className="truncate font-medium">{txn.merchant}</span>
-        <span className="text-muted-foreground">{txn.date}</span>
+        <DateCell value={txn.date} tone="muted" />
       </span>
-      <span className="font-semibold whitespace-nowrap">{txn.amount}</span>
+      <Amount value={txn.amount} currency={txn.currency} className="whitespace-nowrap" />
       {txn.suggestions.length > 0 ? (
         <>
           <label htmlFor={`match-${txn.id}`} className="sr-only">

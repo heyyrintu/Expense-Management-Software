@@ -7,7 +7,6 @@ import {
 import { computeBudgetUtilization } from "@/lib/analytics/budgets";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
 import { BudgetsPanel, type BudgetView } from "./budgets-panel";
 
 
@@ -34,8 +33,9 @@ export default async function BudgetsPage() {
     scopeType: b.scopeType,
     label: names[b.scopeType].get(b.scopeId) ?? "(deleted)",
     period: b.period,
-    amountFormatted: formatMoney(b.amount, org.currency),
-    spentFormatted: formatMoney(b.spent, org.currency),
+    currency: org.currency,
+    amount: b.amount,
+    spent: b.spent,
     pct: b.pct,
     level: b.level,
   }));

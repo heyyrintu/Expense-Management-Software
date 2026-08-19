@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FlagChips } from "@/components/flag-chips";
 import type { Result } from "@/lib/errors";
+import { Amount } from "@/components/ui/amount";
+import { toDecimalString } from "@/lib/money";
 import { expenseInputSchema, type ExpenseInput } from "@/lib/schemas/expense";
 import { deleteExpenseAction, getFxRateAction } from "./actions";
 import { usePolicyPreview } from "./use-policy-preview";
@@ -240,8 +242,17 @@ export function ExpenseForm({
               {(() => {
                 const a = Number.parseFloat(watchedAmount || "0");
                 const r = Number.parseFloat(fxRate || "0");
-                return Number.isFinite(a) && Number.isFinite(r) && a > 0 && r > 0
-                  ? `≈ ${selCurrency} ${a.toFixed(2)} → ${currency} ${(a * r).toFixed(2)} (exact value computed on save with banker's rounding)`
+                // The currency CODE is already in the sentence, so these are
+                // bare decimals — toDecimalString, not formatMoney.
+                const fromMinor = Math.round(a * 100);
+                const toMinor = Math.round(a * r * 100);
+                return Number.isFinite(a) &&
+                  Number.isFinite(r) &&
+                  a > 0 &&
+                  r > 0 &&
+                  Number.isSafeInteger(fromMinor) &&
+                  Number.isSafeInteger(toMinor)
+                  ? `≈ ${selCurrency} ${toDecimalString(fromMinor)} → ${currency} ${toDecimalString(toMinor)} (exact value computed on save with banker's rounding)`
                   : "Prefilled from the daily rate when available — you can override it.";
               })()}
             </p>
@@ -391,9 +402,15 @@ export function ExpenseForm({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">
               Split across categories
-              {splitArray.fields.length > 0
-                ? ` (${(splitTotal / 100).toFixed(2)} / ${(amountMinor / 100).toFixed(2)})`
-                : ""}
+              {splitArray.fields.length > 0 ? (
+                <>
+                  {" ("}
+                  <Amount value={splitTotal} currency={selCurrency} size="meta" />
+                  {" / "}
+                  <Amount value={amountMinor} currency={selCurrency} size="meta" />
+                  {")"}
+                </>
+              ) : null}
             </span>
             <Button
               type="button"
@@ -475,8 +492,10 @@ export function ExpenseForm({
           ))}
           {splitArray.fields.length > 0 && !splitsMatch ? (
             <p className="text-sm text-amber-800" aria-live="polite">
-              Split lines total {(splitTotal / 100).toFixed(2)} — they must equal the
-              expense amount {(amountMinor / 100).toFixed(2)}.
+              Split lines total{" "}
+              <Amount value={splitTotal} currency={selCurrency} size="meta" /> — they
+              must equal the expense amount{" "}
+              <Amount value={amountMinor} currency={selCurrency} size="meta" />.
             </p>
           ) : null}
         </div>

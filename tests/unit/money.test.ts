@@ -49,4 +49,36 @@ describe("formatMoney", () => {
   it("falls back gracefully for unknown codes", () => {
     expect(formatMoney(1234, "XXX")).toContain("12.34");
   });
+
+  // ---- D1.1: the guarantees <Amount> relies on ----
+
+  it("signs negatives with a minus, NEVER parentheses (§6.2)", () => {
+    // The "accounting" currency sign would render (₹450.00). Parentheses are
+    // invisible at a glance and vanish entirely when read aloud.
+    const out = formatMoney(-45000, "INR");
+    expect(out).toContain("-");
+    expect(out).not.toContain("(");
+    expect(out).not.toContain(")");
+  });
+
+  it("keeps two decimal places at every magnitude", () => {
+    expect(formatMoney(0, "INR")).toContain("0.00");
+    expect(formatMoney(100, "INR")).toContain("1.00");
+    expect(formatMoney(5, "INR")).toContain("0.05");
+  });
+
+  it("groups very large values in the Indian system", () => {
+    // ₹1,23,45,678.90 — lakhs and crores, not 12,345,678.90.
+    expect(formatMoney(1234567890, "INR")).toContain("1,23,45,678.90");
+  });
+
+  it("renders foreign currencies with their own symbol", () => {
+    expect(formatMoney(123456, "USD")).toContain("1,234.56");
+    expect(formatMoney(123456, "EUR")).toContain("1,234.56");
+  });
+
+  it("refuses non-integer minor units rather than rendering a wrong amount", () => {
+    // Passing 45.5 where 4550 was meant is the bug this catches.
+    expect(() => formatMoney(45.5, "INR")).toThrow();
+  });
 });

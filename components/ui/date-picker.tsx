@@ -72,6 +72,7 @@ function DatePicker({
             className
           )}
         >
+          {/* formatDate, not <DateCell>: a button label needs a plain string. */}
           <span className={cn(!selected && "text-text-tertiary")}>
             {selected ? formatDate(selected) : placeholder}
           </span>

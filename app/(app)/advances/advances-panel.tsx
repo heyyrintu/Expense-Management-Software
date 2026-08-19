@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
@@ -13,14 +15,18 @@ import {
 } from "./actions";
 
 export type AdvanceView = {
+  /** Integer minor units — rendered through <Amount>, never pre-formatted. */
+  amount: number;
+  currency: string;
   id: string;
-  amount: string;
-  outstanding: string | null;
+  /** Integer minor units, or null when the advance is fully settled. */
+  outstanding: number | null;
   purpose: string;
-  trip: string | null;
+  /** Raw dates — <DateCell> formats them, so the meta line never builds one. */
+  trip: { start: Date | string; end: Date | string } | null;
   status: string;
   reference: string | null;
-  when: string;
+  when: Date | string;
 };
 
 export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
@@ -95,13 +101,35 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
                   <StatusBadge status={a.status} />
                 </span>
                 <span className="text-muted-foreground">
-                  {a.when}
-                  {a.trip ? ` · ${a.trip}` : ""}
+                  <DateCell value={a.when} tone="muted" />
+                  {a.trip ? (
+                    <>
+                      {" · "}
+                      <DateCell value={a.trip.start} tone="muted" />
+                      {" – "}
+                      <DateCell value={a.trip.end} tone="muted" />
+                    </>
+                  ) : null}
                   {a.reference ? ` · ref ${a.reference}` : ""}
-                  {a.outstanding ? ` · outstanding ${a.outstanding}` : ""}
+                  {a.outstanding !== null ? (
+                    <>
+                      {" · outstanding "}
+                      <Amount
+                        value={a.outstanding}
+                        currency={a.currency}
+                        size="meta"
+                        tone="muted"
+                      />
+                    </>
+                  ) : null}
                 </span>
               </span>
-              <span className="font-semibold whitespace-nowrap">{a.amount}</span>
+              <Amount
+                value={a.amount}
+                currency={a.currency}
+                align="right"
+                className="whitespace-nowrap"
+              />
               {a.status === "draft" ? (
                 <span className="flex gap-2">
                   <Button size="sm" disabled={pending} onClick={() => run(() => submitAdvanceAction({ id: a.id }))}>

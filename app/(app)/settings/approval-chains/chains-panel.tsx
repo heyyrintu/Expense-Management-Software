@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -12,7 +13,9 @@ export type RuleView = {
   id: string;
   name: string;
   department: string;
-  condition: string;
+  /** Threshold in minor units; null means the rule applies to any amount. */
+  aboveAmount: number | null;
+  currency: string;
   approver: string;
   secondApprover: string | null;
 };
@@ -70,7 +73,21 @@ export function ChainsPanel({
               <span className="grid">
                 <span className="font-medium">{r.name}</span>
                 <span className="text-muted-foreground">
-                  {r.department} · {r.condition} → {r.approver}
+                  {r.department} ·{" "}
+                  {r.aboveAmount !== null ? (
+                    <>
+                      {"above "}
+                      <Amount
+                        value={r.aboveAmount}
+                        currency={r.currency}
+                        size="meta"
+                        tone="muted"
+                      />
+                    </>
+                  ) : (
+                    "any amount"
+                  )}{" "}
+                  → {r.approver}
                   {r.secondApprover ? ` → ${r.secondApprover}` : ""}
                 </span>
               </span>

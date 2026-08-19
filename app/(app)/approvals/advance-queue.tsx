@@ -4,6 +4,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { decideAdvanceAction } from "@/app/(app)/advances/actions";
@@ -12,7 +13,9 @@ type Item = {
   id: string;
   purpose: string;
   ownerName: string;
-  amount: string;
+  /** Integer minor units — rendered through <Amount>, never pre-formatted. */
+  amount: number;
+  currency: string;
   trip: string | null;
 };
 
@@ -61,7 +64,12 @@ function AdvanceRow({ item }: { item: Item }) {
           {item.trip ? ` · ${item.trip}` : ""}
         </span>
       </span>
-      <span className="font-semibold whitespace-nowrap">{item.amount}</span>
+      <Amount
+        value={item.amount}
+        currency={item.currency}
+        align="right"
+        className="whitespace-nowrap"
+      />
       <label htmlFor={`adv-reason-${item.id}`} className="sr-only">
         Rejection reason
       </label>

@@ -8,7 +8,6 @@ import { requireRole } from "@/lib/auth/guard";
 import { MATCH_WINDOW_DAYS } from "@/lib/domain/card-import";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { CardImportPanel, type UnmatchedTxn } from "./card-import-panel";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -57,11 +56,13 @@ export default async function CardImportsPage() {
     }>;
     unmatched.push({
       id: t.id,
-      date: formatDate(t.date),
-      amount: formatMoney(t.amount, org.currency),
+      date: t.date.toISOString(),
+      amount: t.amount,
+      currency: org.currency,
       merchant: t.merchant,
       suggestions: suggestions.map((s) => ({
         id: s.id,
+        // <option> label — text only, so formatDate rather than <DateCell>.
         label: `${s.merchant} · ${formatDate(s.date)} · ${s.user.name}`,
       })),
     });

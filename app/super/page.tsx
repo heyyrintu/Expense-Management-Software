@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { requireSuperAdmin } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db/client";
-import { formatDate } from "@/lib/format";
 import { OrgRow } from "./org-row";
 
 type OrgWithCounts = {
@@ -82,7 +81,7 @@ export default async function SuperPanelPage() {
                     reports: o._count.reports,
                     storageMb:
                       Math.round(((storageByOrg.get(o.id) ?? 0) / (1024 * 1024)) * 10) / 10,
-                    created: formatDate(o.createdAt),
+                    created: o.createdAt,
                   }}
                 />
               ))}

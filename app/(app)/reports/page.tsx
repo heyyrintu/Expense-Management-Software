@@ -7,12 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
+// inside a template literal, which is what lib/format is for.
 
 type ReportRow = {
   id: string;
@@ -72,17 +73,19 @@ export default async function ReportsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="truncate">{r.title}</CardTitle>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold">
-                          {formatMoney(r.total, org.currency)}
-                        </span>
+                        <Amount value={r.total} currency={org.currency} />
                         <StatusBadge status={r.status} />
                       </div>
                     </div>
                     <CardDescription>
                       {r._count.expenses} expense{r._count.expenses === 1 ? "" : "s"}
                       {r.submittedAt
-                        ? ` · submitted ${formatDate(r.submittedAt)}`
-                        : ` · created ${formatDate(r.createdAt)}`}
+                        ? " · submitted "
+                        : " · created "}
+                      <DateCell
+                        value={r.submittedAt ?? r.createdAt}
+                        tone="muted"
+                      />
                     </CardDescription>
                   </CardHeader>
                 </Card>

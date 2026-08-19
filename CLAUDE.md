@@ -74,7 +74,8 @@ Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROM
 - **Tokens only** — no raw hex, no arbitrary Tailwind values (`text-[13px]`) in `app/**` or `components/**`. Lint enforces this.
 - Light theme; indigo/violet accent; Inter with tabular numerals for all money; comfortable density (44px touch targets, 48px rows).
 - Status color is defined **only** in `StatusBadge` via the map in DESIGN-PRD §5.2 — never hand-colored elsewhere.
-- Amounts render through `<Amount>`, dates through `<DateCell>`. No `toFixed`/`toLocaleString` in components.
+- Amounts render through `<Amount>` (integer minor units in, never a pre-formatted string), dates through `<DateCell>`. No `toFixed`/`toLocaleString`/`Intl.*` in components. `formatMoney`/`formatDate` from `lib/` are for plain strings only — `<option>` labels, chart tooltips, emails, CSV — and each remaining call site says so in a comment. A server component must not pre-format money or a date into a string prop: pass the raw value and let the client child render it.
+- `<DateCell format="relative">` is for activity and meta contexts only (comment timestamps, notification lists). Never for an expense date, report period, or anything in a column someone compares against a bank statement.
 - One primary (filled) button visible per screen.
 - **Motion**: see the Motion rules section below.
 - Money movement is never optimistic. Approvals may be optimistic with a 5s Undo.

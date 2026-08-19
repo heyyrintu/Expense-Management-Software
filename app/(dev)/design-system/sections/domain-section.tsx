@@ -49,7 +49,6 @@ const TREND = MONTHLY.map((m, i) => ({
 
 /** §6.2 components not yet built, with the task that delivers each. */
 const ROSTER = [
-  { name: "Amount / DateCell", purpose: "Money and dates, formatted in exactly one place", task: "D1.1" },
   { name: "DataTable", purpose: "Sticky header, 48px rows, mobile card collapse", task: "D1.2" },
   { name: "FilterBar", purpose: "Search, date range, facets, URL state", task: "D1.3" },
   { name: "StatCard", purpose: "KPI label, value, delta chip, sparkline", task: "D1.4" },
@@ -162,7 +161,7 @@ export function DomainSection() {
 
       <Block
         title="Not built yet"
-        description="The rest of §6.2, with the task that delivers each. These rows move up into the gallery as they land — that is what “added to /design-system in the same commit” means in practice."
+        description="The rest of §6.2, with the task that delivers each. These rows move up into the gallery as they land — that is what “added to /design-system in the same commit” means in practice. Amount and DateCell left this table in D1.1; they now have their own section above."
       >
         <div className="border-line bg-bg-surface overflow-hidden rounded-lg border">
           <table className="w-full text-body">

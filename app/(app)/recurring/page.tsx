@@ -2,8 +2,6 @@ import Link from "next/link";
 
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { RecurringPanel, type TemplateView } from "./recurring-panel";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -39,11 +37,14 @@ export default async function RecurringPage() {
       t.cadence === "monthly"
         ? `Monthly on day ${t.day}`
         : `Weekly on ${WEEKDAYS[t.day - 1]}`,
-    amount: formatMoney(t.amount, org.currency),
+    // Raw minor units + currency cross the boundary; the panel renders them
+    // through <Amount> rather than receiving a pre-formatted string.
+    amount: t.amount,
+    currency: org.currency,
     merchant: t.merchant,
     category: t.category.name,
     active: t.active,
-    lastRun: t.lastRunAt ? formatDate(t.lastRunAt) : null,
+    lastRun: t.lastRunAt,
   }));
 
   return (

@@ -5,9 +5,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
 
 type FailureRow = {
   id: string;
@@ -52,7 +52,7 @@ export default async function EmailIngestionPage() {
             <ul className="grid gap-1 text-sm">
               {failures.map((f) => (
                 <li key={f.id} className="flex flex-wrap gap-2">
-                  <span className="text-muted-foreground">{formatDate(f.createdAt)}</span>
+                  <DateCell value={f.createdAt} tone="muted" />
                   <span className="font-medium">{f.fromEmail}</span>
                   {f.subject ? <span>“{f.subject}”</span> : null}
                   <span className="text-destructive">— {f.reason}</span>

@@ -6,11 +6,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
-import { formatMoney } from "@/lib/money";
 
 type Item = {
   id: string;
@@ -20,7 +21,7 @@ type Item = {
   total: number;
   ownerName: string;
   expenseCount: number;
-  submitted: string;
+  submittedAt: Date | string | null;
 };
 
 export function ReimburseQueue({ items, currency }: { items: Item[]; currency: string }) {
@@ -123,16 +124,24 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
                 </span>
                 <span className="text-muted-foreground">
                   {i.ownerName} · {i.expenseCount} expense{i.expenseCount === 1 ? "" : "s"}
-                  {i.submitted ? ` · submitted ${i.submitted}` : ""}
+                  {i.submittedAt ? (
+                    <>
+                      {" · submitted "}
+                      <DateCell value={i.submittedAt} tone="muted" />
+                    </>
+                  ) : null}
                 </span>
               </span>
               <span className="text-right">
-                <span className="block font-semibold whitespace-nowrap">
-                  {formatMoney(i.balance, currency)}
-                </span>
+                <Amount
+                  value={i.balance}
+                  currency={currency}
+                  align="right"
+                  className="block whitespace-nowrap"
+                />
                 {i.balance !== i.total ? (
                   <span className="text-muted-foreground text-xs whitespace-nowrap">
-                    of {formatMoney(i.total, currency)}
+                    of <Amount value={i.total} currency={currency} size="meta" tone="muted" />
                   </span>
                 ) : null}
               </span>
@@ -160,7 +169,12 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
       <div className="grid max-w-lg gap-3 rounded-xl border p-4">
         <h2 className="text-sm font-medium">
           Pay {selectedItems.length || "selected"} report{selectedItems.length === 1 ? "" : "s"}
-          {selectedItems.length > 0 ? ` — ${formatMoney(selectedBalance, currency)}` : ""}
+          {selectedItems.length > 0 ? (
+            <>
+              {" — "}
+              <Amount value={selectedBalance} currency={currency} />
+            </>
+          ) : null}
         </h2>
         <div className="grid grid-cols-2 gap-3">
           <div className="grid gap-1">
@@ -179,7 +193,8 @@ export function ReimburseQueue({ items, currency }: { items: Item[]; currency: s
           {single ? (
             <div className="grid gap-1">
               <label htmlFor="pay-partial" className="text-muted-foreground text-xs">
-                Amount (empty = full {formatMoney(single.balance, currency)})
+                Amount (empty = full{" "}
+                <Amount value={single.balance} currency={currency} size="meta" tone="muted" />)
               </label>
               <Input
                 id="pay-partial"

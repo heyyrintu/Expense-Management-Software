@@ -8,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
@@ -22,8 +24,7 @@ import { CommentThread, type CommentView } from "@/components/comment-thread";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
 import { RaiseComplaint } from "../../complaints/raise-complaint";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
+// inside template literals — lib/money is the sanctioned string formatter.
 import { ReportControls } from "./report-controls";
 
 type ExpenseRow = {
@@ -76,8 +77,9 @@ export default async function ReportDetailPage({
 
   type PaymentView = {
     id: string;
-    when: string;
-    amount: string;
+    when: Date;
+    /** Integer MINOR units — rendered through <Amount>, never pre-formatted. */
+    amountPaid: number;
     method: string;
     reference: string;
     proofUrl: string | null;
@@ -94,8 +96,8 @@ export default async function ReportDetailPage({
         proofKey: string | null;
       }) => ({
         id: p.id,
-        when: formatDate(p.paidAt),
-        amount: formatMoney(p.amountPaid, currency),
+        when: p.paidAt,
+        amountPaid: p.amountPaid,
         method: p.method.replace("_", " "),
         reference: p.reference,
         proofUrl: p.proofKey ? await signedProofUrl({ proofKey: p.proofKey }) : null,
@@ -109,7 +111,7 @@ export default async function ReportDetailPage({
       id: c.id,
       authorName: c.author.name,
       body: c.body,
-      when: formatDate(c.createdAt),
+      when: c.createdAt,
       mine: c.authorId === ctx.userId,
     })
   );
@@ -150,7 +152,7 @@ export default async function ReportDetailPage({
 
       {report.submittedAt ? (
         <p className="text-muted-foreground -mt-4 text-sm">
-          Submitted {formatDate(report.submittedAt)}
+          Submitted <DateCell value={report.submittedAt} tone="muted" />
         </p>
       ) : null}
 
@@ -158,18 +160,21 @@ export default async function ReportDetailPage({
         <div className="grid gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
           <p className="font-medium">
             Payments
-            {currency && report.status === "partially_reimbursed"
-              ? ` — outstanding ${formatMoney(
-                  outstandingBalance(report.total, report.reimbursements),
-                  currency
-                )}`
-              : ""}
+            {currency && report.status === "partially_reimbursed" ? (
+              <>
+                {" — outstanding "}
+                <Amount
+                  value={outstandingBalance(report.total, report.reimbursements)}
+                  currency={currency}
+                />
+              </>
+            ) : null}
           </p>
           <ul className="grid gap-1">
             {paymentViews.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-2">
-                <span>{p.when}</span>
-                <span className="font-medium">{p.amount}</span>
+                <DateCell value={p.when} />
+                <Amount value={p.amountPaid} currency={currency} />
                 <span>{p.method}</span>
                 <span className="text-violet-900/70">ref {p.reference}</span>
                 {p.proofUrl ? (
@@ -212,9 +217,16 @@ export default async function ReportDetailPage({
       <Card>
         <CardHeader>
           <CardTitle>
-            {attached.length === 0
-              ? "No expenses on this report"
-              : `Total ${currency ? formatMoney(runningTotal, currency) : ""}`}
+            {attached.length === 0 ? (
+              "No expenses on this report"
+            ) : currency ? (
+              <>
+                {"Total "}
+                <Amount value={runningTotal} currency={currency} />
+              </>
+            ) : (
+              "Total"
+            )}
           </CardTitle>
           <CardDescription>
             {attached.length} expense{attached.length === 1 ? "" : "s"} attached
@@ -233,21 +245,21 @@ export default async function ReportDetailPage({
                       {e.merchant}
                     </Link>
                     <span className="text-muted-foreground">
-                      {formatDate(e.date)} · {e.category.name}
+                      <DateCell value={e.date} tone="muted" /> · {e.category.name}
                     </span>
                     <FlagChips flags={asFlags(e.flags)} />
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="grid text-right">
-                      <span className="font-semibold">
-                        {formatMoney(e.amount, e.currency)}
-                      </span>
-                      {e.currency !== currency ? (
-                        <span className="text-muted-foreground text-xs">
-                          → {formatMoney(e.baseAmount, currency)}
-                        </span>
-                      ) : null}
-                    </span>
+                    <Amount
+                      value={e.amount}
+                      currency={e.currency}
+                      align="right"
+                      converted={
+                        e.currency !== currency
+                          ? { value: e.baseAmount, currency }
+                          : null
+                      }
+                    />
                     {editable ? (
                       <ReportControls.RemoveButton
                         reportId={report.id}
@@ -283,13 +295,11 @@ export default async function ReportDetailPage({
                     <span className="grid">
                       <span className="font-medium">{e.merchant}</span>
                       <span className="text-muted-foreground">
-                        {formatDate(e.date)} · {e.category.name}
+                        <DateCell value={e.date} tone="muted" /> · {e.category.name}
                       </span>
                     </span>
                     <span className="flex items-center gap-3">
-                      <span className="font-semibold">
-                        {formatMoney(e.amount, e.currency)}
-                      </span>
+                      <Amount value={e.amount} currency={e.currency} align="right" />
                       <ReportControls.AddButton
                         reportId={report.id}
                         expenseId={e.id}

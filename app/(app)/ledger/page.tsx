@@ -9,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { fetchLedgerEvents } from "@/lib/analytics/ledger";
@@ -16,8 +18,6 @@ import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { buildLedger } from "@/lib/domain/ledger";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { PrintButton } from "./print-button";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -68,7 +68,6 @@ export default async function LedgerPage({
 
   const { events, requested } = await fetchLedgerEvents(db, target.id, { from, to });
   const { lines, totals } = buildLedger(events, requested);
-  const fmt = (m: number) => formatMoney(m, org.currency);
 
   const exportQs = new URLSearchParams();
   if (isFinance && requestedUser) exportQs.set("user", requestedUser);
@@ -136,14 +135,17 @@ export default async function LedgerPage({
           <Card key={label}>
             <CardHeader>
               <CardDescription>{label}</CardDescription>
-              <CardTitle className="text-xl">{fmt(v)}</CardTitle>
+              <CardTitle>
+                <Amount value={v} currency={org.currency} size="display" />
+              </CardTitle>
             </CardHeader>
           </Card>
         ))}
       </div>
       {totals.netBalance !== totals.outstanding ? (
         <p className="text-muted-foreground text-sm">
-          Net position incl. advances: <span className="font-semibold">{fmt(totals.netBalance)}</span>
+          Net position incl. advances:{" "}
+          <Amount value={totals.netBalance} currency={org.currency} />
           {totals.netBalance < 0 ? " (owed to the organization)" : ""}
         </p>
       ) : null}
@@ -163,15 +165,21 @@ export default async function LedgerPage({
           <tbody>
             {lines.map((l) => (
               <tr key={l.id} className="border-t">
-                <td className="p-2 whitespace-nowrap">{formatDate(l.date)}</td>
+                <td className="p-2 whitespace-nowrap"><DateCell value={l.date} /></td>
                 <td className="p-2">
                   <span className="font-medium">{TYPE_LABELS[l.type]}</span>{" "}
                   <span className="text-muted-foreground">{l.description}</span>
                 </td>
                 <td className="text-muted-foreground p-2">{l.reference}</td>
-                <td className="p-2 text-right whitespace-nowrap">{l.credit ? fmt(l.credit) : ""}</td>
-                <td className="p-2 text-right whitespace-nowrap">{l.debit ? fmt(l.debit) : ""}</td>
-                <td className="p-2 text-right font-medium whitespace-nowrap">{fmt(l.balance)}</td>
+                <td className="p-2 text-right whitespace-nowrap">
+                  {l.credit ? <Amount value={l.credit} currency={org.currency} align="right" /> : ""}
+                </td>
+                <td className="p-2 text-right whitespace-nowrap">
+                  {l.debit ? <Amount value={l.debit} currency={org.currency} align="right" /> : ""}
+                </td>
+                <td className="p-2 text-right whitespace-nowrap">
+                  <Amount value={l.balance} currency={org.currency} align="right" />
+                </td>
               </tr>
             ))}
             {lines.length === 0 ? (

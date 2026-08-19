@@ -23,13 +23,25 @@ export function toDecimalString(minor: number): string {
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
 
-/** Locale/currency display, e.g. formatMoney(123456, "INR") → "₹1,234.56". */
+/**
+ * Locale/currency display, e.g. formatMoney(123456, "INR") → "₹1,234.56".
+ *
+ * THE ONLY PLACE MONEY BECOMES A STRING. Components present it via
+ * <Amount>; anything that needs a plain string (email bodies, WhatsApp
+ * messages, CSV cells, aria labels) calls this directly.
+ *
+ * `currencySign: "standard"` is explicit, not decorative: the "accounting"
+ * sign renders negatives as (₹450.00), and DESIGN-PRD §6.2 requires a minus.
+ * Parentheses are invisible at a glance and disappear entirely when a value
+ * is read aloud. Asserted in tests/unit/money.test.ts.
+ */
 export function formatMoney(minor: number, currency: string): string {
   assertMinorUnits(minor);
   try {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency,
+      currencySign: "standard",
       minimumFractionDigits: 2,
     }).format(minor / 100);
   } catch {

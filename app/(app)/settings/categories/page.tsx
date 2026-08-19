@@ -7,9 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Amount } from "@/components/ui/amount";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
 
 type CategoryRow = {
   id: string;
@@ -18,10 +18,6 @@ type CategoryRow = {
   monthlyLimit: number | null;
   receiptRequiredAbove: number | null;
 };
-
-function limit(minor: number | null, currency: string): string {
-  return minor === null ? "—" : formatMoney(minor, currency);
-}
 
 export default async function CategoriesPage() {
   const ctx = await requireRole("finance_admin");
@@ -69,9 +65,12 @@ export default async function CategoriesPage() {
                     <CardHeader>
                       <CardTitle>{c.name}</CardTitle>
                       <CardDescription>
-                        Per expense {limit(c.perExpenseLimit, org.currency)} ·
-                        monthly {limit(c.monthlyLimit, org.currency)} · receipt
-                        above {limit(c.receiptRequiredAbove, org.currency)}
+                        Per expense{" "}
+                        <Amount value={c.perExpenseLimit} currency={org.currency} size="meta" /> ·
+                        monthly{" "}
+                        <Amount value={c.monthlyLimit} currency={org.currency} size="meta" /> ·
+                        receipt above{" "}
+                        <Amount value={c.receiptRequiredAbove} currency={org.currency} size="meta" />
                       </CardDescription>
                     </CardHeader>
                   </Card>
@@ -95,9 +94,15 @@ export default async function CategoriesPage() {
                 {categories.map((c: CategoryRow) => (
                   <tr key={c.id} className="border-t">
                     <td className="p-3 font-medium">{c.name}</td>
-                    <td className="p-3">{limit(c.perExpenseLimit, org.currency)}</td>
-                    <td className="p-3">{limit(c.monthlyLimit, org.currency)}</td>
-                    <td className="p-3">{limit(c.receiptRequiredAbove, org.currency)}</td>
+                    <td className="p-3">
+                      <Amount value={c.perExpenseLimit} currency={org.currency} />
+                    </td>
+                    <td className="p-3">
+                      <Amount value={c.monthlyLimit} currency={org.currency} />
+                    </td>
+                    <td className="p-3">
+                      <Amount value={c.receiptRequiredAbove} currency={org.currency} />
+                    </td>
                     <td className="p-3 text-right">
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/settings/categories/${c.id}`}>Edit</Link>

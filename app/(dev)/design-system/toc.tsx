@@ -11,6 +11,7 @@ import Link from "next/link";
 export const GALLERY_SECTIONS = [
   { id: "tokens", label: "Tokens", note: "Colour, contrast, status map" },
   { id: "typography", label: "Typography", note: "Scale, specimens, tabular numerals" },
+  { id: "money", label: "Money and dates", note: "Amount, DateCell, every edge case" },
   { id: "scales", label: "Spacing · Radius · Elevation", note: "The three short scales" },
   { id: "components", label: "Components", note: "Every primitive, every state" },
   { id: "shell", label: "App shell", note: "Sidebar, top bar, tab bar, page header" },

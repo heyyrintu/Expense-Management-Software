@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireRole } from "@/lib/auth/guard";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
 import { reconciliationSummary } from "@/lib/domain/reconcile";
@@ -114,6 +116,8 @@ export default async function BankReconPage({
       reimbursements: { amountPaid: number }[];
     }>;
 
+    // Strings, not <Amount>: these build <option> labels, and an option's
+    // children must be text — an element there is invalid HTML.
     const fmt = (m: number) => formatMoney(m, org.currency);
     const matchedLines = lines.filter((l) => l.matchedReimbursement);
     const openLines = lines.filter((l) => !l.matchedReimbursement);
@@ -125,10 +129,11 @@ export default async function BankReconPage({
     bucket = {
       importId: current.id,
       locked: current.lockedAt !== null,
+      currency: org.currency,
       matched: matchedLines.map((l) => ({
         id: l.id,
-        date: formatDate(l.date),
-        amount: fmt(l.amount),
+        date: l.date.toISOString(),
+        amount: l.amount,
         reference: l.reference,
         matchType: l.matchType ?? "auto",
         paymentLabel: l.matchedReimbursement
@@ -137,14 +142,14 @@ export default async function BankReconPage({
       })),
       inBankOnly: openLines.map((l) => ({
         id: l.id,
-        date: formatDate(l.date),
-        amount: fmt(l.amount),
+        date: l.date.toISOString(),
+        amount: l.amount,
         reference: l.reference,
       })),
       inAppOnly: unmatchedPayments.map((p) => ({
         id: p.id,
-        date: formatDate(p.paidAt),
-        amount: fmt(p.amountPaid),
+        date: p.paidAt.toISOString(),
+        amount: p.amountPaid,
         label: `${p.report.title} (${p.report.user.name}) · ${p.method.replace("_", " ")} · ref ${p.reference}`,
       })),
       payableReports: payable
@@ -181,6 +186,7 @@ export default async function BankReconPage({
               defaultValue={selectedId}
               className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
             >
+              {/* <option> labels: text only, so formatDate rather than <DateCell>. */}
               {imports.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.filename} · {formatDate(i.periodStart)}–{formatDate(i.periodEnd)} ·{" "}
@@ -202,7 +208,8 @@ export default async function BankReconPage({
               <CardHeader>
                 <CardDescription>Period</CardDescription>
                 <CardTitle className="text-lg">
-                  {formatDate(current.periodStart)} – {formatDate(current.periodEnd)}
+                  <DateCell value={current.periodStart} /> –{" "}
+                  <DateCell value={current.periodEnd} />
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -216,7 +223,7 @@ export default async function BankReconPage({
               <CardHeader>
                 <CardDescription>Unexplained (in bank, not in app)</CardDescription>
                 <CardTitle className="text-lg">
-                  {formatMoney(summary.unexplained, org.currency)}
+                  <Amount value={summary.unexplained} currency={org.currency} />
                 </CardTitle>
               </CardHeader>
             </Card>

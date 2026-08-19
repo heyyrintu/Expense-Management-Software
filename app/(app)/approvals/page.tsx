@@ -7,7 +7,6 @@ import {
 import { requireRole } from "@/lib/auth/guard";
 import { approvalQueueFor } from "@/lib/domain/approval-queue";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
 import { AdvanceQueue } from "./advance-queue";
 import { QueueList } from "./queue-list";
 
@@ -48,7 +47,8 @@ export default async function ApprovalsPage() {
             id: a.id,
             purpose: a.purpose,
             ownerName: a.user.name,
-            amount: formatMoney(a.amount, org.currency),
+            amount: a.amount,
+            currency: org.currency,
             trip:
               a.tripStart && a.tripEnd
                 ? `${a.tripStart.toISOString().slice(0, 10)} – ${a.tripEnd.toISOString().slice(0, 10)}`

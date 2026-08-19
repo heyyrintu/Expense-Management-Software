@@ -3,12 +3,12 @@
 import Link from "next/link";
 
 import { asFlags, FlagChips } from "@/components/flag-chips";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { fetchSpendRows } from "@/lib/analytics";
 import { flaggedRows } from "@/lib/analytics/aggregate";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 
 export default async function ViolationsPage({
   searchParams,
@@ -47,13 +47,16 @@ export default async function ViolationsPage({
             <span className="grid min-w-0 flex-1">
               <span className="truncate font-medium">{e.merchant}</span>
               <span className="text-muted-foreground">
-                {formatDate(e.date)} · {e.categoryName} · {e.userName}
+                <DateCell value={e.date} /> · {e.categoryName} · {e.userName}
               </span>
             </span>
             <FlagChips flags={asFlags(e.flags)} />
-            <span className="font-semibold whitespace-nowrap">
-              {formatMoney(e.baseAmount, org.currency)}
-            </span>
+            <Amount
+              value={e.baseAmount}
+              currency={org.currency}
+              align="right"
+              className="whitespace-nowrap"
+            />
           </li>
         ))}
         {flagged.length === 0 ? (

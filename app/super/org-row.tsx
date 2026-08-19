@@ -1,4 +1,5 @@
 "use client";
+import { DateCell } from "@/components/ui/date-cell";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export function OrgRow({
     expenses: number;
     reports: number;
     storageMb: number;
-    created: string;
+    created: Date | string;
   };
 }) {
   const router = useRouter();
@@ -44,7 +45,9 @@ export function OrgRow({
       <td className="p-3">{org.expenses}</td>
       <td className="p-3">{org.reports}</td>
       <td className="p-3">{org.storageMb} MB</td>
-      <td className="p-3 whitespace-nowrap">{org.created}</td>
+      <td className="p-3 whitespace-nowrap">
+        <DateCell value={org.created} />
+      </td>
       <td className="p-3">
         <span
           className={

@@ -1,6 +1,5 @@
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
 import { ChainsPanel, type RuleView } from "./chains-panel";
 
 type RuleRow = {
@@ -37,10 +36,8 @@ export default async function ApprovalChainsPage() {
     id: r.id,
     name: r.name,
     department: r.departmentId ? (deptName.get(r.departmentId) ?? "(deleted)") : "All departments",
-    condition:
-      r.aboveAmount !== null
-        ? `above ${formatMoney(r.aboveAmount, org.currency)}`
-        : "any amount",
+    aboveAmount: r.aboveAmount,
+    currency: org.currency,
     approver: userName.get(r.approverId) ?? "(inactive user)",
     secondApprover: r.secondApproverId
       ? (userName.get(r.secondApproverId) ?? "(inactive user)")

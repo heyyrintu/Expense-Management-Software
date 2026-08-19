@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { CHART_SECONDARY } from "@/lib/design/chart-colors";
+import { formatMoney } from "@/lib/money";
 
 export function BreakdownBarChart({
   data,
@@ -18,7 +19,12 @@ export function BreakdownBarChart({
   data: Array<{ label: string; total: number }>;
   currency: string;
 }) {
-  const display = data.slice(0, 8).map((d) => ({ ...d, value: d.total / 100 }));
+  // `value` is MAJOR units — the bar length only needs a magnitude. `minor`
+  // carries the untouched integer so the tooltip can format true minor units
+  // instead of multiplying a float back up (CLAUDE.md: money never floats).
+  const display = data
+    .slice(0, 8)
+    .map((d) => ({ ...d, value: d.total / 100, minor: d.total }));
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer>
@@ -36,11 +42,10 @@ export function BreakdownBarChart({
             tick={{ fontSize: 12 }}
           />
           <Tooltip
-            formatter={(value) => [
-              new Intl.NumberFormat("en-IN", {
-                style: "currency",
-                currency,
-              }).format(Number(value)),
+            // Recharts formatters must return a string, so <Amount> can't be
+            // used here — formatMoney keeps the formatting in lib/money.ts.
+            formatter={(_value, _name, item) => [
+              formatMoney(Number(item?.payload?.minor ?? 0), currency),
               "Total",
             ]}
           />

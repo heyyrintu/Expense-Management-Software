@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { BreakdownBarChart } from "@/components/charts/breakdown-bar";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar";
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,7 +32,6 @@ import { complaintSummary } from "@/lib/complaints/queries";
 import { buildExpenseWhere } from "@/lib/domain/expense-query";
 import { resolveExpenseScope } from "@/lib/domain/expense-scope";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatMoney } from "@/lib/money";
 import { parseFilters } from "@/lib/schemas/dashboard";
 
 type DbExpenseRow = {
@@ -52,7 +53,7 @@ type DbExpenseRow = {
   project: { name: string } | null;
 };
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
     <Card>
       <CardHeader>
@@ -216,7 +217,6 @@ export default async function DashboardPage({
     0
   );
 
-  const fmt = (minor: number) => formatMoney(minor, org.currency);
   const exportQs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v !== undefined) as [string, string][]
   ).toString();
@@ -301,9 +301,20 @@ export default async function DashboardPage({
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Spend this month" value={fmt(thisMonth)} />
-        <Stat label="Awaiting approval" value={fmt(pending)} hint="submitted expenses" />
-        <Stat label="Reimbursed" value={fmt(reimbursed)} hint="in current scope/filters" />
+        <Stat
+          label="Spend this month"
+          value={<Amount value={thisMonth} currency={org.currency} size="display" />}
+        />
+        <Stat
+          label="Awaiting approval"
+          value={<Amount value={pending} currency={org.currency} size="display" />}
+          hint="submitted expenses"
+        />
+        <Stat
+          label="Reimbursed"
+          value={<Amount value={reimbursed} currency={org.currency} size="display" />}
+          hint="in current scope/filters"
+        />
       </div>
 
       {complaints.open > 0 ? (
@@ -344,7 +355,7 @@ export default async function DashboardPage({
         <div className="grid gap-4 sm:grid-cols-3">
           <Stat
             label="Open advance balance"
-            value={fmt(advanceBalance)}
+            value={<Amount value={advanceBalance} currency={org.currency} size="display" />}
             hint="settles against your reimbursed reports"
           />
         </div>
@@ -352,7 +363,11 @@ export default async function DashboardPage({
 
       {isFinance ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Total in scope" value={fmt(sumAmounts(rows))} hint={`${rows.length} expenses`} />
+          <Stat
+            label="Total in scope"
+            value={<Amount value={sumAmounts(rows)} currency={org.currency} size="display" />}
+            hint={`${rows.length} expenses`}
+          />
           <Stat label="Policy violations" value={String(violations)} hint="expenses with flags" />
           <Stat label="Avg approval time" value={approvalTime ?? "—"} hint="submission → final approval" />
         </div>
@@ -398,7 +413,7 @@ export default async function DashboardPage({
               {byUser.slice(0, 10).map((u) => (
                 <li key={u.key} className="flex justify-between gap-2">
                   <span>{u.label} <span className="text-muted-foreground">({u.count})</span></span>
-                  <span className="font-medium">{fmt(u.total)}</span>
+                  <Amount value={u.total} currency={org.currency} align="right" />
                 </li>
               ))}
             </ul>
@@ -415,7 +430,7 @@ export default async function DashboardPage({
                 {byDepartment.slice(0, 8).map((d) => (
                   <li key={d.key} className="flex justify-between gap-2">
                     <span>{d.label}</span>
-                    <span className="font-medium">{fmt(d.total)}</span>
+                    <Amount value={d.total} currency={org.currency} align="right" />
                   </li>
                 ))}
                 {byDepartment.length === 0 ? (
@@ -431,7 +446,7 @@ export default async function DashboardPage({
                 {byProject.slice(0, 8).map((p) => (
                   <li key={p.key} className="flex justify-between gap-2">
                     <span>{p.label}</span>
-                    <span className="font-medium">{fmt(p.total)}</span>
+                    <Amount value={p.total} currency={org.currency} align="right" />
                   </li>
                 ))}
                 {byProject.length === 0 ? (
@@ -447,7 +462,7 @@ export default async function DashboardPage({
                 {billableByClient.slice(0, 8).map((c) => (
                   <li key={c.key} className="flex justify-between gap-2">
                     <span>{c.label} <span className="text-muted-foreground">({c.count})</span></span>
-                    <span className="font-medium">{fmt(c.total)}</span>
+                    <Amount value={c.total} currency={org.currency} align="right" />
                   </li>
                 ))}
                 {billableByClient.length === 0 ? (
@@ -463,7 +478,7 @@ export default async function DashboardPage({
                 {merchants.map((m) => (
                   <li key={m.merchant} className="flex justify-between gap-2">
                     <span>{m.merchant} <span className="text-muted-foreground">({m.count})</span></span>
-                    <span className="font-medium">{fmt(m.total)}</span>
+                    <Amount value={m.total} currency={org.currency} align="right" />
                   </li>
                 ))}
                 {merchants.length === 0 ? (

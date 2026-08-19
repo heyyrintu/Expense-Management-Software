@@ -5,6 +5,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -81,13 +83,35 @@ function RegisterItem({ row }: { row: RegisterRow }) {
             <StatusBadge status={row.status} />
           </span>
           <span className="text-muted-foreground">
-            {row.ownerName} · {row.when}
-            {row.trip ? ` · ${row.trip}` : ""}
+            {row.ownerName} · <DateCell value={row.when} tone="muted" />
+            {row.trip ? (
+              <>
+                {" · "}
+                <DateCell value={row.trip.start} tone="muted" />
+                {" – "}
+                <DateCell value={row.trip.end} tone="muted" />
+              </>
+            ) : null}
             {row.reference ? ` · ref ${row.reference}` : ""}
-            {row.outstanding ? ` · outstanding ${row.outstanding}` : ""}
+            {row.outstanding !== null ? (
+              <>
+                {" · outstanding "}
+                <Amount
+                  value={row.outstanding}
+                  currency={row.currency}
+                  size="meta"
+                  tone="muted"
+                />
+              </>
+            ) : null}
           </span>
         </span>
-        <span className="font-semibold whitespace-nowrap">{row.amount}</span>
+        <Amount
+          value={row.amount}
+          currency={row.currency}
+          align="right"
+          className="whitespace-nowrap"
+        />
       </div>
       {row.approved ? (
         <div className="flex flex-wrap items-end gap-2 pl-1">

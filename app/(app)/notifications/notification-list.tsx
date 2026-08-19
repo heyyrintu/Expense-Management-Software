@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { cn } from "@/lib/utils";
 import {
   markAllNotificationsReadAction,
@@ -17,7 +18,8 @@ type Item = {
   body: string;
   link: string | null;
   read: boolean;
-  when: string;
+  /** Raw timestamp — rendered through <DateCell>, never pre-formatted. */
+  when: Date | string;
 };
 
 export function NotificationList({ items }: { items: Item[] }) {
@@ -59,7 +61,8 @@ export function NotificationList({ items }: { items: Item[] }) {
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium">{n.title}</span>
-              <span className="text-muted-foreground text-xs">{n.when}</span>
+              {/* A notification list is an activity context — relative time. */}
+              <DateCell value={n.when} format="relative" />
             </div>
             <p className="text-muted-foreground">{n.body}</p>
             <div className="flex gap-3">

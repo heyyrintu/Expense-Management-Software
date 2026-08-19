@@ -6,6 +6,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { DateCell } from "@/components/ui/date-cell";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { addReportCommentAction } from "@/app/(app)/reports/comment-actions";
@@ -14,7 +15,8 @@ export type CommentView = {
   id: string;
   authorName: string;
   body: string;
-  when: string;
+  /** Raw timestamp — rendered through <DateCell>, never pre-formatted. */
+  when: Date | string;
   mine: boolean;
 };
 
@@ -65,7 +67,7 @@ export function CommentThread({
             >
               <span className="flex justify-between gap-2">
                 <span className="font-medium">{c.mine ? "You" : c.authorName}</span>
-                <span className="text-muted-foreground text-xs">{c.when}</span>
+                <DateCell value={c.when} tone="muted" />
               </span>
               <p className="whitespace-pre-wrap">{c.body}</p>
             </li>

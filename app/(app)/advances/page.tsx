@@ -1,3 +1,4 @@
+import { Amount } from "@/components/ui/amount";
 import {
   Card,
   CardDescription,
@@ -8,8 +9,6 @@ import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { outstandingAdvance } from "@/lib/domain/advance";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { AdvancesPanel, type AdvanceView } from "./advances-panel";
 import { RegisterPanel, type RegisterRow } from "./register-panel";
 
@@ -50,19 +49,17 @@ export default async function AdvancesPage({
 
   const toView = (a: AdvanceRow): AdvanceView => ({
     id: a.id,
-    amount: formatMoney(a.amount, org.currency),
+    amount: a.amount,
+    currency: org.currency,
     outstanding:
       a.status === "disbursed" || a.status === "partially_settled"
-        ? formatMoney(outstandingAdvance(a.amount, a.settledAmount), org.currency)
+        ? outstandingAdvance(a.amount, a.settledAmount)
         : null,
     purpose: a.purpose,
-    trip:
-      a.tripStart && a.tripEnd
-        ? `${formatDate(a.tripStart)} – ${formatDate(a.tripEnd)}`
-        : null,
+    trip: a.tripStart && a.tripEnd ? { start: a.tripStart, end: a.tripEnd } : null,
     status: a.status,
     reference: a.disbursementRef,
-    when: formatDate(a.createdAt),
+    when: a.createdAt,
   });
 
   let register: RegisterRow[] = [];
@@ -108,9 +105,7 @@ export default async function AdvancesPage({
               <CardTitle>Advance register</CardTitle>
               <CardDescription>
                 Org-wide advances · outstanding total{" "}
-                <span className="font-semibold">
-                  {formatMoney(outstandingTotal, org.currency)}
-                </span>
+                <Amount value={outstandingTotal} currency={org.currency} />
               </CardDescription>
             </CardHeader>
           </Card>

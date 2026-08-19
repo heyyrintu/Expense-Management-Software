@@ -1,3 +1,4 @@
+import { Amount } from "@/components/ui/amount";
 import {
   Card,
   CardContent,
@@ -5,11 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireRole } from "@/lib/auth/guard";
 import { outstandingBalance } from "@/lib/domain/reimbursement";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { ReimburseQueue } from "./reimburse-queue";
 
 type PayableRow = {
@@ -86,7 +86,7 @@ export default async function FinancePage() {
             total: r.total,
             ownerName: r.user.name,
             expenseCount: r._count.expenses,
-            submitted: r.submittedAt ? formatDate(r.submittedAt) : "",
+            submittedAt: r.submittedAt,
           }))}
           currency={org.currency}
         />
@@ -101,12 +101,10 @@ export default async function FinancePage() {
             <ul className="grid gap-1 text-sm">
               {recent.map((r) => (
                 <li key={r.id} className="flex flex-wrap gap-2">
-                  <span className="text-muted-foreground">{formatDate(r.paidAt)}</span>
+                  <DateCell value={r.paidAt} tone="muted" />
                   <span className="font-medium">{r.report.title}</span>
                   <span>({r.report.user.name})</span>
-                  <span className="font-semibold">
-                    {formatMoney(r.amountPaid, org.currency)}
-                  </span>
+                  <Amount value={r.amountPaid} currency={org.currency} />
                   <span className="text-muted-foreground">
                     {r.method.replace("_", " ")} · ref {r.reference} · by {r.paidBy.name}
                   </span>

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { listComplaints, complaintSummary } from "@/lib/complaints/queries";
@@ -22,7 +23,6 @@ import {
   type ComplaintStatus,
   type ComplaintType,
 } from "@/lib/domain/complaint";
-import { formatDate } from "@/lib/format";
 
 function one(v: string | string[] | undefined): string | undefined {
   return typeof v === "string" && v !== "" ? v : undefined;
@@ -219,7 +219,7 @@ export default async function ComplaintsPage({
                     : c.reimbursementReference
                       ? `Payment ${c.reimbursementReference}`
                       : "—"}{" "}
-                  · raised {formatDate(c.createdAt)} ·{" "}
+                  · raised <DateCell value={c.createdAt} tone="muted" /> ·{" "}
                   {c.assignedTo ? `with ${c.assignedTo.name}` : "unassigned"}
                 </p>
               </Link>

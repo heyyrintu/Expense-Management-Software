@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { TrendAreaChart } from "@/components/charts/trend-area";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,8 +22,6 @@ import { computeBudgetUtilization } from "@/lib/analytics/budgets";
 import { requireRole } from "@/lib/auth/guard";
 import { formatDurationMs } from "@/lib/domain/dashboard";
 import { scopedDb } from "@/lib/db/scoped";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 const RULE_LABELS: Record<string, string> = {
@@ -121,7 +121,6 @@ export default async function AnalyticsPage({
       ? String((org.settings as Record<string, unknown>).monthlySummaryLastRun)
       : null;
 
-  const fmt = (m: number) => formatMoney(m, org.currency);
   const DAY = 24 * 3600_000;
 
   return (
@@ -192,7 +191,9 @@ export default async function AnalyticsPage({
                   </Link>
                   <span>
                     <span className="font-medium">{u.count}</span>{" "}
-                    <span className="text-muted-foreground">({fmt(u.total)})</span>
+                    <span className="text-muted-foreground">
+                      (<Amount value={u.total} currency={org.currency} size="meta" tone="muted" />)
+                    </span>
                   </span>
                 </li>
               ))}
@@ -278,8 +279,9 @@ export default async function AnalyticsPage({
                     {scopeName[b.scopeType].get(b.scopeId) ?? "(deleted)"}{" "}
                     <span className="text-muted-foreground">· {b.scopeType} · {b.period}</span>
                   </span>
-                  <span>
-                    {fmt(b.spent)} / <span className="font-medium">{fmt(b.amount)}</span>
+                  <span className="whitespace-nowrap">
+                    <Amount value={b.spent} currency={org.currency} tone="muted" /> /{" "}
+                    <Amount value={b.amount} currency={org.currency} />
                   </span>
                 </div>
                 <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
@@ -299,7 +301,15 @@ export default async function AnalyticsPage({
 
       <p className="text-muted-foreground text-xs">
         Monthly summary email:{" "}
-        {lastRun ? `last sent ${formatDate(new Date(lastRun))}` : "not yet sent"} — runs via
+        {lastRun ? (
+          <>
+            {"last sent "}
+            <DateCell value={new Date(lastRun)} tone="muted" />
+          </>
+        ) : (
+          "not yet sent"
+        )}{" "}
+        — runs via
         /api/cron/monthly-summary (see README).
       </p>
     </section>

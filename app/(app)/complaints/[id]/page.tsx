@@ -5,6 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ComplaintStatusBadge, SlaBadge } from "@/components/sla-badge";
+import { Amount } from "@/components/ui/amount";
+import { DateCell } from "@/components/ui/date-cell";
 import { requireSession } from "@/lib/auth/guard";
 import { disputedApproverIds, financePool } from "@/lib/complaints/queries";
 import { scopedDb } from "@/lib/db/scoped";
@@ -17,8 +19,6 @@ import {
   type ComplaintStatus,
   type ComplaintType,
 } from "@/lib/domain/complaint";
-import { formatDate } from "@/lib/format";
-import { formatMoney } from "@/lib/money";
 import { signedComplaintUrl } from "@/lib/storage/complaints";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
 import { HandlerPanel } from "./handler-panel";
@@ -131,7 +131,7 @@ export default async function ComplaintDetailPage({
     id: m.id,
     authorName: m.author.name,
     body: m.body,
-    when: formatDate(m.createdAt),
+    when: m.createdAt.toISOString(),
     mine: m.authorId === ctx.userId,
   }));
 
@@ -159,7 +159,8 @@ export default async function ComplaintDetailPage({
           />
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Raised by {complaint.raisedBy.name} on {formatDate(complaint.createdAt)} ·{" "}
+          Raised by {complaint.raisedBy.name} on{" "}
+          <DateCell value={complaint.createdAt} tone="muted" /> ·{" "}
           {complaint.assignedTo
             ? `handled by ${complaint.assignedTo.name}`
             : "not yet assigned"}
@@ -177,10 +178,10 @@ export default async function ComplaintDetailPage({
             </Link>
           ) : null}
           {complaint.reimbursement ? (
-            <span>
-              {formatMoney(complaint.reimbursement.amountPaid, org.currency)} via{" "}
-              {complaint.reimbursement.method.replace("_", " ")} on{" "}
-              {formatDate(complaint.reimbursement.paidAt)}
+            <span className="flex flex-wrap items-center gap-1">
+              <Amount value={complaint.reimbursement.amountPaid} currency={org.currency} />
+              <span>via {complaint.reimbursement.method.replace("_", " ")} on</span>
+              <DateCell value={complaint.reimbursement.paidAt} tone="muted" />
             </span>
           ) : null}
           {attachmentUrl ? (
@@ -200,7 +201,12 @@ export default async function ComplaintDetailPage({
         <div className="grid gap-1 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900">
           <p className="font-medium">
             {complaint.status === "resolved" ? "Resolved" : "Closed as won't fix"}
-            {complaint.resolvedAt ? ` on ${formatDate(complaint.resolvedAt)}` : ""}
+            {complaint.resolvedAt ? (
+              <>
+                {" on "}
+                <DateCell value={complaint.resolvedAt} />
+              </>
+            ) : null}
           </p>
           <p className="whitespace-pre-wrap">{complaint.resolutionNote}</p>
         </div>

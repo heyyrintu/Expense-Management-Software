@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type Resolver } from "react-hook-form";
 
+import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -19,7 +20,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { Result } from "@/lib/errors";
-import { formatMoney } from "@/lib/money";
 import { mileageInputSchema, type MileageInput } from "@/lib/schemas/expense";
 import { deleteExpenseAction } from "./actions";
 import type { Option } from "./expense-form";
@@ -122,15 +122,18 @@ export function MileageForm({
             </span>
           ) : computed !== null ? (
             <>
-              Amount:{" "}
-              <span className="font-semibold">{formatMoney(computed, currency)}</span>{" "}
+              Amount: <Amount value={computed} currency={currency} />{" "}
               <span className="text-muted-foreground">
-                ({distanceRaw} km × {formatMoney(ratePerKmMinor, currency)}/km)
+                ({distanceRaw} km ×{" "}
+                <Amount value={ratePerKmMinor} currency={currency} size="meta" tone="muted" />
+                /km)
               </span>
             </>
           ) : (
             <span className="text-muted-foreground">
-              Enter a distance to see the amount ({formatMoney(ratePerKmMinor, currency)}/km)
+              Enter a distance to see the amount (
+              <Amount value={ratePerKmMinor} currency={currency} size="meta" tone="muted" />
+              /km)
             </span>
           )}
         </div>
