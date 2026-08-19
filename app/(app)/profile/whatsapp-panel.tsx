@@ -259,7 +259,7 @@ function StepIndicator({ state }: { state: WhatsAppLinkState }) {
               {done || (active && state.kind === "linked") ? (
                 <Check aria-hidden="true" className="size-3.5" />
               ) : isBusy(state) && active ? (
-                <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                <Loader2 aria-hidden="true" data-motion="busy" className="size-3.5 animate-spin" />
               ) : (
                 i + 1
               )}

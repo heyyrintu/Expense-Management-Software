@@ -361,9 +361,11 @@
 @utility origin-popover {
   transform-origin: var(--radix-popover-content-transform-origin);
 }
-@utility origin-dropdown {
-  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
-}
+/* origin-dropdown was REMOVED in D5.2. Radix DropdownMenu is not a
+   dependency, so `--radix-dropdown-menu-content-transform-origin` was never
+   set by anything — the one component using it scaled from its own centre
+   while looking, in the source, as though it were anchored. A utility that
+   reads a variable nothing defines is worse than no utility. */
 @utility origin-tooltip {
   transform-origin: var(--radix-tooltip-content-transform-origin);
 }
@@ -412,6 +414,21 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+
+    /* ── ONE CARVE-OUT: BUSY INDICATORS (D5.2) ─────────────────────────────
+       The blanket rule above froze every spinner mid-rotation — a static
+       three-quarter arc at a random angle, which reads as a broken icon
+       rather than as "working". Freezing the only signal that something is
+       happening trades motion sensitivity for confusion.
+
+       So a spinner keeps a slow OPACITY pulse instead, which is exactly what
+       reduced motion permits, and its rotation is cancelled outright. Marked
+       explicitly with data-motion="busy" so nothing else can quietly opt
+       into an exception. */
+    [data-motion="busy"] {
+      animation: skeleton-pulse 1.6s var(--ease-enter) infinite !important;
+      transform: none !important;
     }
   }
 }

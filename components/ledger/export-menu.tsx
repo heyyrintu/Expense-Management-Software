@@ -2,7 +2,7 @@
 
 // Export menu (D4.1) — §7.5's "CSV · Tally XML · Print".
 //
-// Same Radix Popover + fadeScale + origin-dropdown pattern as the filter
+// Same Radix Popover + fadeScale + origin-popover pattern as the filter
 // facets, rather than a new dropdown-menu dependency for three items. What
 // Popover does not supply is menu semantics, so those are declared here
 // (`role="menu"` / `role="menuitem"`); arrow-key roving is the one thing a
@@ -46,7 +46,13 @@ export function ExportMenu({
             variants={fadeScale}
             initial="hidden"
             animate="visible"
-            className="border-line bg-bg-surface shadow-overlay origin-dropdown z-50 w-64 rounded-md border p-1"
+            // origin-POPOVER, not origin-dropdown (D5.2). This is built on Radix
+            // Popover, so `--radix-dropdown-menu-content-transform-origin` was
+            // never set and the menu scaled from its own centre instead of from
+            // the Export button — the exact "anchored to its origin" rule §4.4
+            // exists for, failing silently because an unset CSS variable falls
+            // back to something plausible.
+            className="border-line bg-bg-surface shadow-overlay origin-popover z-50 w-64 rounded-md border p-1"
           >
             <div role="menu" aria-label="Export ledger" className="grid gap-0.5">
               <a role="menuitem" href={csvHref} download className={ITEM_CLASS}>

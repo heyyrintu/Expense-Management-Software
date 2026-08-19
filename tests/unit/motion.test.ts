@@ -9,16 +9,9 @@ import {
   collapseRow,
   enterTransition,
   exitTransition,
-  fadeOnly,
   fadeScale,
   seconds,
-  slideUpSheet,
   springTransition,
-  staggerFor,
-  staggerItem,
-  staggerList,
-  STAGGER_MAX_CHILDREN,
-  STAGGER_STEP,
 } from "@/lib/motion";
 
 type VariantObject = Record<string, unknown> & { transition?: Transition };
@@ -106,10 +99,6 @@ describe("motion tokens", () => {
 describe("the rules hold across every shared variant", () => {
   const variants: Array<[string, Variants]> = [
     ["fadeScale", fadeScale],
-    ["slideUpSheet", slideUpSheet],
-    ["staggerList", staggerList],
-    ["staggerItem", staggerItem],
-    ["fadeOnly", fadeOnly],
   ];
 
   it("animates only transform and opacity", () => {
@@ -201,21 +190,6 @@ describe("fadeScale", () => {
   });
 });
 
-describe("slideUpSheet", () => {
-  it("comes from the bottom edge it belongs to", () => {
-    expect(variantOf(slideUpSheet, "hidden")).toMatchObject({ y: "100%" });
-    expect(variantOf(slideUpSheet, "visible")).toMatchObject({ y: 0 });
-    expect(variantOf(slideUpSheet, "exit")).toMatchObject({ y: "100%" });
-  });
-
-  it("springs in (it is draggable) and eases out", () => {
-    const enter = variantOf(slideUpSheet, "visible").transition as Record<string, unknown>;
-    expect(enter.type).toBe("spring");
-    expect(enter).toMatchObject(SPRING.soft);
-    expect(easingsIn(variantOf(slideUpSheet, "exit").transition)[0]).toEqual([...EASE.in]);
-  });
-});
-
 describe("collapseRow", () => {
   it("is the documented exception: height is animated so rows can close the gap", () => {
     const exit = variantOf(collapseRow, "exit");
@@ -232,34 +206,6 @@ describe("collapseRow", () => {
   });
 });
 
-describe("staggerList", () => {
-  it("staggers children by a small step", () => {
-    const visible = variantOf(staggerList, "visible").transition as Record<string, number>;
-    expect(visible.staggerChildren).toBe(STAGGER_STEP);
-    expect(STAGGER_STEP).toBeLessThanOrEqual(0.05);
-  });
-
-  it("keeps the total stagger short for a long list", () => {
-    const total = STAGGER_STEP * STAGGER_MAX_CHILDREN * 1000;
-    expect(total).toBeLessThanOrEqual(DURATION.slow + DURATION.base);
-  });
-
-  it("drops the stagger entirely past the cap", () => {
-    expect(staggerFor(STAGGER_MAX_CHILDREN)).toBe(staggerList);
-    const long = staggerFor(STAGGER_MAX_CHILDREN + 1);
-    expect(long).not.toBe(staggerList);
-    const transition = (long.visible as VariantObject).transition as Record<string, unknown>;
-    expect(transition.staggerChildren).toBeUndefined();
-  });
-});
-
-describe("fadeOnly (reduced motion)", () => {
-  it("moves nothing — opacity only", () => {
-    for (const key of Object.keys(fadeOnly)) {
-      expect(animatedProps(variantOf(fadeOnly, key))).toEqual(["opacity"]);
-    }
-  });
-});
 
 describe("global motion configuration", () => {
   it("honours the OS reduced-motion setting", async () => {
@@ -283,5 +229,49 @@ describe("global motion configuration", () => {
     const css = readFileSync("app/globals.css", "utf8");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(css).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reduced motion (D5.2)
+// ---------------------------------------------------------------------------
+//
+// The audit's verification step is "with prefers-reduced-motion enabled: no
+// transforms or springs run, opacity fades remain, nothing becomes unusable
+// or invisible". Two of those three are properties of code rather than of a
+// rendered frame, so they are asserted here; the third needs a browser and is
+// recorded as such in docs/MOTION-AUDIT.md.
+
+describe("reduced motion", () => {
+  it("delegates to Framer's own handling rather than branching per component", () => {
+    // `reducedMotion: "user"` makes Framer drop transform and layout
+    // animations and keep opacity, for every motion component at once. A
+    // component branching on useReducedMotion() itself is a second
+    // implementation that can disagree with this one.
+    expect(MOTION_CONFIG.reducedMotion).toBe("user");
+  });
+
+  it("still supplies a default transition, so fades survive", () => {
+    // The failure mode this guards: stripping motion config entirely, which
+    // would remove the opacity fade too and make things appear instantly —
+    // "no motion" is not the same as "no transition".
+    const transition = MOTION_CONFIG.transition as { duration: number; ease: number[] };
+    expect(transition.duration).toBeGreaterThan(0);
+    expect(transition.ease).toEqual([...EASE.out]);
+  });
+
+  it("keeps every remaining variant inside the ceiling", () => {
+    // Re-checked after D5.2 removed three unused variants: whatever is left
+    // is what actually ships, so the ceiling has to hold across all of it.
+    for (const [name, variant] of [
+      ["fadeScale", fadeScale],
+      ["collapseRow", collapseRow],
+    ] as const) {
+      for (const key of Object.keys(variant)) {
+        for (const ms of durationsIn(variantOf(variant, key).transition)) {
+          expect(ms, `${name}.${key}`).toBeLessThanOrEqual(DURATION.slow);
+        }
+      }
+    }
   });
 });

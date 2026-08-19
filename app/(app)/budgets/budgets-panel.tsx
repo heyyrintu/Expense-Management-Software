@@ -29,10 +29,12 @@ export type BudgetView = {
 
 type Opt = { id: string; name: string };
 
+// Status tokens, not palette colours — the same green/amber/red every other
+// surface reads (§5.2). Spotted while fixing the bar's motion (D5.2).
 const BAR_COLORS = {
-  ok: "bg-green-500",
-  warn: "bg-amber-500",
-  over: "bg-red-500",
+  ok: "bg-status-success",
+  warn: "bg-status-warning",
+  over: "bg-status-danger",
 };
 
 export function BudgetsPanel({
@@ -108,11 +110,20 @@ export function BudgetsPanel({
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={`${b.label} budget utilization ${b.pct}%`}
-                className="bg-muted h-2 w-full overflow-hidden rounded-full"
+                className="bg-bg-subtle h-2 w-full overflow-hidden rounded-full"
               >
+                {/* scaleX, not width (D5.2). This was `transition-all` over an
+                    animated `width` — two violations of §4 principle 4 in one
+                    line: width is a layout property, so every frame reflowed
+                    the panel, and `transition-all` also animated the colour
+                    the bar changes to when a budget tips into overspend. */}
                 <div
-                  className={cn("h-full rounded-full transition-all", BAR_COLORS[b.level])}
-                  style={{ width: `${Math.min(b.pct, 100)}%` }}
+                  className={cn(
+                    "h-full w-full origin-left rounded-full",
+                    "transition-transform duration-base ease-out",
+                    BAR_COLORS[b.level]
+                  )}
+                  style={{ transform: `scaleX(${Math.min(b.pct, 100) / 100})` }}
                 />
               </div>
               <div className="flex items-center justify-between gap-2">

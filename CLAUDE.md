@@ -114,6 +114,10 @@ Design authority: `DESIGN-PRD.md`. Plan: `DESIGN-PLAN.md`. Prompts: `DESIGN-PROM
 
 ## Motion rules
 
+`docs/MOTION-AUDIT.md` is the inventory — every animation that ships, with its trigger, property, duration, easing and verdict. Add a row when you add motion. `scripts/check-motion.mjs` runs in `npm run lint` and fails on `transition-all`, `ease-in-out`, `transition-shadow`, layout-property transitions, arbitrary durations and anything over the 300ms ceiling; the `motion-ok:` escape hatch requires a written reason, so a third sanctioned exception cannot be added silently. The two that exist are `collapseRow` animating height and the 1.6s skeleton/busy pulse.
+
+Busy indicators mark themselves `data-motion="busy"`: the blanket reduced-motion rule froze spinners mid-rotation, so they now keep an opacity pulse and lose the rotation. A popover's `origin-*` utility must match the Radix primitive it is built on — an unset origin variable falls back to centre and the anchoring rule fails silently.
+
 DESIGN-PRD §4 principle 4, quoted as project law. Every animation in the app
 obeys these; if one can't, it doesn't ship.
 

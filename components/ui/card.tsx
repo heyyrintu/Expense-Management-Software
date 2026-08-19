@@ -17,8 +17,14 @@ function Card({
       data-slot="card"
       className={cn(
         "border-line bg-bg-surface text-text-primary flex flex-col gap-5 rounded-lg border p-5",
+        // A hover TINT, not a shadow (D5.2). §4.2 allows a border or a
+        // shadow, never both, and this card already has a border — so the
+        // hover shadow was stacking the two. Box-shadow is also outside
+        // "transform and opacity only": it repaints, and on a grid of cards
+        // that is a repaint per card per pointer move. StatCard already made
+        // this call; the base Card now agrees with it.
         interactive &&
-          "transition-shadow duration-instant ease-out hover:shadow-raised",
+          "hover:bg-bg-subtle transition-colors duration-instant ease-out",
         className
       )}
       {...props}

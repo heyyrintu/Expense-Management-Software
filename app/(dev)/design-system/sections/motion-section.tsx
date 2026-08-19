@@ -13,9 +13,6 @@ import { Button } from "@/components/ui/button";
 import {
   collapseRow,
   fadeScale,
-  slideUpSheet,
-  staggerItem,
-  staggerList,
 } from "@/lib/motion";
 
 function Demo({
@@ -81,37 +78,6 @@ function FadeScaleDemo() {
   );
 }
 
-function SlideUpDemo() {
-  const [open, setOpen] = React.useState(true);
-  return (
-    <Demo
-      title="slideUpSheet"
-      usage="Mobile bottom sheets, drawers"
-      note="Springs in because it is draggable; exits on a duration curve so dismissal is predictable."
-      onReplay={() => {
-        setOpen(false);
-        window.setTimeout(() => setOpen(true), 60);
-      }}
-    >
-      <div className="relative h-28 w-full max-w-56 overflow-hidden rounded-md">
-        <AnimatePresence>
-          {open ? (
-            <motion.div
-              key="sheet"
-              variants={slideUpSheet}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="border-line bg-bg-surface text-body text-text-secondary absolute inset-x-0 bottom-0 rounded-t-lg border px-4 py-3"
-            >
-              Bottom sheet
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </div>
-    </Demo>
-  );
-}
 
 const ROWS = ["Blue Tokai — ₹450.00", "Indigo — ₹4,500.00", "Uber — ₹340.00"];
 
@@ -151,35 +117,6 @@ function CollapseRowDemo() {
   );
 }
 
-function StaggerDemo() {
-  const [key, setKey] = React.useState(0);
-  return (
-    <Demo
-      title="staggerList"
-      usage="List and table bodies on first paint"
-      note="30ms between children — enough to suggest order, not enough to make the last row wait. Past 12 children the stagger drops entirely."
-      onReplay={() => setKey((k) => k + 1)}
-    >
-      <motion.ul
-        key={key}
-        variants={staggerList}
-        initial="hidden"
-        animate="visible"
-        className="grid w-full max-w-72 gap-2"
-      >
-        {ROWS.map((row) => (
-          <motion.li
-            key={row}
-            variants={staggerItem}
-            className="border-line bg-bg-surface text-body text-text-secondary rounded-md border px-3 py-2"
-          >
-            {row}
-          </motion.li>
-        ))}
-      </motion.ul>
-    </Demo>
-  );
-}
 
 export function MotionDemos() {
   const reduced = useReducedMotion();
@@ -193,9 +130,7 @@ export function MotionDemos() {
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <FadeScaleDemo />
-        <SlideUpDemo />
         <CollapseRowDemo />
-        <StaggerDemo />
       </div>
     </div>
   );

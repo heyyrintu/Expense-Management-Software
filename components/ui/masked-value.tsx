@@ -73,7 +73,7 @@ export function MaskedValue({
           aria-label={revealed !== null ? `Hide ${label}` : `Reveal ${label}`}
         >
           {pending ? (
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            <Loader2 aria-hidden="true" data-motion="busy" className="size-4 animate-spin" />
           ) : revealed !== null ? (
             <EyeOff aria-hidden="true" className="size-4" />
           ) : (

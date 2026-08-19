@@ -75,6 +75,10 @@ function Spinner({ className }: { className?: string }) {
       viewBox="0 0 16 16"
       fill="none"
       aria-hidden="true"
+      // data-motion="busy": under reduced motion the rotation is cancelled
+      // and replaced with an opacity pulse, rather than freezing mid-arc
+      // (app/globals.css, D5.2).
+      data-motion="busy"
       className={cn("size-4 animate-spin", className)}
     >
       <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />

@@ -15,7 +15,7 @@
 //   * Elements animate from their origin — a dropdown scales from its
 //     trigger, a sheet slides from the edge it belongs to.
 //   * Springs for things that feel physical (sheets, toasts); duration
-//     easing for everything else.
+//     easing for everything else. Sheets are Vaul's; it owns that spring.
 //   * prefers-reduced-motion removes transforms and springs, keeps opacity.
 import type { Transition, Variants } from "framer-motion";
 
@@ -84,24 +84,10 @@ export const fadeScale: Variants = {
   },
 };
 
-/**
- * slideUpSheet — mobile bottom sheets and anything anchored to the bottom
- * edge. Springs because the user can drag it; the exit is a duration curve
- * so dismissal is predictable rather than bouncy.
- */
-export const slideUpSheet: Variants = {
-  hidden: { opacity: 0, y: "100%" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: springTransition("soft"),
-  },
-  exit: {
-    opacity: 0,
-    y: "100%",
-    transition: exitTransition(DURATION.base),
-  },
-};
+// slideUpSheet was REMOVED in D5.2. Sheets are Vaul (`components/ui/sheet`),
+// which owns its own spring and drag physics, so the variant governed nothing
+// while appearing to define sheet motion — the most misleading kind of dead
+// code in a file whose whole job is to be the single source of truth.
 
 /**
  * collapseRow — a row leaving a list after an optimistic action (approve
@@ -125,57 +111,18 @@ export const collapseRow: Variants = {
   },
 };
 
-/**
- * staggerList — list and table bodies on first paint. The stagger is small
- * on purpose: enough to suggest order, not enough to make the last row wait.
- */
-export const STAGGER_STEP = 0.03; // seconds between children
-export const STAGGER_MAX_CHILDREN = 12; // beyond this the list appears at once
+// staggerList / staggerItem / staggerFor / STAGGER_* were REMOVED in D5.2.
+//
+// A stagger on a list's first paint communicates nothing: the rows are not
+// arriving in a meaningful order, they are all already there, and the effect
+// only delays the last one. That is the definition of decorative motion, and
+// §4 principle 4 says delete it rather than tune it. Nothing in the app ever
+// used them — only the gallery demo that existed to show them off.
 
-export const staggerList: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: STAGGER_STEP,
-      delayChildren: 0,
-    },
-  },
-};
-
-export const staggerItem: Variants = {
-  hidden: { opacity: 0, y: 4 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: enterTransition(DURATION.fast),
-  },
-};
-
-/**
- * Total stagger time is capped: a 200-row table must not take six seconds
- * to appear. Past STAGGER_MAX_CHILDREN the list fades in as one.
- */
-export function staggerFor(childCount: number): Variants {
-  if (childCount > STAGGER_MAX_CHILDREN) {
-    return {
-      hidden: { opacity: 0 },
-      visible: { opacity: 1, transition: enterTransition(DURATION.fast) },
-    };
-  }
-  return staggerList;
-}
-
-/**
- * Reduced motion: same states, no movement. Transforms and springs are
- * dropped and only the opacity fade survives (§4.4). MotionConfig applies
- * this globally, but a component doing something bespoke can reach for it.
- */
-export const fadeOnly: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: enterTransition(DURATION.instant) },
-  exit: { opacity: 0, transition: exitTransition(DURATION.instant) },
-};
+// fadeOnly was REMOVED in D5.2. MOTION_CONFIG's `reducedMotion: "user"`
+// already strips transforms and keeps opacity for every component at once,
+// so a hand-reachable variant was a second way to do the thing the provider
+// does — and the two could disagree.
 
 /**
  * Global Framer configuration, applied by MotionProvider in the root layout.
