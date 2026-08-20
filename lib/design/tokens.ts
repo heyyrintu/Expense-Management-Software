@@ -33,10 +33,10 @@ export const COLOR_GROUPS: ColorGroup[] = [
       { name: "bg-surface", cssVar: "--bg-surface", hex: "#FFFFFF", usage: "Cards, tables, sheets" },
       { name: "bg-subtle", cssVar: "--bg-subtle", hex: "#F4F4F5", usage: "Hover rows, inset panels, disabled fills" },
       { name: "line", cssVar: "--line", hex: "#E4E4E7", usage: "Default hairline" },
-      { name: "line-strong", cssVar: "--line-strong", hex: "#D4D4D8", usage: "Inputs, focused containers" },
+      { name: "line-strong", cssVar: "--line-strong", hex: "#8A8A94", usage: "Inputs, focused containers — 3:1 control edge (D5.3)" },
       { name: "text-primary", cssVar: "--fg-primary", hex: "#18181B", usage: "Headings, amounts" },
       { name: "text-secondary", cssVar: "--fg-secondary", hex: "#52525B", usage: "Labels, body" },
-      { name: "text-tertiary", cssVar: "--fg-tertiary", hex: "#A1A1AA", usage: "Meta, placeholders, timestamps" },
+      { name: "text-tertiary", cssVar: "--fg-tertiary", hex: "#6B6B74", usage: "Meta, placeholders, timestamps — 4.5:1 (D5.3)" },
     ],
   },
   {
@@ -60,7 +60,7 @@ export const COLOR_GROUPS: ColorGroup[] = [
     tokens: [
       { name: "status-success", cssVar: "--status-success", hex: "#059669", usage: "Approved, reimbursed, matched" },
       { name: "status-success-subtle", cssVar: "--status-success-subtle", hex: "#ECFDF5", usage: "Success badge background" },
-      { name: "status-warning", cssVar: "--status-warning", hex: "#D97706", usage: "Policy flags, SLA amber, sent back" },
+      { name: "status-warning", cssVar: "--status-warning", hex: "#CE7008", usage: "Policy flags, SLA amber, sent back" },
       { name: "status-warning-subtle", cssVar: "--status-warning-subtle", hex: "#FFFBEB", usage: "Warning badge background" },
       { name: "status-danger", cssVar: "--status-danger", hex: "#DC2626", usage: "Rejected, missing in bank, overdue" },
       { name: "status-danger-subtle", cssVar: "--status-danger-subtle", hex: "#FEF2F2", usage: "Danger badge background" },
@@ -239,6 +239,11 @@ export const CONTRAST_CONTRACT: ContrastPair[] = [
   { label: "text-primary on bg-surface", foreground: "#18181B", background: "#FFFFFF" },
   { label: "text-secondary on bg-surface", foreground: "#52525B", background: "#FFFFFF" },
   { label: "text-secondary on bg-subtle", foreground: "#52525B", background: "#F4F4F5" },
+  // Added in D5.3. text-tertiary is the app's most-used meta colour and had
+  // never been in this list — it measured 2.56:1 before being darkened.
+  { label: "text-tertiary on bg-surface", foreground: "#6B6B74", background: "#FFFFFF" },
+  { label: "text-tertiary on bg-app", foreground: "#6B6B74", background: "#FAFAFA" },
+  { label: "text-tertiary on bg-subtle", foreground: "#6B6B74", background: "#F4F4F5" },
   { label: "text-on-accent on accent-solid", foreground: "#FFFFFF", background: "#4F46E5" },
   { label: "accent-text on accent-subtle", foreground: "#4F46E5", background: "#EEF2FF" },
   { label: "accent-text on bg-surface", foreground: "#4F46E5", background: "#FFFFFF" },
@@ -277,9 +282,9 @@ export const BRAND_FILL_PAIRS: Array<ContrastPair & { note: string }> = [
   },
   {
     label: "status-warning on its subtle",
-    foreground: "#D97706",
+    foreground: "#CE7008",
     background: "#FFFBEB",
-    note: "Weakest of the set at 3.07:1 — never use as text.",
+    note: "3.21:1 as a fill after D5.3 nudged it from #D97706 (2.90:1 on bg-subtle). Still never used as text — status-warning-text carries the words.",
   },
   {
     label: "status-danger on its subtle",

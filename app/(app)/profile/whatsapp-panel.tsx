@@ -251,8 +251,12 @@ function StepIndicator({ state }: { state: WhatsAppLinkState }) {
               aria-current={active ? "step" : undefined}
               className={cn(
                 "flex size-6 shrink-0 items-center justify-center rounded-full text-meta tabular",
-                done && "bg-status-success text-text-inverse",
-                active && "bg-accent text-text-inverse",
+                // D5.3: `text-text-inverse` was not a token — it resolved to
+                // nothing, so these glyphs inherited the ambient colour.
+                done && "bg-status-success text-text-on-accent",
+                // accent-SOLID: this circle carries a numeral, and white on the
+                // brand indigo is 4.47:1 — a hair under AA for text.
+                active && "bg-accent-solid text-text-on-accent",
                 !done && !active && "bg-bg-subtle text-text-tertiary"
               )}
             >

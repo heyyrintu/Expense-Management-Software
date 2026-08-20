@@ -34,9 +34,7 @@ import {
 } from "@/lib/schemas/expense-filters";
 import { cn } from "@/lib/utils";
 import { AddToReport, type OpenReport } from "./add-to-report";
-
-/** §6.1: pagination past 50 rows. The page's query slices by this too. */
-export const EXPENSE_PAGE_SIZE = 50;
+import { EXPENSE_PAGE_SIZE } from "./constants";
 
 /** Serialisable row — this crosses the server/client boundary. */
 export type ExpenseTableRow = {

@@ -20,7 +20,8 @@ import {
 } from "@/lib/domain/expense-stats";
 import { parseExpenseFilters } from "@/lib/schemas/expense-filters";
 import type { OpenReport } from "./add-to-report";
-import { EXPENSE_PAGE_SIZE, ExpensesTable, type ExpenseTableRow } from "./expenses-table";
+import { EXPENSE_PAGE_SIZE } from "./constants";
+import { ExpensesTable, type ExpenseTableRow } from "./expenses-table";
 
 type ExpenseRow = {
   id: string;

@@ -46,11 +46,22 @@
   --bg-surface: #ffffff;      /* cards, tables, sheets */
   --bg-subtle: #f4f4f5;       /* hover rows, inset panels, disabled fills */
   --line: #e4e4e7;            /* default hairline */
-  --line-strong: #d4d4d8;     /* inputs, focused containers */
+  /* D5.3: was #d4d4d8, which measured 1.48:1 on white — WCAG 1.4.11 wants
+     3:1 for the boundary of a UI COMPONENT, and this is the border on every
+     input, checkbox and secondary button. #8a8a94 measures 3.42:1 on surface
+     and 3.11:1 on bg-subtle. `--line` above stays light on purpose: it
+     separates static content (card edges, table rules), which 1.4.11 does
+     not govern. */
+  --line-strong: #8a8a94;     /* inputs, focused containers — a CONTROL edge */
 
   --fg-primary: #18181b;      /* headings, amounts */
   --fg-secondary: #52525b;    /* labels, body */
-  --fg-tertiary: #a1a1aa;     /* meta, placeholders, timestamps */
+  /* D5.3: was #a1a1aa — 2.56:1 on white, 2.33:1 on bg-subtle. This is the
+     app's most-used meta colour (timestamps, hints, counts, column
+     sub-labels), so it carries real words and needs 4.5:1, not the 3:1 a
+     decorative tint would. #6b6b74 measures 5.28 / 5.05 / 4.80 across the
+     three surfaces and still sits a clear step below --fg-secondary. */
+  --fg-tertiary: #6b6b74;     /* meta, placeholders, timestamps */
   --fg-on-accent: #ffffff;    /* text on a filled accent surface */
 
   /* ---- Accent: indigo/violet (§5.1) ---- */
@@ -78,7 +89,11 @@
      text — e.g. #D97706 on #FFFBEB is 3.07:1 — so badges keep the brand fill
      and darken only the glyphs. See CONTRAST_CONTRACT for the numbers. */
   --status-success: #059669;  --status-success-subtle: #ecfdf5;  --status-success-text: #047857;
-  --status-warning: #d97706;  --status-warning-subtle: #fffbeb;  --status-warning-text: #b45309;
+  /* D5.3: warning nudged from #d97706 to #ce7008. As a FILL on bg-subtle —
+     the flagged-row edge on a hovered row — it measured 2.90:1 against the
+     3:1 floor for meaningful graphics. The shift is small enough to keep the
+     PRD's amber and large enough to clear 1.4.11 on every surface. */
+  --status-warning: #ce7008;  --status-warning-subtle: #fffbeb;  --status-warning-text: #b45309;
   --status-danger: #dc2626;   --status-danger-subtle: #fef2f2;   --status-danger-text: #b91c1c;
   --status-info: #2563eb;     --status-info-subtle: #eff6ff;     --status-info-text: #1d4ed8;
   --status-neutral: #71717a;  --status-neutral-subtle: #f4f4f5;  --status-neutral-text: #52525b;
