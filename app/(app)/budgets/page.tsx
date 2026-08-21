@@ -39,7 +39,7 @@ export default async function BudgetsPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Budgets</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Utilization for the current period. Spend counts submitted, approved,
           and reimbursed expenses.
         </p>

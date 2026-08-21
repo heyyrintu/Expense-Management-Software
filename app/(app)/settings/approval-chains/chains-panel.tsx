@@ -60,7 +60,7 @@ export function ChainsPanel({
   return (
     <div className="grid gap-4">
       {rules.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           No custom rules — default routing applies.
         </p>
       ) : (
@@ -72,7 +72,7 @@ export function ChainsPanel({
             >
               <span className="grid">
                 <span className="font-medium">{r.name}</span>
-                <span className="text-muted-foreground">
+                <span className="text-text-tertiary">
                   {r.department} ·{" "}
                   {r.aboveAmount !== null ? (
                     <>
@@ -106,7 +106,7 @@ export function ChainsPanel({
       )}
 
       <form
-        className="grid max-w-2xl gap-3 rounded-xl border p-4"
+        className="grid max-w-2xl gap-3 rounded-lg border p-4"
         onSubmit={(e) => {
           e.preventDefault();
           run(() =>
@@ -123,11 +123,11 @@ export function ChainsPanel({
         <h2 className="text-sm font-medium">New rule</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1">
-            <label htmlFor="r-name" className="text-muted-foreground text-xs">Name</label>
+            <label htmlFor="r-name" className="text-text-tertiary text-xs">Name</label>
             <Input id="r-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sales big-ticket" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="r-dept" className="text-muted-foreground text-xs">Department</label>
+            <label htmlFor="r-dept" className="text-text-tertiary text-xs">Department</label>
             <NativeSelect id="r-dept" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
               <option value="">All departments</option>
               {departments.map((d) => (
@@ -136,11 +136,11 @@ export function ChainsPanel({
             </NativeSelect>
           </div>
           <div className="grid gap-1">
-            <label htmlFor="r-amount" className="text-muted-foreground text-xs">Only above (optional)</label>
+            <label htmlFor="r-amount" className="text-text-tertiary text-xs">Only above (optional)</label>
             <Input id="r-amount" inputMode="decimal" value={aboveAmount} onChange={(e) => setAboveAmount(e.target.value)} placeholder="25000.00" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="r-approver" className="text-muted-foreground text-xs">Approver</label>
+            <label htmlFor="r-approver" className="text-text-tertiary text-xs">Approver</label>
             <NativeSelect id="r-approver" value={approverId} onChange={(e) => setApproverId(e.target.value)}>
               <option value="">Select…</option>
               {approvers.map((a) => (
@@ -149,7 +149,7 @@ export function ChainsPanel({
             </NativeSelect>
           </div>
           <div className="grid gap-1">
-            <label htmlFor="r-second" className="text-muted-foreground text-xs">Second approver (optional)</label>
+            <label htmlFor="r-second" className="text-text-tertiary text-xs">Second approver (optional)</label>
             <NativeSelect id="r-second" value={secondApproverId} onChange={(e) => setSecondApproverId(e.target.value)}>
               <option value="">None — org threshold applies</option>
               {approvers.map((a) => (

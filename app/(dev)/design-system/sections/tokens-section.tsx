@@ -1,8 +1,10 @@
 // Tokens (D0.5). Every colour in the product, measured.
 //
-// Each swatch is painted with a real utility class, so a token missing from
-// the Tailwind theme shows up as a transparent square rather than as a
-// runtime surprise three screens later.
+// The swatches in the groups below are painted from the CSS VARIABLE, which
+// is what makes their measured hex trustworthy. That is deliberately not the
+// same thing as painting them with a Tailwind utility — see the "Utility
+// resolution" block at the end, which exists because the difference between
+// those two hid a real defect for five milestones (D-5).
 //
 // Every swatch carries BOTH reference ratios — against the white surface it
 // will usually sit on, and against text-primary, the ink that will usually
@@ -45,6 +47,45 @@ function LevelChip({ ratio, prefix }: { ratio: number; prefix?: string }) {
     </span>
   );
 }
+
+/**
+ * The utility-class ↔ CSS-variable pairs (D-5).
+ *
+ * The swatch grids above paint from `var(--token)`, which proves the token
+ * exists and measures what it claims. It does NOT prove that the Tailwind
+ * class of the same name resolves to it — and for five milestones it didn't:
+ * a leftover shadcn `@theme inline` block re-declared `--color-accent` as a
+ * near-white, and since Tailwind v4 merges @theme last-wins, `bg-accent`
+ * silently painted that near-white while this page cheerfully showed indigo.
+ *
+ * So these rows paint both ways at once. The classes are written out in full
+ * because Tailwind scans source text: an interpolated class name generates no
+ * CSS and would fail as a transparent half, which — confusingly — is also
+ * what a genuinely broken mapping looks like.
+ */
+const UTILITY_RESOLUTION: Array<{ className: string; cssVar: string }> = [
+  // The accent family — the one that broke, and the app's only brand colour.
+  { className: "bg-accent", cssVar: "--accent-base" },
+  { className: "bg-accent-hover", cssVar: "--accent-hover-base" },
+  { className: "bg-accent-pressed", cssVar: "--accent-pressed-base" },
+  { className: "bg-accent-subtle", cssVar: "--accent-subtle-base" },
+  { className: "bg-accent-border", cssVar: "--accent-border-base" },
+  { className: "bg-accent-solid", cssVar: "--accent-solid-base" },
+  { className: "bg-accent-text", cssVar: "--accent-text-base" },
+  { className: "bg-focus-ring", cssVar: "--focus-ring-base" },
+  // Surfaces and lines — every screen's background comes through these.
+  { className: "bg-bg-app", cssVar: "--bg-app" },
+  { className: "bg-bg-surface", cssVar: "--bg-surface" },
+  { className: "bg-bg-subtle", cssVar: "--bg-subtle" },
+  { className: "bg-line", cssVar: "--line" },
+  { className: "bg-line-strong", cssVar: "--line-strong" },
+  // Status fills — StatusBadge reads these through TONE_CLASSES.
+  { className: "bg-status-success", cssVar: "--status-success" },
+  { className: "bg-status-warning", cssVar: "--status-warning" },
+  { className: "bg-status-danger", cssVar: "--status-danger" },
+  { className: "bg-status-info", cssVar: "--status-info" },
+  { className: "bg-status-neutral", cssVar: "--status-neutral" },
+];
 
 const STATUS_SWATCH: Record<string, string> = {
   success: "bg-status-success-subtle text-status-success-text",
@@ -166,6 +207,29 @@ export function TokensSection() {
             </tbody>
           </table>
         </div>
+      </Block>
+
+      <Block
+        title="Utility resolution"
+        description="Each row is one colour painted twice: the left half by its Tailwind utility class, the right half by its CSS variable. They are the same colour, so a row reads as one solid block. A visible seam means the @theme mapping and the token have come apart — which is exactly what happened to bg-accent."
+      >
+        <ul className="border-line bg-bg-surface divide-line divide-y rounded-lg border">
+          {UTILITY_RESOLUTION.map((row) => (
+            <li key={row.className} className="flex flex-wrap items-center gap-4 p-4">
+              <div className="border-line flex h-10 w-40 shrink-0 overflow-hidden rounded-md border">
+                {/* Literal class strings, never interpolated: Tailwind's
+                    scanner reads source text, so a computed `bg-${name}`
+                    would generate nothing and paint transparent. */}
+                <div className={cn("w-1/2", row.className)} />
+                <div className="w-1/2" style={{ background: `var(${row.cssVar})` }} />
+              </div>
+              <div className="grid gap-1">
+                <code className="text-label text-text-primary">{row.className}</code>
+                <span className="text-meta text-text-tertiary tabular">{row.cssVar}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
       </Block>
     </Group>
   );

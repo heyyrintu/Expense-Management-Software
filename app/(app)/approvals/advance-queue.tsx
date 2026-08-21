@@ -59,7 +59,7 @@ function AdvanceRow({ item }: { item: Item }) {
     <li className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
       <span className="grid min-w-0 flex-1">
         <span className="truncate font-medium">{item.purpose}</span>
-        <span className="text-muted-foreground">
+        <span className="text-text-tertiary">
           {item.ownerName}
           {item.trip ? ` · ${item.trip}` : ""}
         </span>

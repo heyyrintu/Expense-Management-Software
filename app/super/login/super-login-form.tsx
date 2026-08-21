@@ -25,26 +25,28 @@ export function SuperLoginForm() {
       }}
     >
       <div className="grid gap-1">
-        <label htmlFor="s-email" className="text-xs text-zinc-400">Email</label>
+        <label htmlFor="s-email" className="text-text-tertiary text-xs">Email</label>
+        {/* No className: the Input primitive is already on the token layer,
+            and overriding its surface here is what put zinc in this file. */}
         <Input
           id="s-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="border-zinc-700 bg-zinc-800 text-zinc-100"
         />
       </div>
       <div className="grid gap-1">
-        <label htmlFor="s-password" className="text-xs text-zinc-400">Password</label>
+        <label htmlFor="s-password" className="text-text-tertiary text-xs">Password</label>
         <Input
           id="s-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border-zinc-700 bg-zinc-800 text-zinc-100"
         />
       </div>
-      {error ? <p role="alert" className="text-sm text-red-400">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-status-danger-text text-sm">{error}</p>
+      ) : null}
       <Button type="submit" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>

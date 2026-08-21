@@ -58,7 +58,7 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
   return (
     <div className="grid gap-4">
       <form
-        className="grid max-w-2xl gap-3 rounded-xl border p-4"
+        className="grid max-w-2xl gap-3 rounded-lg border p-4"
         onSubmit={(e) => {
           e.preventDefault();
           run(() => createAdvanceAction({ amount, purpose, tripStart, tripEnd }));
@@ -67,19 +67,19 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
         <h2 className="text-sm font-medium">Request an advance</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1">
-            <label htmlFor="adv-amount" className="text-muted-foreground text-xs">Amount</label>
+            <label htmlFor="adv-amount" className="text-text-tertiary text-xs">Amount</label>
             <Input id="adv-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="20000.00" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="adv-purpose" className="text-muted-foreground text-xs">Purpose</label>
+            <label htmlFor="adv-purpose" className="text-text-tertiary text-xs">Purpose</label>
             <Input id="adv-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Client visit — Mumbai" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="adv-start" className="text-muted-foreground text-xs">Trip start (optional)</label>
+            <label htmlFor="adv-start" className="text-text-tertiary text-xs">Trip start (optional)</label>
             <Input id="adv-start" type="date" value={tripStart} onChange={(e) => setTripStart(e.target.value)} />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="adv-end" className="text-muted-foreground text-xs">Trip end (optional)</label>
+            <label htmlFor="adv-end" className="text-text-tertiary text-xs">Trip end (optional)</label>
             <Input id="adv-end" type="date" value={tripEnd} onChange={(e) => setTripEnd(e.target.value)} />
           </div>
         </div>
@@ -101,7 +101,7 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
                   <span className="truncate font-medium">{a.purpose}</span>
                   <StatusBadge status={a.status} />
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-text-tertiary">
                   <DateCell value={a.when} tone="muted" />
                   {a.trip ? (
                     <>

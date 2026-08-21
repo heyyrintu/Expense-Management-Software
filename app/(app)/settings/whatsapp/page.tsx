@@ -40,7 +40,7 @@ export default async function WhatsAppSettingsPage() {
     <section className="grid gap-6">
       <div>
         <h1 className="text-lg font-semibold">WhatsApp</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Connect your Meta WhatsApp Business number so your team can send
           receipts and get updates in chat. Leave it off and nothing about
           WhatsApp appears anywhere in the app.
@@ -62,7 +62,7 @@ export default async function WhatsAppSettingsPage() {
         }}
       />
 
-      <p className="text-muted-foreground text-sm">
+      <p className="text-text-tertiary text-sm">
         {linked} {linked === 1 ? "person has" : "people have"} linked a number.
         Everyone links their own from their profile page.
       </p>

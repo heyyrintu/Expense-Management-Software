@@ -67,7 +67,7 @@ export default async function CardImportsPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Card imports</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           {totalCount} transaction{totalCount === 1 ? "" : "s"} imported ·{" "}
           {matchedCount} matched · {totalCount - matchedCount} open. Auto-match
           pairs exact amounts within ±{MATCH_WINDOW_DAYS} days.

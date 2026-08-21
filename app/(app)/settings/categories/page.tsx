@@ -76,9 +76,9 @@ export default async function CategoriesPage() {
             ))}
           </ul>
           {/* desktop: table */}
-          <div className="hidden overflow-x-auto rounded-xl border md:block">
+          <div className="hidden overflow-x-auto rounded-lg border md:block">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left">
+              <thead className="bg-bg-subtle/50 text-left">
                 <tr>
                   <th scope="col" className="p-3 font-medium">Name</th>
                   <th scope="col" className="p-3 font-medium">Per-expense limit</th>

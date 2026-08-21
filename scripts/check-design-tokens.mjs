@@ -60,18 +60,25 @@ const ALLOWED_EXCEPTIONS = [];
 /**
  * Directories where TAILWIND PALETTE COLOURS are banned as well — bg-red-50,
  * text-green-800 and friends. These bypass the token layer just as surely as
- * a raw hex: they don't follow the theme and can't be changed centrally.
+ * a raw hex: they don't follow the theme and can't be changed centrally, and
+ * a palette-coloured status bypasses StatusBadge, which DESIGN-PRD §5.2 makes
+ * the single source of truth for what a state looks like.
  *
- * Scope grows as screens are restyled. Feature screens still carry palette
- * classes from before the design system existed; D1–D5 clear them screen by
- * screen and add each directory here as it lands.
+ * The WHOLE of app/ and components/ — every screen, not a list of them.
+ *
+ * This used to be four paths, on the plan that D1–D5 would append each screen
+ * directory as it was restyled. Nobody appended anything, so the rule ran on
+ * ~4% of the surface it was written for and 51 palette classes across 12
+ * feature files passed lint for five milestones — including four user states
+ * hand-mapped to bg-green-100/bg-blue-100/bg-gray-200 while all four already
+ * existed in STATUS_MAP. An allowlist that has to be maintained to stay
+ * correct is a rule that silently stops applying; a denylist of two roots
+ * cannot rot the same way.
+ *
+ * lib/ is deliberately absent: lib/charts/theme.ts holds real colour because
+ * Recharts takes props, not classes, and it is a TOKEN_SOURCE below.
  */
-const TOKEN_ONLY_DIRS = [
-  "components/ui",
-  "components/shell", // D0.4 — the shell is chrome on every screen
-  "components/status-badge.tsx",
-  "components/sla-badge.tsx",
-];
+const TOKEN_ONLY_DIRS = ["app", "components"];
 
 const PALETTE_COLOUR =
   /\b(?:bg|text|border|ring|fill|stroke|from|via|to|divide|outline|shadow|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/;
@@ -162,7 +169,9 @@ for (const dir of SCAN_DIRS) {
             at,
             rule: "palette-colour",
             found: palette[0],
-            hint: "Primitives are token-only. Use bg-*/text-*/accent-*/status-* from the token layer.",
+            hint:
+              "Use bg-*/text-*/line-*/accent-*/status-* from the token layer. " +
+              "If this is a STATUS, it belongs in <StatusBadge> (DESIGN-PRD §5.2), not a class.",
           });
         }
       }
@@ -210,4 +219,7 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(`✔ design tokens: no raw hex or arbitrary values in ${SCAN_DIRS.map((d) => `${d}/**`).join(", ")}`);
+console.log(
+  `✔ design tokens: no raw hex or arbitrary values in ${SCAN_DIRS.map((d) => `${d}/**`).join(", ")}` +
+    `; no palette colours in ${TOKEN_ONLY_DIRS.map((d) => `${d}/**`).join(", ")}`
+);

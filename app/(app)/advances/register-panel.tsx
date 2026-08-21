@@ -26,7 +26,7 @@ export function RegisterPanel({
     <div className="grid gap-3">
       <form className="flex items-end gap-2" action="/advances" method="GET">
         <div className="grid gap-1">
-          <label htmlFor="reg-status" className="text-muted-foreground text-xs">Status</label>
+          <label htmlFor="reg-status" className="text-text-tertiary text-xs">Status</label>
           <NativeSelect id="reg-status" name="status" defaultValue={statusFilter} className="w-44">
             <option value="">All statuses</option>
             {["draft", "submitted", "approved", "rejected", "disbursed", "partially_settled", "settled"].map((s) => (
@@ -42,7 +42,7 @@ export function RegisterPanel({
           <RegisterItem key={r.id} row={r} />
         ))}
         {rows.length === 0 ? (
-          <li className="text-muted-foreground text-sm">Nothing matches.</li>
+          <li className="text-text-tertiary text-sm">Nothing matches.</li>
         ) : null}
       </ul>
     </div>
@@ -82,7 +82,7 @@ function RegisterItem({ row }: { row: RegisterRow }) {
             <span className="truncate font-medium">{row.purpose}</span>
             <StatusBadge status={row.status} />
           </span>
-          <span className="text-muted-foreground">
+          <span className="text-text-tertiary">
             {row.ownerName} · <DateCell value={row.when} tone="muted" />
             {row.trip ? (
               <>
@@ -116,7 +116,7 @@ function RegisterItem({ row }: { row: RegisterRow }) {
       {row.approved ? (
         <div className="flex flex-wrap items-end gap-2 pl-1">
           <div className="grid gap-1">
-            <label htmlFor={`dis-ref-${row.id}`} className="text-muted-foreground text-xs">
+            <label htmlFor={`dis-ref-${row.id}`} className="text-text-tertiary text-xs">
               Reference / UTR
             </label>
             <Input
@@ -127,7 +127,7 @@ function RegisterItem({ row }: { row: RegisterRow }) {
             />
           </div>
           <div className="grid gap-1">
-            <label htmlFor={`dis-proof-${row.id}`} className="text-muted-foreground text-xs">
+            <label htmlFor={`dis-proof-${row.id}`} className="text-text-tertiary text-xs">
               Proof (optional)
             </label>
             <Input

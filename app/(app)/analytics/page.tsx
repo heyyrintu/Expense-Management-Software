@@ -34,7 +34,13 @@ const RULE_LABELS: Record<string, string> = {
   email_ingested: "From email",
 };
 
-const BAR_COLORS = { ok: "bg-green-500", warn: "bg-amber-500", over: "bg-red-500" };
+// Status tokens, not palette colours — the same three levels the budgets
+// panel draws, from the one map that defines them (§5.2).
+const BAR_COLORS = {
+  ok: "bg-status-success",
+  warn: "bg-status-warning",
+  over: "bg-status-danger",
+};
 
 export default async function AnalyticsPage({
   searchParams,
@@ -127,7 +133,7 @@ export default async function AnalyticsPage({
     <section className="grid gap-6">
       <div>
         <h1 className="text-xl font-semibold">Analytics</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Spend = submitted, approved, and reimbursed expenses in {org.currency},
           last 12 months.
         </p>
@@ -148,7 +154,7 @@ export default async function AnalyticsPage({
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No spend in the window.</p>
+            <p className="text-text-tertiary text-sm">No spend in the window.</p>
           ) : (
             <TrendAreaChart series={trend.series} labels={trend.labels} currency={org.currency} />
           )}
@@ -172,7 +178,7 @@ export default async function AnalyticsPage({
                 </li>
               ))}
               {leaderboard.byType.length === 0 ? (
-                <li className="text-muted-foreground">No violations — spotless.</li>
+                <li className="text-text-tertiary">No violations — spotless.</li>
               ) : null}
             </ul>
           </CardContent>
@@ -191,14 +197,14 @@ export default async function AnalyticsPage({
                   </Link>
                   <span>
                     <span className="font-medium">{u.count}</span>{" "}
-                    <span className="text-muted-foreground">
+                    <span className="text-text-tertiary">
                       (<Amount value={u.total} currency={org.currency} size="meta" tone="muted" />)
                     </span>
                   </span>
                 </li>
               ))}
               {leaderboard.byUser.length === 0 ? (
-                <li className="text-muted-foreground">No violations — spotless.</li>
+                <li className="text-text-tertiary">No violations — spotless.</li>
               ) : null}
             </ul>
           </CardContent>
@@ -213,7 +219,7 @@ export default async function AnalyticsPage({
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
-              <thead className="text-muted-foreground text-left">
+              <thead className="text-text-tertiary text-left">
                 <tr>
                   <th scope="col" className="pb-1 font-medium">Approver</th>
                   <th scope="col" className="pb-1 font-medium">Decided</th>
@@ -231,7 +237,7 @@ export default async function AnalyticsPage({
                   </tr>
                 ))}
                 {bottlenecks.length === 0 ? (
-                  <tr><td className="text-muted-foreground py-1" colSpan={4}>No decided reports yet.</td></tr>
+                  <tr><td className="text-text-tertiary py-1" colSpan={4}>No decided reports yet.</td></tr>
                 ) : null}
               </tbody>
             </table>
@@ -246,9 +252,9 @@ export default async function AnalyticsPage({
               {oldestPending.map((r) => (
                 <li key={r.id} className="flex flex-wrap justify-between gap-2">
                   <Link href={`/approvals/${r.id}`} className="hover:underline">
-                    {r.title} <span className="text-muted-foreground">({r.user.name})</span>
+                    {r.title} <span className="text-text-tertiary">({r.user.name})</span>
                   </Link>
-                  <span className="text-muted-foreground">
+                  <span className="text-text-tertiary">
                     {r.submittedAt
                       ? `${Math.floor((now.getTime() - r.submittedAt.getTime()) / DAY)}d waiting`
                       : ""}
@@ -256,7 +262,7 @@ export default async function AnalyticsPage({
                 </li>
               ))}
               {oldestPending.length === 0 ? (
-                <li className="text-muted-foreground">Nothing pending.</li>
+                <li className="text-text-tertiary">Nothing pending.</li>
               ) : null}
             </ul>
           </CardContent>
@@ -277,14 +283,14 @@ export default async function AnalyticsPage({
                 <div className="flex justify-between gap-2">
                   <span>
                     {scopeName[b.scopeType].get(b.scopeId) ?? "(deleted)"}{" "}
-                    <span className="text-muted-foreground">· {b.scopeType} · {b.period}</span>
+                    <span className="text-text-tertiary">· {b.scopeType} · {b.period}</span>
                   </span>
                   <span className="whitespace-nowrap">
                     <Amount value={b.spent} currency={org.currency} tone="muted" /> /{" "}
                     <Amount value={b.amount} currency={org.currency} />
                   </span>
                 </div>
-                <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div className="bg-bg-subtle h-2 w-full overflow-hidden rounded-full">
                   <div
                     className={cn("h-full rounded-full", BAR_COLORS[b.level])}
                     style={{ width: `${Math.min(b.pct, 100)}%` }}
@@ -293,13 +299,13 @@ export default async function AnalyticsPage({
               </li>
             ))}
             {budgets.length === 0 ? (
-              <li className="text-muted-foreground text-sm">No budgets configured.</li>
+              <li className="text-text-tertiary text-sm">No budgets configured.</li>
             ) : null}
           </ul>
         </CardContent>
       </Card>
 
-      <p className="text-muted-foreground text-xs">
+      <p className="text-text-tertiary text-xs">
         Monthly summary email:{" "}
         {lastRun ? (
           <>

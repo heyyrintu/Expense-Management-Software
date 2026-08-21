@@ -122,7 +122,7 @@ export default async function ApprovalReviewPage({
             <h1 className="text-xl font-semibold">{report.title}</h1>
             <StatusBadge status={report.status} />
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-tertiary text-sm">
             {report.user.name}
             {report.submittedAt ? (
               <>
@@ -151,7 +151,7 @@ export default async function ApprovalReviewPage({
                 >
                   <span className="grid">
                     <span className="font-medium">{e.merchant}</span>
-                    <span className="text-muted-foreground">
+                    <span className="text-text-tertiary">
                       <DateCell value={e.date} /> · {e.category.name} ·{" "}
                       {e._count.receipts} receipt{e._count.receipts === 1 ? "" : "s"}
                       {e.purpose ? ` · ${e.purpose}` : ""}
@@ -201,7 +201,7 @@ export default async function ApprovalReviewPage({
                       {a.action.replace("_", " ")} (level {a.level})
                     </span>
                     {a.reason ? (
-                      <span className="text-muted-foreground">— {a.reason}</span>
+                      <span className="text-text-tertiary">— {a.reason}</span>
                     ) : null}
                   </li>
                 )
@@ -223,7 +223,7 @@ export default async function ApprovalReviewPage({
           )}
         />
       ) : (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           {report.status === "submitted"
             ? "This report isn't awaiting your decision."
             : "This report has already been decided."}

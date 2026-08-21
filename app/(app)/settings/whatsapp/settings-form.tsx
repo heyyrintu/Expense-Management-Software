@@ -40,7 +40,7 @@ export function WhatsAppSettingsForm({ view }: { view: WhatsAppSettingsView }) {
   return (
     <div className="grid max-w-xl gap-4">
       {!view.hasEncryptionKey ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="border-status-warning bg-status-warning-subtle text-status-warning-text rounded-lg border p-3 text-sm">
           Set <code>APP_ENCRYPTION_KEY</code> on the server before saving
           credentials — they are encrypted at rest and cannot be stored without it.
         </p>
@@ -70,7 +70,7 @@ export function WhatsAppSettingsForm({ view }: { view: WhatsAppSettingsView }) {
             defaultValue={view.phoneNumberId}
             placeholder="123456789012345"
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-text-tertiary text-xs">
             From Meta ▸ WhatsApp ▸ API setup. This is how inbound messages find
             your organization, so it must be unique.
           </p>
@@ -100,24 +100,28 @@ export function WhatsAppSettingsForm({ view }: { view: WhatsAppSettingsView }) {
               {label}
             </label>
             <Input id={name} name={name} type="password" placeholder="Leave blank to keep" />
-            <p className="text-muted-foreground text-xs">Stored: {hint}</p>
+            <p className="text-text-tertiary text-xs">Stored: {hint}</p>
           </div>
         ))}
 
         <div className="grid gap-1 rounded-lg border p-3 text-sm">
           <p className="font-medium">Webhook URL</p>
           <code className="text-xs break-all">{view.webhookUrl}</code>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-text-tertiary text-xs">
             Paste this into Meta ▸ Configuration ▸ Webhook, with the verify token above.
           </p>
         </div>
 
         {error ? (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-status-danger-text text-sm">
             {error}
           </p>
         ) : null}
-        {saved ? <p className="text-sm text-green-700">Saved.</p> : null}
+        {saved ? (
+          <p role="status" className="text-status-success-text text-sm">
+            Saved.
+          </p>
+        ) : null}
 
         <div className="flex gap-2">
           <Button type="submit" disabled={pending}>

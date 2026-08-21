@@ -205,7 +205,7 @@ export function ManageUserPanel({
           </Button>
         ) : null}
         {isSelf ? (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-text-tertiary text-xs">
             You can&apos;t deactivate your own account.
           </p>
         ) : null}
@@ -214,7 +214,7 @@ export function ManageUserPanel({
       {inviteLink ? (
         <div className="grid gap-2">
           <p className="text-sm">New invite link (valid 7 days):</p>
-          <code className="bg-muted block overflow-x-auto rounded-md p-2 text-xs break-all">
+          <code className="bg-bg-subtle block overflow-x-auto rounded-md p-2 text-xs break-all">
             {inviteLink}
           </code>
           <Button
@@ -253,7 +253,11 @@ export function ManageUserPanel({
       {message ? (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={message.kind === "error" ? "text-status-danger-text text-sm" : "text-sm text-green-700"}
+          className={
+            message.kind === "error"
+              ? "text-status-danger-text text-sm"
+              : "text-status-success-text text-sm"
+          }
         >
           {message.text}
         </p>

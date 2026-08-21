@@ -56,7 +56,9 @@ export function NotificationList({ items }: { items: Item[] }) {
             key={n.id}
             className={cn(
               "grid gap-1 rounded-lg border p-3 text-sm",
-              !n.read && "border-blue-200 bg-blue-50/50"
+              // Unread is emphasis, not a status: it marks where to look, so
+              // it takes the accent tint rather than an info badge's colour.
+              !n.read && "border-accent-border bg-accent-subtle"
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -64,7 +66,7 @@ export function NotificationList({ items }: { items: Item[] }) {
               {/* A notification list is an activity context — relative time. */}
               <DateCell value={n.when} format="relative" />
             </div>
-            <p className="text-muted-foreground">{n.body}</p>
+            <p className="text-text-tertiary">{n.body}</p>
             <div className="flex gap-3">
               {n.link ? (
                 <Link
@@ -80,7 +82,7 @@ export function NotificationList({ items }: { items: Item[] }) {
                   type="button"
                   disabled={pending}
                   onClick={() => markOne(n.id)}
-                  className="text-muted-foreground text-sm underline underline-offset-4"
+                  className="text-text-tertiary text-sm underline underline-offset-4"
                 >
                   Mark read
                 </button>

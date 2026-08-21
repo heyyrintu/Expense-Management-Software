@@ -47,12 +47,12 @@ export function CommentThread({
   }
 
   return (
-    <div className="grid max-w-md gap-3 rounded-xl border p-4">
+    <div className="grid max-w-md gap-3 rounded-lg border p-4">
       <h2 className="text-sm font-medium">
         Discussion{comments.length > 0 ? ` (${comments.length})` : ""}
       </h2>
       {comments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           No comments yet — questions and clarifications live here.
         </p>
       ) : (
@@ -62,7 +62,7 @@ export function CommentThread({
               key={c.id}
               className={cn(
                 "grid gap-0.5 rounded-lg border p-2 text-sm",
-                c.mine && "bg-muted/50"
+                c.mine && "bg-bg-subtle/50"
               )}
             >
               <span className="flex justify-between gap-2">

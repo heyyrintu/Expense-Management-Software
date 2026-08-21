@@ -71,7 +71,7 @@ export function RecurringPanel({
   return (
     <div className="grid gap-4">
       <form
-        className="grid max-w-2xl gap-3 rounded-xl border p-4"
+        className="grid max-w-2xl gap-3 rounded-lg border p-4"
         onSubmit={(e) => {
           e.preventDefault();
           run(() =>
@@ -82,7 +82,7 @@ export function RecurringPanel({
         <h2 className="text-sm font-medium">New template</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="grid gap-1">
-            <label htmlFor="rt-cadence" className="text-muted-foreground text-xs">Cadence</label>
+            <label htmlFor="rt-cadence" className="text-text-tertiary text-xs">Cadence</label>
             <NativeSelect
               id="rt-cadence"
               value={cadence}
@@ -96,7 +96,7 @@ export function RecurringPanel({
             </NativeSelect>
           </div>
           <div className="grid gap-1">
-            <label htmlFor="rt-day" className="text-muted-foreground text-xs">Day</label>
+            <label htmlFor="rt-day" className="text-text-tertiary text-xs">Day</label>
             <NativeSelect id="rt-day" value={day} onChange={(e) => setDay(e.target.value)}>
               {dayOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -104,15 +104,15 @@ export function RecurringPanel({
             </NativeSelect>
           </div>
           <div className="grid gap-1">
-            <label htmlFor="rt-amount" className="text-muted-foreground text-xs">Amount</label>
+            <label htmlFor="rt-amount" className="text-text-tertiary text-xs">Amount</label>
             <Input id="rt-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="999.00" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="rt-merchant" className="text-muted-foreground text-xs">Merchant</label>
+            <label htmlFor="rt-merchant" className="text-text-tertiary text-xs">Merchant</label>
             <Input id="rt-merchant" value={merchant} onChange={(e) => setMerchant(e.target.value)} placeholder="Airtel Broadband" />
           </div>
           <div className="grid gap-1">
-            <label htmlFor="rt-category" className="text-muted-foreground text-xs">Category</label>
+            <label htmlFor="rt-category" className="text-text-tertiary text-xs">Category</label>
             <NativeSelect id="rt-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
               <option value="">Select…</option>
               {categories.map((c) => (
@@ -121,7 +121,7 @@ export function RecurringPanel({
             </NativeSelect>
           </div>
           <div className="grid gap-1">
-            <label htmlFor="rt-purpose" className="text-muted-foreground text-xs">Purpose (optional)</label>
+            <label htmlFor="rt-purpose" className="text-text-tertiary text-xs">Purpose (optional)</label>
             <Input id="rt-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Monthly internet" />
           </div>
         </div>
@@ -146,10 +146,10 @@ export function RecurringPanel({
                 <span className="truncate font-medium">
                   {t.merchant}
                   {!t.active ? (
-                    <span className="text-muted-foreground font-normal"> · paused</span>
+                    <span className="text-text-tertiary font-normal"> · paused</span>
                   ) : null}
                 </span>
-                <span className="text-muted-foreground">
+                <span className="text-text-tertiary">
                   {t.schedule} · {t.category}
                   {t.lastRun ? (
                     <>

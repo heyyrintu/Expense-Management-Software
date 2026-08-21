@@ -32,7 +32,7 @@ export default async function DelegationsPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Delegate access</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           A delegate can create expenses and reports on a principal&apos;s
           behalf — both identities are recorded, and delegates can never
           approve as the principal.

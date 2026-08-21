@@ -15,7 +15,7 @@ export default async function ClientsPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Billing clients</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Billable expenses are tagged to a client for invoicing and reporting.
         </p>
       </div>

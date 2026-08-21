@@ -93,8 +93,8 @@ export function CardImportPanel({ unmatched }: { unmatched: UnmatchedTxn[] }) {
           void upload(e.dataTransfer.files);
         }}
         className={cn(
-          "text-muted-foreground grid cursor-pointer place-items-center rounded-lg border border-dashed p-6 text-center text-sm",
-          dragOver && "border-ring bg-muted/50"
+          "text-text-tertiary grid cursor-pointer place-items-center rounded-lg border border-dashed p-6 text-center text-sm",
+          dragOver && "border-accent bg-bg-subtle/50"
         )}
       >
         {busy ? "Working…" : "Drag & drop a statement CSV here — or click to choose (max 1 MB)"}
@@ -109,7 +109,7 @@ export function CardImportPanel({ unmatched }: { unmatched: UnmatchedTxn[] }) {
         />
       </div>
 
-      {message ? <p role="status" className="text-sm text-green-700">{message}</p> : null}
+      {message ? <p role="status" className="text-status-success-text text-sm">{message}</p> : null}
       {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
 
       {unmatched.length > 0 ? (
@@ -174,7 +174,7 @@ function UnmatchedRow({
           </Button>
         </>
       ) : (
-        <span className="text-muted-foreground text-xs">
+        <span className="text-text-tertiary text-xs">
           No candidate expenses — nudge the employee to file it.
         </span>
       )}

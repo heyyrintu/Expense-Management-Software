@@ -34,7 +34,7 @@ export default async function ViolationsPage({
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Flagged expenses</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           {flagged.length} expense{flagged.length === 1 ? "" : "s"}
           {rule ? ` · rule: ${rule}` : ""}
           {userId ? ` · one user` : ""} ·{" "}
@@ -46,7 +46,7 @@ export default async function ViolationsPage({
           <li key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
             <span className="grid min-w-0 flex-1">
               <span className="truncate font-medium">{e.merchant}</span>
-              <span className="text-muted-foreground">
+              <span className="text-text-tertiary">
                 <DateCell value={e.date} /> · {e.categoryName} · {e.userName}
               </span>
             </span>
@@ -60,7 +60,7 @@ export default async function ViolationsPage({
           </li>
         ))}
         {flagged.length === 0 ? (
-          <li className="text-muted-foreground text-sm">Nothing matches.</li>
+          <li className="text-text-tertiary text-sm">Nothing matches.</li>
         ) : null}
       </ul>
     </section>

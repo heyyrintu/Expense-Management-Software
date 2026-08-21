@@ -7,6 +7,7 @@ import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Badge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 import {
   createBudgetAction,
@@ -82,24 +83,19 @@ export function BudgetsPanel({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">
                   {b.label}
-                  <span className="text-muted-foreground font-normal">
+                  <span className="text-text-tertiary font-normal">
                     {" "}· {b.scopeType} · {b.period}
                   </span>
                 </span>
                 <span className="flex items-center gap-2">
-                  {b.level === "warn" ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      80% reached
-                    </span>
-                  ) : null}
-                  {b.level === "over" ? (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                      Over budget
-                    </span>
-                  ) : null}
+                  {/* Not a STATUS_MAP state — a budget level is a threshold,
+                      not a workflow state — so this is the generic Badge,
+                      which still takes its colour from the same tone map. */}
+                  {b.level === "warn" ? <Badge tone="warning">80% reached</Badge> : null}
+                  {b.level === "over" ? <Badge tone="danger">Over budget</Badge> : null}
                   <span className="flex items-center gap-1">
                     <Amount value={b.spent} currency={b.currency} size="meta" />
-                    <span className="text-muted-foreground">/</span>
+                    <span className="text-text-tertiary">/</span>
                     <Amount value={b.amount} currency={b.currency} />
                   </span>
                 </span>
@@ -127,7 +123,7 @@ export function BudgetsPanel({
                 />
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground text-xs">{b.pct}% used</span>
+                <span className="text-text-tertiary text-xs">{b.pct}% used</span>
                 <span className="flex gap-2">
                   <InlineAmount id={b.id} run={run} pending={pending} />
                   <Button
@@ -147,14 +143,14 @@ export function BudgetsPanel({
       ) : null}
 
       <form
-        className="grid max-w-2xl gap-2 rounded-xl border p-4 sm:grid-cols-5 sm:items-end"
+        className="grid max-w-2xl gap-2 rounded-lg border p-4 sm:grid-cols-5 sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           run(() => createBudgetAction({ scopeType, scopeId, period, amount }));
         }}
       >
         <div className="grid gap-1">
-          <label htmlFor="b-scope" className="text-muted-foreground text-xs">Scope</label>
+          <label htmlFor="b-scope" className="text-text-tertiary text-xs">Scope</label>
           <NativeSelect
             id="b-scope"
             value={scopeType}
@@ -169,7 +165,7 @@ export function BudgetsPanel({
           </NativeSelect>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="b-target" className="text-muted-foreground text-xs">Target</label>
+          <label htmlFor="b-target" className="text-text-tertiary text-xs">Target</label>
           <NativeSelect id="b-target" value={scopeId} onChange={(e) => setScopeId(e.target.value)}>
             <option value="">Select…</option>
             {options.map((o) => (
@@ -178,7 +174,7 @@ export function BudgetsPanel({
           </NativeSelect>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="b-period" className="text-muted-foreground text-xs">Period</label>
+          <label htmlFor="b-period" className="text-text-tertiary text-xs">Period</label>
           <NativeSelect id="b-period" value={period} onChange={(e) => setPeriod(e.target.value as BudgetView["period"])}>
             <option value="monthly">Monthly</option>
             <option value="quarterly">Quarterly</option>
@@ -186,7 +182,7 @@ export function BudgetsPanel({
           </NativeSelect>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="b-amount" className="text-muted-foreground text-xs">Amount</label>
+          <label htmlFor="b-amount" className="text-text-tertiary text-xs">Amount</label>
           <Input
             id="b-amount"
             inputMode="decimal"

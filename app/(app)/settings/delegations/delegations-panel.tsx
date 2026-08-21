@@ -45,7 +45,7 @@ export function DelegationsPanel({
         }}
       >
         <div className="grid gap-1">
-          <label htmlFor="d-delegate" className="text-muted-foreground text-xs">Delegate</label>
+          <label htmlFor="d-delegate" className="text-text-tertiary text-xs">Delegate</label>
           <NativeSelect id="d-delegate" value={delegateId} onChange={(e) => setDelegateId(e.target.value)} className="w-44">
             <option value="">Select…</option>
             {users.map((u) => (
@@ -53,9 +53,9 @@ export function DelegationsPanel({
             ))}
           </NativeSelect>
         </div>
-        <span className="text-muted-foreground pb-2 text-sm">acts for</span>
+        <span className="text-text-tertiary pb-2 text-sm">acts for</span>
         <div className="grid gap-1">
-          <label htmlFor="d-principal" className="text-muted-foreground text-xs">Principal</label>
+          <label htmlFor="d-principal" className="text-text-tertiary text-xs">Principal</label>
           <NativeSelect id="d-principal" value={principalId} onChange={(e) => setPrincipalId(e.target.value)} className="w-44">
             <option value="">Select…</option>
             {users.filter((u) => u.id !== delegateId).map((u) => (
@@ -69,7 +69,7 @@ export function DelegationsPanel({
       </form>
 
       {delegations.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No active delegations.</p>
+        <p className="text-text-tertiary text-sm">No active delegations.</p>
       ) : (
         <ul className="grid gap-2">
           {delegations.map((d) => (

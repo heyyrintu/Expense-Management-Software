@@ -5,6 +5,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/status-badge";
 import { suspendOrgAction, unsuspendOrgAction } from "./actions";
 
 export function OrgRow({
@@ -36,10 +37,10 @@ export function OrgRow({
   }
 
   return (
-    <tr className="border-t border-zinc-800">
+    <tr className="border-line border-t">
       <td className="p-3">
         <span className="font-medium">{org.name}</span>{" "}
-        <span className="text-zinc-500">/{org.slug} · {org.plan}</span>
+        <span className="text-text-tertiary">/{org.slug} · {org.plan}</span>
       </td>
       <td className="p-3">{org.users}</td>
       <td className="p-3">{org.expenses}</td>
@@ -49,15 +50,10 @@ export function OrgRow({
         <DateCell value={org.created} />
       </td>
       <td className="p-3">
-        <span
-          className={
-            suspended
-              ? "rounded-full bg-red-900/60 px-2 py-0.5 text-xs text-red-300"
-              : "rounded-full bg-green-900/60 px-2 py-0.5 text-xs text-green-300"
-          }
-        >
-          {org.status}
-        </span>
+        {/* active / suspended are both in STATUS_MAP — an org's state reads
+            through the same badge as everything else, so "suspended" looks
+            the same here as it does inside the tenant. */}
+        <StatusBadge status={org.status} />
       </td>
       <td className="p-3 text-right">
         <Button

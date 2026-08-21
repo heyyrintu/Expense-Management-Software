@@ -43,7 +43,7 @@ export default async function ReportsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">My reports</h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-text-tertiary text-sm">
             Group draft expenses into a report and submit it for approval.
           </p>
         </div>

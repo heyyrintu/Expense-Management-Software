@@ -10,6 +10,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { SettingsPanel } from "@/components/settings/settings-panel";
+import { StatusBadge } from "@/components/status-badge";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { usersListQuerySchema } from "@/lib/schemas/user";
@@ -25,12 +26,6 @@ type UserRow = {
   status: string;
   department: { name: string } | null;
   approver: { name: string } | null;
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "bg-green-100 text-green-700",
-  invited: "bg-blue-100 text-blue-700",
-  deactivated: "bg-gray-200 text-gray-600",
 };
 
 export default async function UsersPage({
@@ -110,11 +105,11 @@ export default async function UsersPage({
 
       <form className="flex flex-wrap items-end gap-2" action="/settings/users" method="GET">
         <div className="grid gap-1">
-          <label htmlFor="q" className="text-muted-foreground text-xs">Search</label>
+          <label htmlFor="q" className="text-text-tertiary text-xs">Search</label>
           <Input id="q" name="q" defaultValue={query.q ?? ""} placeholder="Name or email" className="w-48" />
         </div>
         <div className="grid gap-1">
-          <label htmlFor="role" className="text-muted-foreground text-xs">Role</label>
+          <label htmlFor="role" className="text-text-tertiary text-xs">Role</label>
           <NativeSelect id="role" name="role" defaultValue={query.role ?? ""} className="w-36">
             <option value="">All roles</option>
             <option value="employee">employee</option>
@@ -124,7 +119,7 @@ export default async function UsersPage({
           </NativeSelect>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="department" className="text-muted-foreground text-xs">Department</label>
+          <label htmlFor="department" className="text-text-tertiary text-xs">Department</label>
           <NativeSelect id="department" name="department" defaultValue={query.department ?? ""} className="w-40">
             <option value="">All departments</option>
             {departments.map((d: { id: string; name: string }) => (
@@ -133,7 +128,7 @@ export default async function UsersPage({
           </NativeSelect>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="status" className="text-muted-foreground text-xs">Status</label>
+          <label htmlFor="status" className="text-text-tertiary text-xs">Status</label>
           <NativeSelect id="status" name="status" defaultValue={query.status ?? ""} className="w-36">
             <option value="">All statuses</option>
             <option value="active">active</option>
@@ -152,9 +147,9 @@ export default async function UsersPage({
           </CardHeader>
         </Card>
       ) : (
-        <div className="overflow-x-auto rounded-xl border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
+            <thead className="bg-bg-subtle/50 text-left">
               <tr>
                 <th scope="col" className="p-3 font-medium">Name</th>
                 <th scope="col" className="hidden p-3 font-medium md:table-cell">Email</th>
@@ -169,14 +164,15 @@ export default async function UsersPage({
               {users.map((u) => (
                 <tr key={u.id} className="border-t">
                   <td className="p-3 font-medium">{u.name}</td>
-                  <td className="text-muted-foreground hidden p-3 md:table-cell">{u.email}</td>
+                  <td className="text-text-tertiary hidden p-3 md:table-cell">{u.email}</td>
                   <td className="p-3">{u.role.replace("_", " ")}</td>
                   <td className="hidden p-3 lg:table-cell">{u.department?.name ?? "—"}</td>
                   <td className="hidden p-3 lg:table-cell">{u.approver?.name ?? "—"}</td>
                   <td className="p-3">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[u.status] ?? ""}`}>
-                      {u.status}
-                    </span>
+                    {/* active / invited / deactivated / suspended all live in
+                        STATUS_MAP — a user's state is a status like any other
+                        and gets the same badge the rest of the app uses. */}
+                    <StatusBadge status={u.status} />
                   </td>
                   <td className="p-3 text-right">
                     <Button asChild variant="outline" size="sm">
@@ -192,7 +188,7 @@ export default async function UsersPage({
 
       {pages > 1 ? (
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
+          <span className="text-text-tertiary">
             Page {query.page} of {pages}
           </span>
           <div className="flex gap-2">

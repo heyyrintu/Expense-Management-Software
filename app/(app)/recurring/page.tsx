@@ -51,7 +51,7 @@ export default async function RecurringPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Recurring expenses</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Templates draft an expense automatically on schedule — you review it
           in <Link href="/expenses" className="underline">your expenses</Link>{" "}
           before submitting.

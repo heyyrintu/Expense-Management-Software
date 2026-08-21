@@ -29,9 +29,9 @@ export default async function EmailIngestionPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Email ingestion</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Employees can email receipts to{" "}
-          <code className="bg-muted rounded px-1">
+          <code className="bg-bg-subtle rounded px-1">
             receipts+{ctx.orgSlug}@{mailDomain}
           </code>{" "}
           from their work email — each attachment becomes a draft expense.
@@ -47,7 +47,7 @@ export default async function EmailIngestionPage() {
         </CardHeader>
         <CardContent>
           {failures.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No failures — all quiet.</p>
+            <p className="text-text-tertiary text-sm">No failures — all quiet.</p>
           ) : (
             <ul className="grid gap-1 text-sm">
               {failures.map((f) => (

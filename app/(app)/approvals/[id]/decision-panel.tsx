@@ -49,13 +49,13 @@ export function DecisionPanel({
   }
 
   return (
-    <div className="grid max-w-md gap-3 rounded-xl border p-4">
+    <div className="grid max-w-md gap-3 rounded-lg border p-4">
       <h2 className="font-medium">
         Your decision
         {required === 2 ? ` (level ${level} of 2)` : ""}
       </h2>
       {flagged ? (
-        <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+        <p className="bg-status-warning-subtle text-status-warning-text rounded-md p-2 text-sm">
           This report has policy flags. You may still approve it, but a written
           justification is required and will be logged.
         </p>
@@ -63,7 +63,7 @@ export function DecisionPanel({
       <div className="grid gap-1">
         <label htmlFor="decision-reason" className="text-sm">
           Reason{" "}
-          <span className="text-muted-foreground">
+          <span className="text-text-tertiary">
             (required for reject / send back{flagged ? " — and to approve a flagged report" : ""})
           </span>
         </label>

@@ -39,7 +39,7 @@ export default async function ManageUserPage({
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">{user.name}</h1>
-        <p className="text-muted-foreground text-sm">{user.email} · {user.status}</p>
+        <p className="text-text-tertiary text-sm">{user.email} · {user.status}</p>
       </div>
       <ManageUserPanel
         user={{

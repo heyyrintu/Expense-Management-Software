@@ -48,7 +48,7 @@ export default async function ApprovalChainsPage() {
     <section className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Approval chains</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           The most specific matching rule (department + amount, then
           department, then amount) decides who approves. Without a rule,
           reports go to the submitter&apos;s assigned approver, with finance

@@ -52,7 +52,7 @@ export function ClientsPanel({ clients }: { clients: Row[] }) {
       </form>
 
       {clients.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No clients yet.</p>
+        <p className="text-text-tertiary text-sm">No clients yet.</p>
       ) : (
         <ul className="grid gap-2">
           {clients.map((c) => (
@@ -84,7 +84,7 @@ function ClientRow({
       <Input id={`cln-${client.id}`} value={name} onChange={(e) => setName(e.target.value)} className="h-8" />
       <label htmlFor={`clc-${client.id}`} className="sr-only">Code</label>
       <Input id={`clc-${client.id}`} value={code} onChange={(e) => setCode(e.target.value)} className="h-8 w-24" />
-      <span className="text-muted-foreground whitespace-nowrap text-xs">
+      <span className="text-text-tertiary whitespace-nowrap text-xs">
         {client.expenseCount} exp
       </span>
       {dirty ? (

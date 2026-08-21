@@ -56,7 +56,7 @@ export function DepartmentsPanel({
       </form>
 
       {departments.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           No departments yet — add your first one above.
         </p>
       ) : (
@@ -97,7 +97,7 @@ function DeptRow({
         onChange={(e) => setName(e.target.value)}
         className="h-8"
       />
-      <span className="text-muted-foreground whitespace-nowrap text-xs">
+      <span className="text-text-tertiary whitespace-nowrap text-xs">
         {dept.userCount} user{dept.userCount === 1 ? "" : "s"}
       </span>
       {dirty ? (

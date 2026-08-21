@@ -182,7 +182,7 @@ export default async function ExpenseDetailPage({
             <Amount value={expense.amount} currency={expense.currency} size="display" />
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-muted-foreground grid gap-1 text-sm">
+        <CardContent className="text-text-tertiary grid gap-1 text-sm">
           <FlagChips flags={asFlags(expense.flags)} />
           <p>Date: <DateCell value={expense.date} tone="muted" /></p>
           <p>Category: {expense.category.name}</p>

@@ -90,7 +90,7 @@ export default async function AdvancesPage({
     <section className="grid gap-6">
       <div>
         <h1 className="text-xl font-semibold">Advances</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-text-tertiary text-sm">
           Request money before a trip — approved advances settle against your
           future expense reports.
         </p>

@@ -5,7 +5,7 @@ export default function NotFound() {
     <main className="grid min-h-screen place-items-center p-8 text-center">
       <div className="grid gap-3">
         <h1 className="text-3xl font-bold">Page not found</h1>
-        <p className="text-muted-foreground">
+        <p className="text-text-tertiary">
           The page you&apos;re looking for doesn&apos;t exist — or belongs to a
           different workspace.
         </p>

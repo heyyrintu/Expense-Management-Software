@@ -328,7 +328,7 @@ export default async function ReportDetailPage({
                     <Link href={`/expenses/${e.id}`} className="font-medium hover:underline">
                       {e.merchant}
                     </Link>
-                    <span className="text-muted-foreground">
+                    <span className="text-text-tertiary">
                       <DateCell value={e.date} tone="muted" /> · {e.category.name}
                     </span>
                     <FlagChips flags={asFlags(e.flags)} />
@@ -387,7 +387,7 @@ export default async function ReportDetailPage({
                   >
                     <span className="grid">
                       <span className="font-medium">{e.merchant}</span>
-                      <span className="text-muted-foreground">
+                      <span className="text-text-tertiary">
                         <DateCell value={e.date} tone="muted" /> · {e.category.name}
                       </span>
                     </span>
