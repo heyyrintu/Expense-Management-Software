@@ -13,6 +13,16 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import {
+  CardListSkeleton,
+  FormSkeleton,
+  PageHeaderSkeleton,
+  PanelSkeleton,
+  StatStripSkeleton,
+  TableSkeleton,
+  ToolbarSkeleton,
+} from "@/components/ui/page-skeleton";
+import { RouteError } from "@/components/ui/route-error";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Block, Group, Row } from "./shared";
 
@@ -141,6 +151,54 @@ export function PatternsSection() {
             />
           </div>
         </div>
+      </Block>
+
+      <Block
+        title="Skeleton primitives"
+        description="The pieces every loading.tsx composes. They read the SAME tokens as the real components — PageHeaderSkeleton mirrors PageHeader's pb-6 and its 36px h1 line box, TableSkeleton uses the DataTable's own h-row, PanelSkeleton the ledger viewport height. That shared source is what keeps CLS near zero; a skeleton that merely looks similar drifts the first time a card is resized."
+      >
+        <div className="border-line bg-bg-app grid gap-6 rounded-lg border p-5">
+          <PageHeaderSkeleton hasAction />
+          <ToolbarSkeleton />
+          <StatStripSkeleton />
+          <TableSkeleton rows={3} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CardListSkeleton rows={2} />
+            <FormSkeleton fields={2} />
+          </div>
+          <PanelSkeleton height="h-40" />
+        </div>
+        <p className="text-meta text-text-tertiary">
+          Added here in D5.5. They shipped in D5.1 without a gallery entry,
+          which is the rule this page exists to enforce — and the loading state
+          is precisely the one nobody reviews, because you see it for 200ms on
+          a slow connection and never on a fast one. Side by side with the
+          content above, a reservation that doesn&apos;t match is obvious.
+        </p>
+      </Block>
+
+      <Block
+        title="RouteError"
+        description="What an error boundary renders. Detail screens pass a backHref and get both actions, because when one record won't open the reader's next move is the list — not another attempt at the thing that just failed."
+      >
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="border-line bg-bg-surface rounded-lg border">
+            <RouteError headline="Couldn't load this page" reset={() => {}} />
+          </div>
+          <div className="border-line bg-bg-surface rounded-lg border">
+            <RouteError
+              headline="Couldn't load this report"
+              reset={() => {}}
+              backHref="#"
+              backLabel="All reports"
+            />
+          </div>
+        </div>
+        <p className="text-meta text-text-tertiary">
+          Retry comes first: it is the cheaper move and it usually works. Both
+          headlines name what failed — the reader already knows something went
+          wrong, so &quot;something went wrong&quot; adds nothing.
+        </p>
       </Block>
     </Group>
   );

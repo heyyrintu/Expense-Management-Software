@@ -345,9 +345,15 @@ export default async function DashboardPage({
         title={title}
         description={description}
         action={
-          <Button asChild>
-            <Link href="/expenses/new">Add expense</Link>
-          </Button>
+          // D5.5: only when the screen is NOT showing its empty state. On a
+          // brand-new org both this and the empty state's button rendered —
+          // two filled buttons offering the same action, which breaks §4.6
+          // and makes the reader choose between identical twins.
+          hasAnything ? (
+            <Button asChild>
+              <Link href="/expenses/new">Add expense</Link>
+            </Button>
+          ) : undefined
         }
       />
 

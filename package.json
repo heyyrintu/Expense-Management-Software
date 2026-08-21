@@ -12,6 +12,7 @@
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test tests/e2e/a11y.spec.ts",
+    "screenshots": "playwright test tests/e2e/screenshots.spec.ts",
     "lint:tokens": "node scripts/check-design-tokens.mjs"
   },
   "dependencies": {

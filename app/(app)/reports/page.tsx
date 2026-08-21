@@ -47,9 +47,13 @@ export default async function ReportsPage() {
             Group draft expenses into a report and submit it for approval.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/reports/new">New report</Link>
-        </Button>
+        {/* D5.5: the empty state below carries this same action as ITS
+            primary, so showing both put two filled buttons on screen. */}
+        {reports.length > 0 ? (
+          <Button asChild>
+            <Link href="/reports/new">New report</Link>
+          </Button>
+        ) : null}
       </div>
 
       {reports.length === 0 ? (

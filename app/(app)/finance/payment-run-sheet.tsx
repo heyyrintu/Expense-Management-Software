@@ -14,6 +14,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, CircleAlert } from "lucide-react";
 
+import { toDecimalString } from "@/lib/money";
 import { Amount } from "@/components/ui/amount";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,7 +129,10 @@ export function PaymentRunSheet({
             reference: line.reference.trim(),
             // Omitted means "the full outstanding balance" to the route, so
             // only a genuinely partial line sends an amount.
-            ...(line.partial ? { amountPaid: (line.amount / 100).toFixed(2) } : {}),
+            // D5.5: toDecimalString, not float division. `amount / 100` on
+            // integer minor units is exactly the arithmetic CLAUDE.md bans
+            // — 1_234_567 / 100 is not representable and .toFixed rounds it.
+            ...(line.partial ? { amountPaid: toDecimalString(line.amount) } : {}),
           })),
         })
       );

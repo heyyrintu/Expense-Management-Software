@@ -27,11 +27,31 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
-const SCAN_DIRS = ["app", "components"];
+// D5.5 widened this from ["app", "components"] to the whole source tree.
+// The final QA asks for the lint to run across the REPO, and lib/ turned out
+// to hold real colour: chart series and axis strokes, which Recharts needs as
+// literal props because it takes props, not classes.
+const SCAN_DIRS = ["app", "components", "lib"];
 const EXTENSIONS = [".ts", ".tsx", ".css"];
 
-/** Files where the token layer itself lives — literals are the point there. */
-const TOKEN_SOURCES = ["app/globals.css"];
+/**
+ * Files where the token layer itself lives — literals are the point there.
+ *
+ * These are the SOURCE of the design values, not consumers of it, so a hex is
+ * correct in them by definition. Each one is a single place a value can be
+ * changed, which is the whole property the lint protects everywhere else.
+ *
+ * `lib/charts/theme.ts` is the interesting entry: Recharts takes props rather
+ * than classes, so chart colour cannot come through Tailwind at all. It is
+ * duplicated FROM the token layer and held to it by
+ * tests/unit/chart-theme.test.ts — which is how D5.3's contrast fix was
+ * caught when --fg-tertiary moved and the axis colour didn't.
+ */
+const TOKEN_SOURCES = [
+  "app/globals.css",
+  "lib/design/tokens.ts",
+  "lib/charts/theme.ts",
+];
 
 // Empty on purpose. The D0.1 ring-[3px] exception was retired in D0.3 when
 // the primitives were restyled to the 2px spec ring.
@@ -190,4 +210,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("✔ design tokens: no raw hex or arbitrary values in app/** or components/**");
+console.log(`✔ design tokens: no raw hex or arbitrary values in ${SCAN_DIRS.map((d) => `${d}/**`).join(", ")}`);
