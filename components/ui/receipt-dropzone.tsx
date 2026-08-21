@@ -294,6 +294,25 @@ function ReceiptTile({
           <img
             src={receipt.url}
             alt={`Receipt ${receipt.fileName}`}
+            // D5.4. A phone photo is several megabytes and this box is 96px
+            // tall, so a grid of them was downloading tens of MB to render
+            // postage stamps.
+            //
+            // `loading="lazy"` stops the ones below the fold competing with
+            // the ones on screen, and `decoding="async"` keeps the decode off
+            // the main thread — on a 12-receipt report that is the difference
+            // between a smooth scroll and a stutter.
+            //
+            // NOT next/image: these are SIGNED, short-lived, PRIVATE S3 URLs.
+            // The optimizer would cache by full URL including the signature
+            // (so every rotation is a cache miss) and would proxy someone's
+            // bank receipt through the app server. The right fix is a
+            // thumbnail generated at upload time — recorded in
+            // docs/PERF-AUDIT.md as the follow-up it is.
+            loading="lazy"
+            decoding="async"
+            width={320}
+            height={96}
             className="h-24 w-full object-cover"
           />
         )}

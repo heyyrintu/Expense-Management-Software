@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { TrendAreaChart } from "@/components/charts/trend-area";
+import { TrendAreaChart } from "@/components/charts/lazy";
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
 import { Button } from "@/components/ui/button";

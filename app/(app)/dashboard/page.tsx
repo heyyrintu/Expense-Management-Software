@@ -26,8 +26,9 @@
 // ──────────────────────────────────────────────────────────────────────────
 import Link from "next/link";
 
-import { BreakdownBarChart } from "@/components/charts/breakdown-bar";
-import { MonthlyBarChart } from "@/components/charts/monthly-bar";
+// Lazy (D5.4): Recharts is ~130 kB and sits below the KPI strip. The
+// fallback reserves the same box, so nothing shifts when it lands.
+import { BreakdownBarChart, MonthlyBarChart } from "@/components/charts/lazy";
 import type { FacetConfig } from "@/components/filters";
 import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
