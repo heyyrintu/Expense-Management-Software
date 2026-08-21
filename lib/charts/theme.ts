@@ -55,7 +55,10 @@ export function seriesColor(index: number): string {
  */
 export const CHART_GRID_STROKE = "#e4e4e7"; // --line
 export const CHART_GRID_OPACITY = 0.5;
-export const CHART_AXIS_COLOR = "#a1a1aa"; // --fg-tertiary
+// D5.3: follows --fg-tertiary, which was darkened from #a1a1aa (2.56:1)
+// to clear 4.5:1. Axis labels are TEXT a reader has to read, not
+// decoration, so the body threshold applies to them.
+export const CHART_AXIS_COLOR = "#6b6b74"; // --fg-tertiary
 export const CHART_AXIS_FONT_SIZE = 12; // --text-meta
 
 /** Props spread onto <CartesianGrid>. Horizontal only — vertical rules on a

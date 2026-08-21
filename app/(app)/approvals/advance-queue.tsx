@@ -86,7 +86,7 @@ function AdvanceRow({ item }: { item: Item }) {
       <Button size="sm" variant="destructive" disabled={pending} onClick={() => decide("reject")}>
         Reject
       </Button>
-      {error ? <span className="text-destructive text-xs">{error}</span> : null}
+      {error ? <span className="text-status-danger-text text-xs">{error}</span> : null}
     </li>
   );
 }

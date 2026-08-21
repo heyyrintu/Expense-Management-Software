@@ -16,8 +16,11 @@ export function StatusBadge({
   const tone = TONE_CLASSES[entry.tone];
   return (
     <span
-      role="status"
-      aria-label={`Status: ${entry.label}`}
+      // NOT role="status" (D5.3). That is an aria-live region, so a table of
+      // fifty badges became fifty live regions and every re-render fired a
+      // burst of announcements. The label is visible text; a screen reader
+      // reads it in place, which is what a static status wants. The sr-only
+      // prefix supplies the word "Status" that the colour carries visually.
       className={cn(
         "inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-meta font-medium",
         tone.chip,
@@ -33,6 +36,7 @@ export function StatusBadge({
           !entry.solidDot && "opacity-70"
         )}
       />
+      <span className="sr-only">Status: </span>
       {entry.label}
     </span>
   );

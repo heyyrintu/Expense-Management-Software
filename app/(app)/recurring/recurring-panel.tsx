@@ -125,7 +125,7 @@ export function RecurringPanel({
             <Input id="rt-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="Monthly internet" />
           </div>
         </div>
-        {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+        {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
         <div>
           <Button type="submit" disabled={pending || !amount || !merchant || !categoryId}>
             {pending ? "Saving…" : "Add template"}
@@ -163,7 +163,7 @@ export function RecurringPanel({
               <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => toggleTemplateAction({ id: t.id }))}>
                 {t.active ? "Pause" : "Resume"}
               </Button>
-              <Button size="sm" variant="ghost" className="text-destructive" disabled={pending} onClick={() => run(() => deleteTemplateAction({ id: t.id }))}>
+              <Button size="sm" variant="ghost" className="text-status-danger-text" disabled={pending} onClick={() => run(() => deleteTemplateAction({ id: t.id }))}>
                 Delete
               </Button>
             </li>

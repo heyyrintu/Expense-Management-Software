@@ -86,7 +86,7 @@ export function CommentThread({
           maxLength={1000}
         />
         {error ? (
-          <p role="alert" className="text-destructive text-sm">{error}</p>
+          <p role="alert" className="text-status-danger-text text-sm">{error}</p>
         ) : null}
         <div>
           <Button size="sm" disabled={pending || body.trim() === ""} onClick={post}>

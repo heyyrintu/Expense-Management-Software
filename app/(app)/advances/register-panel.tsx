@@ -141,7 +141,7 @@ function RegisterItem({ row }: { row: RegisterRow }) {
           <Button size="sm" disabled={busy || !reference.trim()} onClick={disburse}>
             {busy ? "Recording…" : "Disburse"}
           </Button>
-          {error ? <span className="text-destructive text-xs">{error}</span> : null}
+          {error ? <span className="text-status-danger-text text-xs">{error}</span> : null}
         </div>
       ) : null}
     </li>

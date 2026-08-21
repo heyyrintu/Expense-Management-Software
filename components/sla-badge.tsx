@@ -28,14 +28,15 @@ export function SlaBadge({
   const badge = slaBadge({ createdAt, resolvedAt, status }, now ?? new Date());
   return (
     <span
-      role="status"
-      aria-label={`Service level: ${badge.label}`}
+      // Not a live region — see the note in components/status-badge.tsx. The
+      // inbox renders one of these per row.
       className={cn(
         "inline-flex items-center rounded-sm px-2 py-0.5 text-meta font-medium",
         STYLES[badge.level],
         className
       )}
     >
+      <span className="sr-only">Service level: </span>
       {badge.label}
     </span>
   );

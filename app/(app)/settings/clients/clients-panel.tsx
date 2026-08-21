@@ -60,7 +60,7 @@ export function ClientsPanel({ clients }: { clients: Row[] }) {
           ))}
         </ul>
       )}
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
     </div>
   );
 }
@@ -95,7 +95,7 @@ function ClientRow({
       <Button
         size="sm"
         variant="ghost"
-        className="text-destructive"
+        className="text-status-danger-text"
         disabled={pending || client.expenseCount > 0}
         title={client.expenseCount > 0 ? "Has billable expenses" : undefined}
         onClick={() => run(() => deleteClientAction({ id: client.id }))}

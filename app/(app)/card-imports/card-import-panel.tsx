@@ -110,7 +110,7 @@ export function CardImportPanel({ unmatched }: { unmatched: UnmatchedTxn[] }) {
       </div>
 
       {message ? <p role="status" className="text-sm text-green-700">{message}</p> : null}
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
 
       {unmatched.length > 0 ? (
         <div className="grid gap-2">

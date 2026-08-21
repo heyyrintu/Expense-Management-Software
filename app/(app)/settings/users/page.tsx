@@ -156,13 +156,13 @@ export default async function UsersPage({
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="p-3 font-medium">Name</th>
-                <th className="hidden p-3 font-medium md:table-cell">Email</th>
-                <th className="p-3 font-medium">Role</th>
-                <th className="hidden p-3 font-medium lg:table-cell">Department</th>
-                <th className="hidden p-3 font-medium lg:table-cell">Approver</th>
-                <th className="p-3 font-medium">Status</th>
-                <th className="p-3" />
+                <th scope="col" className="p-3 font-medium">Name</th>
+                <th scope="col" className="hidden p-3 font-medium md:table-cell">Email</th>
+                <th scope="col" className="p-3 font-medium">Role</th>
+                <th scope="col" className="hidden p-3 font-medium lg:table-cell">Department</th>
+                <th scope="col" className="hidden p-3 font-medium lg:table-cell">Approver</th>
+                <th scope="col" className="p-3 font-medium">Status</th>
+                <th scope="col" className="p-3" />
               </tr>
             </thead>
             <tbody>

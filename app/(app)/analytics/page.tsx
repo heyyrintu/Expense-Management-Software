@@ -215,10 +215,10 @@ export default async function AnalyticsPage({
             <table className="w-full text-sm">
               <thead className="text-muted-foreground text-left">
                 <tr>
-                  <th className="pb-1 font-medium">Approver</th>
-                  <th className="pb-1 font-medium">Decided</th>
-                  <th className="pb-1 font-medium">Avg</th>
-                  <th className="pb-1 font-medium">p90</th>
+                  <th scope="col" className="pb-1 font-medium">Approver</th>
+                  <th scope="col" className="pb-1 font-medium">Decided</th>
+                  <th scope="col" className="pb-1 font-medium">Avg</th>
+                  <th scope="col" className="pb-1 font-medium">p90</th>
                 </tr>
               </thead>
               <tbody>

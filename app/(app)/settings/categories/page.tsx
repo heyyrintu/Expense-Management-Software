@@ -80,11 +80,11 @@ export default async function CategoriesPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left">
                 <tr>
-                  <th className="p-3 font-medium">Name</th>
-                  <th className="p-3 font-medium">Per-expense limit</th>
-                  <th className="p-3 font-medium">Monthly limit</th>
-                  <th className="p-3 font-medium">Receipt required above</th>
-                  <th className="p-3" />
+                  <th scope="col" className="p-3 font-medium">Name</th>
+                  <th scope="col" className="p-3 font-medium">Per-expense limit</th>
+                  <th scope="col" className="p-3 font-medium">Monthly limit</th>
+                  <th scope="col" className="p-3 font-medium">Receipt required above</th>
+                  <th scope="col" className="p-3" />
                 </tr>
               </thead>
               <tbody>

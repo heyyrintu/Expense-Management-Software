@@ -90,7 +90,7 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
         </div>
       </form>
 
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
 
       {mine.length > 0 ? (
         <ul className="grid gap-2">
@@ -139,7 +139,7 @@ export function AdvancesPanel({ mine }: { mine: AdvanceView[] }) {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-destructive"
+                    className="text-status-danger-text"
                     disabled={pending}
                     onClick={() => run(() => deleteAdvanceDraftAction({ id: a.id }))}
                   >

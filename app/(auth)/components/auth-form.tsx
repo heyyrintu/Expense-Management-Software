@@ -92,7 +92,7 @@ export function AuthForm<T extends FieldValues>({
           />
         ))}
         {serverError ? (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="text-status-danger-text text-sm">
             {serverError}
           </p>
         ) : null}

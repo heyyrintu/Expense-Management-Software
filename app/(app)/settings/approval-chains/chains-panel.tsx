@@ -94,7 +94,7 @@ export function ChainsPanel({
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-destructive"
+                className="text-status-danger-text"
                 disabled={pending}
                 onClick={() => run(() => deleteApprovalRuleAction({ id: r.id }))}
               >
@@ -158,7 +158,7 @@ export function ChainsPanel({
             </NativeSelect>
           </div>
         </div>
-        {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+        {error ? <p role="alert" className="text-status-danger-text text-sm">{error}</p> : null}
         <div>
           <Button type="submit" disabled={pending || !name || !approverId}>
             {pending ? "Saving…" : "Add rule"}

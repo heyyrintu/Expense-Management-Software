@@ -253,7 +253,7 @@ export function ManageUserPanel({
       {message ? (
         <p
           role={message.kind === "error" ? "alert" : "status"}
-          className={message.kind === "error" ? "text-destructive text-sm" : "text-sm text-green-700"}
+          className={message.kind === "error" ? "text-status-danger-text text-sm" : "text-sm text-green-700"}
         >
           {message.text}
         </p>

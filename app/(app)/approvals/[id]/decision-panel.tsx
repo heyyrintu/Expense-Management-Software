@@ -75,7 +75,7 @@ export function DecisionPanel({
         />
       </div>
       {error ? (
-        <p role="alert" className="text-destructive text-sm">{error}</p>
+        <p role="alert" className="text-status-danger-text text-sm">{error}</p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         <Button disabled={pending} onClick={() => decide("approve")}>

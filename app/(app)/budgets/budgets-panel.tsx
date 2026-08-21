@@ -133,7 +133,7 @@ export function BudgetsPanel({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-destructive"
+                    className="text-status-danger-text"
                     disabled={pending}
                     onClick={() => run(() => deleteBudgetAction({ id: b.id }))}
                   >
@@ -201,7 +201,7 @@ export function BudgetsPanel({
       </form>
 
       {error ? (
-        <p role="alert" className="text-destructive text-sm">{error}</p>
+        <p role="alert" className="text-status-danger-text text-sm">{error}</p>
       ) : null}
     </div>
   );

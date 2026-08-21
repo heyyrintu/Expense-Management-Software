@@ -56,14 +56,14 @@ export default async function SuperPanelPage() {
           <table className="w-full text-sm">
             <thead className="bg-zinc-900 text-left text-zinc-400">
               <tr>
-                <th className="p-3 font-medium">Organization</th>
-                <th className="p-3 font-medium">Users</th>
-                <th className="p-3 font-medium">Expenses</th>
-                <th className="p-3 font-medium">Reports</th>
-                <th className="p-3 font-medium">Storage</th>
-                <th className="p-3 font-medium">Created</th>
-                <th className="p-3 font-medium">Status</th>
-                <th className="p-3" />
+                <th scope="col" className="p-3 font-medium">Organization</th>
+                <th scope="col" className="p-3 font-medium">Users</th>
+                <th scope="col" className="p-3 font-medium">Expenses</th>
+                <th scope="col" className="p-3 font-medium">Reports</th>
+                <th scope="col" className="p-3 font-medium">Storage</th>
+                <th scope="col" className="p-3 font-medium">Created</th>
+                <th scope="col" className="p-3 font-medium">Status</th>
+                <th scope="col" className="p-3"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>

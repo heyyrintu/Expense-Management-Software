@@ -55,7 +55,7 @@ export default async function EmailIngestionPage() {
                   <DateCell value={f.createdAt} tone="muted" />
                   <span className="font-medium">{f.fromEmail}</span>
                   {f.subject ? <span>“{f.subject}”</span> : null}
-                  <span className="text-destructive">— {f.reason}</span>
+                  <span className="text-status-danger-text">— {f.reason}</span>
                 </li>
               ))}
             </ul>

@@ -68,7 +68,7 @@ export function DepartmentsPanel({
       )}
 
       {error ? (
-        <p role="alert" className="text-destructive text-sm">{error}</p>
+        <p role="alert" className="text-status-danger-text text-sm">{error}</p>
       ) : null}
     </div>
   );
@@ -112,7 +112,7 @@ function DeptRow({
       <Button
         size="sm"
         variant="ghost"
-        className="text-destructive"
+        className="text-status-danger-text"
         disabled={pending || dept.userCount > 0}
         title={dept.userCount > 0 ? "Move its users first" : undefined}
         onClick={() => run(() => deleteDepartmentAction({ id: dept.id }))}
