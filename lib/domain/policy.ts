@@ -24,7 +24,46 @@ export type ExpenseForPolicy = {
   date: Date;
   merchant: string;
   receiptCount: number;
+  /**
+   * Expense type. Only the receipt rule reads it — see RECEIPT_EXEMPT_TYPES.
+   * Optional so existing call sites keep compiling and default to `regular`,
+   * which is the conservative reading: an unknown type still needs a receipt.
+   */
+  type?: ExpenseTypeForPolicy;
 };
+
+export type ExpenseTypeForPolicy = "regular" | "mileage" | "per_diem";
+
+/**
+ * Types the receipt-required rule does not apply to — EXPLICIT, not implicit.
+ *
+ * A per-diem is an allowance the organisation pays by its own published rate.
+ * There is no vendor, no transaction and therefore no receipt in existence;
+ * flagging one for a missing receipt would ask the employee for a document
+ * that cannot be obtained, on every single claim. The flag would fire so
+ * reliably that approvers would learn to ignore the flag column — which costs
+ * more than the rule was ever worth.
+ *
+ * Mileage is here for the same reason and was previously exempt only by
+ * accident: nothing set `receiptRequiredAbove` on mileage categories, so the
+ * rule never fired. That is a configuration coincidence, not a decision, and
+ * it would have started flagging the day someone set a threshold on the
+ * category a mileage claim happened to use.
+ *
+ * EVERY OTHER RULE STILL APPLIES. Per-expense and monthly limits catch an
+ * inflated claim; duplicate detection catches the same trip filed twice —
+ * which matters MORE for per-diem than for a receipted expense, because there
+ * is no receipt to notice you have already seen.
+ */
+const RECEIPT_EXEMPT_TYPES: ReadonlySet<ExpenseTypeForPolicy> = new Set([
+  "per_diem",
+  "mileage",
+]);
+
+/** Whether the receipt-required rule applies to an expense of this type. */
+export function requiresReceipt(type: ExpenseTypeForPolicy = "regular"): boolean {
+  return !RECEIPT_EXEMPT_TYPES.has(type);
+}
 
 export type CategoryLimits = {
   perExpenseLimit: number | null;
@@ -103,7 +142,12 @@ export function evaluateExpense(
     });
   }
 
+  // `requiresReceipt` first, and deliberately not folded into the condition
+  // below as an anonymous `expense.type !== "per_diem"`: the exemption is a
+  // policy decision with a written reason, and it should be greppable by name
+  // from anywhere it is questioned.
   if (
+    requiresReceipt(expense.type) &&
     cat?.receiptRequiredAbove != null &&
     expense.baseAmount > cat.receiptRequiredAbove &&
     expense.receiptCount === 0

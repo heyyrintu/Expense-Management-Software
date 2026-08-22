@@ -179,6 +179,7 @@ test.describe("tenant routes", () => {
     "/settings/departments",
     "/settings/approval-chains",
     "/settings/clients",
+    "/settings/per-diem",
     "/settings/delegations",
     "/settings/email-ingestion",
     "/settings/whatsapp",

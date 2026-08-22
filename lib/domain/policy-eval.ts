@@ -5,6 +5,8 @@ import {
   evaluateExpense,
   evaluateSplitLimits,
   monthWindow,
+  requiresReceipt,
+  type ExpenseTypeForPolicy,
   type PolicyFlag,
   type SplitCategoryContext,
   type SplitForPolicy,
@@ -24,6 +26,9 @@ export type EvalInput = {
   merchant: string;
   categoryId: string;
   receiptCount: number;
+  /** Expense type — only the receipt rule reads it (see requiresReceipt).
+   *  Defaults to `regular`, the conservative reading. */
+  type?: ExpenseTypeForPolicy;
   /** 6.3: when present, per-category limits run PER SPLIT (base amounts) */
   splits?: SplitForPolicy[];
 };
@@ -81,6 +86,7 @@ export async function computeExpenseFlags(
       date: input.date,
       merchant: input.merchant,
       receiptCount: input.receiptCount,
+      type: input.type,
     },
     {
       // with splits, per-category limits run per split below
@@ -92,9 +98,14 @@ export async function computeExpenseFlags(
       formatAmount: fmt,
     }
   );
-  // receipt-required stays expense-level even when split — use the primary category
+  // receipt-required stays expense-level even when split — use the primary
+  // category. `requiresReceipt` guards this copy too: the rule is written
+  // twice (the pure engine skips it when splits are present), and an
+  // exemption applied to only one copy is an exemption that holds until
+  // somebody splits an expense.
   if (
     hasSplits &&
+    requiresReceipt(input.type) &&
     category?.receiptRequiredAbove != null &&
     input.baseAmount > category.receiptRequiredAbove &&
     input.receiptCount === 0

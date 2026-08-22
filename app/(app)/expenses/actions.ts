@@ -13,6 +13,12 @@ import { actingMeta, resolveActing } from "@/lib/auth/acting";
 import { logAudit } from "@/lib/domain/audit";
 import { toExpenseData, toMileageData } from "@/lib/domain/expense";
 import {
+  perDiemMerchant,
+  planPerDiem,
+  type PerDiemPlan,
+  type PerDiemRateRow,
+} from "@/lib/domain/per-diem";
+import {
   splitsFromAmounts,
   splitsSumExactly,
   type SplitEntry,
@@ -24,6 +30,9 @@ import {
   expenseIdSchema,
   expenseInputSchema,
   mileageInputSchema,
+  perDiemFieldsSchema,
+  perDiemInputSchema,
+  type PerDiemInput,
 } from "@/lib/schemas/expense";
 import { moneyString } from "@/lib/schemas/category";
 import { convertToBase, isValidFxRate, parseToMinorUnits } from "@/lib/money";
@@ -474,6 +483,227 @@ export async function getFxRateAction(
   } catch (e) {
     const g = guardError(e);
     if (g) return g as Result<{ rate: string | null; baseCurrency: string }>;
+    throw e;
+  }
+}
+
+// ── Per-diem (PRD P1) ──────────────────────────────────────────────────────
+//
+// Same shape as mileage: the amount is DERIVED, never submitted. The form
+// sends a rate name, a date range and the two half-day flags; the server
+// resolves which dated version of that rate applies, prices it, and pins the
+// row it used onto the expense.
+//
+// `planPerDiem` is the one place the arithmetic lives, and the form's
+// read-only preview calls the same function — a preview that disagrees with
+// the server is a screen promising money that will not arrive.
+
+const NO_RATES =
+  "No per-diem rates are configured yet — ask a finance admin to add one in Settings.";
+
+/** Load every rate version the org has. Small table, and `selectEffectiveRate`
+ *  needs the history rather than a filtered slice of it. */
+async function loadPerDiemRates(db: ReturnType<typeof scopedDb>) {
+  return (await db.perDiemRate.findMany({
+    orderBy: [{ name: "asc" }, { effectiveFrom: "desc" }],
+    select: {
+      id: true,
+      name: true,
+      location: true,
+      dailyAmount: true,
+      effectiveFrom: true,
+      active: true,
+    },
+  })) as PerDiemRateRow[];
+}
+
+/** Shared between create and update: validate refs, price the claim. */
+async function resolvePerDiem(
+  db: ReturnType<typeof scopedDb>,
+  input: PerDiemInput
+): Promise<
+  | { error: string }
+  | {
+      plan: PerDiemPlan;
+      categoryId: string;
+      projectId: string | null;
+      merchant: string;
+    }
+> {
+  const rates = await loadPerDiemRates(db);
+  if (rates.length === 0) return { error: NO_RATES };
+
+  const plan = planPerDiem(rates, {
+    rateName: input.rateName,
+    start: new Date(`${input.start}T00:00:00.000Z`),
+    end: new Date(`${input.end}T00:00:00.000Z`),
+    firstDayHalf: input.firstDayHalf,
+    lastDayHalf: input.lastDayHalf,
+  });
+  if ("error" in plan) return plan;
+
+  const category = await db.category.findUnique({ where: { id: input.categoryId } });
+  if (!category) return { error: "Pick a valid category." };
+  const projectId = input.projectId === "" ? null : input.projectId;
+  if (projectId) {
+    const project = await db.project.findUnique({ where: { id: projectId } });
+    if (!project) return { error: "Pick a valid project." };
+  }
+
+  return {
+    plan,
+    categoryId: input.categoryId,
+    projectId,
+    merchant: perDiemMerchant(input.rateName),
+  };
+}
+
+export async function createPerDiemExpenseAction(
+  input: unknown
+): Promise<Result<{ id: string }>> {
+  try {
+    const ctx = await requireRole("employee");
+    const parsed = perDiemInputSchema.safeParse(input);
+    if (!parsed.success) return err(userErrors.validation);
+
+    const db = scopedDb(ctx.orgId);
+    const acting = await resolveActing(ctx);
+    const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
+    const resolved = await resolvePerDiem(db, parsed.data);
+    if ("error" in resolved) return err(resolved.error);
+    const { plan, categoryId, projectId, merchant } = resolved;
+
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: null,
+      userId: acting.effectiveUserId,
+      amount: plan.amount,
+      // A per-diem is an internal allowance paid at the org's own rate, so it
+      // is always org currency — there is nothing to convert from.
+      baseAmount: plan.amount,
+      date: plan.start,
+      merchant,
+      categoryId,
+      receiptCount: 0,
+      type: "per_diem",
+    });
+
+    const expense = await db.expense.create({
+      data: {
+        orgId: ctx.orgId,
+        userId: acting.effectiveUserId,
+        type: "per_diem",
+        amount: plan.amount,
+        currency: org.currency,
+        fxRate: "1",
+        baseAmount: plan.amount,
+        // `date` is the trip's START, so every existing date-based query —
+        // the ledger, dashboards, filters, exports — treats a per-diem like
+        // any other expense with no special-casing (requirement 4).
+        date: plan.start,
+        merchant,
+        categoryId,
+        projectId,
+        purpose: parsed.data.purpose,
+        perDiemRateId: plan.rateId,
+        perDiemStart: plan.start,
+        perDiemEnd: plan.end,
+        perDiemHalfDays: plan.halfDays,
+        flags,
+      },
+    });
+
+    await logAudit(db, ctx, {
+      entity: "Expense",
+      entityId: expense.id,
+      action: "expense.created",
+      meta: {
+        type: "per_diem",
+        rateId: plan.rateId,
+        dailyAmount: plan.dailyAmount,
+        halfDays: plan.halfDays,
+        amount: plan.amount,
+        flagCount: flags.length,
+        ...actingMeta(acting),
+      },
+    });
+    revalidatePath("/expenses");
+    return ok({ id: expense.id });
+  } catch (e) {
+    const g = guardError(e);
+    if (g) return g as Result<{ id: string }>;
+    throw e;
+  }
+}
+
+export async function updatePerDiemExpenseAction(input: unknown): Promise<Result> {
+  try {
+    const ctx = await requireRole("employee");
+    // perDiemFieldsSchema, not perDiemInputSchema: the refined variant is for
+    // the form. The range check still happens — planPerDiem returns an error
+    // for an inverted range, which is the server's real guard.
+    const parsed = expenseIdSchema.merge(perDiemFieldsSchema).safeParse(input);
+    if (!parsed.success) return err(userErrors.validation);
+    const { id, ...rest } = parsed.data;
+
+    const db = scopedDb(ctx.orgId);
+    const acting = await resolveActing(ctx);
+    const resolved = await resolvePerDiem(db, rest as PerDiemInput);
+    if ("error" in resolved) return err(resolved.error);
+    const { plan, categoryId, projectId, merchant } = resolved;
+
+    const receiptCount = await db.receipt.count({ where: { expenseId: id } });
+    const flags = await computeExpenseFlags(db, ctx.orgId, {
+      expenseId: id,
+      userId: acting.effectiveUserId,
+      amount: plan.amount,
+      baseAmount: plan.amount,
+      date: plan.start,
+      merchant,
+      categoryId,
+      receiptCount,
+      type: "per_diem",
+    });
+
+    // Pinned to owner + draft + per_diem type, exactly as mileage is: a
+    // regular expense can never silently become a per-diem one.
+    const res = await db.expense.updateMany({
+      where: { id, userId: acting.effectiveUserId, status: "draft", type: "per_diem" },
+      data: {
+        amount: plan.amount,
+        fxRate: "1",
+        baseAmount: plan.amount,
+        date: plan.start,
+        merchant,
+        categoryId,
+        projectId,
+        purpose: rest.purpose,
+        perDiemRateId: plan.rateId,
+        perDiemStart: plan.start,
+        perDiemEnd: plan.end,
+        perDiemHalfDays: plan.halfDays,
+        flags,
+      },
+    });
+    if (res.count === 0) return err(NOT_EDITABLE);
+
+    await logAudit(db, ctx, {
+      entity: "Expense",
+      entityId: id,
+      action: "expense.updated",
+      meta: {
+        type: "per_diem",
+        rateId: plan.rateId,
+        halfDays: plan.halfDays,
+        amount: plan.amount,
+        flagCount: flags.length,
+        ...actingMeta(acting),
+      },
+    });
+    revalidatePath("/expenses");
+    return ok(undefined);
+  } catch (e) {
+    const g = guardError(e);
+    if (g) return g;
     throw e;
   }
 }

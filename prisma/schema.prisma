@@ -62,6 +62,7 @@ enum UserStatus {
 enum ExpenseType {
   regular
   mileage
+  per_diem
 
   @@map("expense_type")
 }
@@ -121,6 +122,7 @@ model Organization {
   departments    Department[]
   projects       Project[]
   categories     Category[]
+  perDiemRates   PerDiemRate[]
   expenses       Expense[]
   receipts       Receipt[]
   reports        ExpenseReport[]
@@ -242,6 +244,46 @@ model Project {
   @@map("projects")
 }
 
+/// Per-diem daily allowance rates (PRD P1). Finance-configurable, org-scoped.
+///
+/// VERSIONED BY DATE, NOT EDITED IN PLACE. Rates change — a city moves tier,
+/// a new financial year lifts the allowance — and an expense filed last March
+/// must keep last March's rate. So a "rate" is really a NAME with a history:
+/// rows sharing (orgId, name) are versions of one allowance, and the one that
+/// applies to a trip is the newest active row whose effectiveFrom is on or
+/// before the trip's start date. `lib/domain/per-diem.ts` owns that selection;
+/// `Expense.perDiemRateId` pins the row that was actually used.
+///
+/// Hence no unique constraint on (orgId, name): several versions of the same
+/// name is the point. (orgId, name, effectiveFrom) IS unique — two rates for
+/// one name starting the same day is ambiguous, not a history.
+model PerDiemRate {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  name          String
+  /// Free text — "Mumbai", "Tier 1 metro", "International — APAC". Optional
+  /// because a flat org-wide allowance needs no location at all.
+  location      String?
+  /// Minor units, ORG BASE currency. Per-diem is an internal allowance, so it
+  /// is never foreign-currency: there is nothing to convert from.
+  dailyAmount   Int      @map("daily_amount")
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  /// Retire a rate without deleting it — expenses still point at it.
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  expenses     Expense[]
+
+  @@unique([orgId, name, effectiveFrom])
+  // org_id leads every index (CLAUDE.md). This one also serves the effective-
+  // rate lookup, which filters by name and orders by effectiveFrom desc.
+  @@index([orgId, name, effectiveFrom])
+  @@index([orgId, active])
+  @@map("per_diem_rates")
+}
+
 model Category {
   id                   String   @id @default(uuid(7)) @db.Uuid
   orgId                String   @map("org_id") @db.Uuid
@@ -277,6 +319,18 @@ model Expense {
   projectId  String?       @map("project_id") @db.Uuid
   purpose    String        @default("")
   distanceKm Int?          @map("distance_km") // mileage type only
+  // ---- per_diem type only ----
+  // The rate row actually used, PINNED at save time. Rates are versioned by
+  // effectiveFrom, so pointing at the row (not the name) is what stops a
+  // later rate change silently re-pricing an expense somebody already
+  // approved. Restrict on delete for the same reason.
+  perDiemRateId   String?   @map("per_diem_rate_id") @db.Uuid
+  perDiemStart    DateTime? @map("per_diem_start") @db.Date
+  perDiemEnd      DateTime? @map("per_diem_end") @db.Date
+  // Whole COUNT OF HALF-DAYS, not days: the unit is halved so the column
+  // stays an integer. 3 full days = 6; 2 days with a half travel day at each
+  // end = 6 - 1 - 1 = 4. See lib/domain/per-diem.ts for the rule.
+  perDiemHalfDays Int?      @map("per_diem_half_days")
   status     ExpenseStatus @default(draft)
   flags      Json          @default("[]") // policy violation flags, never block
   billable   Boolean       @default(false)
@@ -291,6 +345,7 @@ model Expense {
   report       ExpenseReport? @relation(fields: [reportId], references: [id])
   category     Category       @relation(fields: [categoryId], references: [id])
   project      Project?       @relation(fields: [projectId], references: [id])
+  perDiemRate  PerDiemRate?   @relation(fields: [perDiemRateId], references: [id])
   receipts     Receipt[]
   cardTransaction CardTransaction?
   client       Client?        @relation(fields: [clientId], references: [id])

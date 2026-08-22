@@ -54,12 +54,43 @@ async function seedOrg(slug: string, name: string) {
     { name: "Meals", perExpenseLimit: 200000, monthlyLimit: 1000000, receiptRequiredAbove: 20000 },
     { name: "Office Supplies", perExpenseLimit: 500000, monthlyLimit: null, receiptRequiredAbove: 10000 },
     { name: "Mileage", perExpenseLimit: null, monthlyLimit: null, receiptRequiredAbove: null },
+    // Deliberately carries a receipt threshold: a per-diem filed against it
+    // must still come out unflagged, which is what proves the exemption in
+    // lib/domain/policy.ts is doing something rather than being untested.
+    { name: "Per diem", perExpenseLimit: 1500000, monthlyLimit: null, receiptRequiredAbove: 10000 },
   ];
   for (const c of categories) {
     await prisma.category.upsert({
       where: { orgId_name: { orgId: org.id, name: c.name } },
       update: {},
       create: { orgId: org.id, ...c },
+    });
+  }
+
+  // Per-diem rates, WITH A HISTORY — two versions of "Metro" so both demo orgs
+  // exercise the effective-date lookup rather than the trivial single-row
+  // case. A trip in March 2026 prices at ₹2,000/day; one in August at ₹2,500.
+  const perDiemRates: Array<{
+    name: string;
+    location: string | null;
+    dailyAmount: number;
+    effectiveFrom: Date;
+  }> = [
+    { name: "Metro", location: "Mumbai / Delhi / Bengaluru", dailyAmount: 200000, effectiveFrom: new Date("2025-04-01T00:00:00.000Z") },
+    { name: "Metro", location: "Mumbai / Delhi / Bengaluru", dailyAmount: 250000, effectiveFrom: new Date("2026-04-01T00:00:00.000Z") },
+    { name: "Non-metro", location: null, dailyAmount: 120000, effectiveFrom: new Date("2025-04-01T00:00:00.000Z") },
+  ];
+  for (const r of perDiemRates) {
+    await prisma.perDiemRate.upsert({
+      where: {
+        orgId_name_effectiveFrom: {
+          orgId: org.id,
+          name: r.name,
+          effectiveFrom: r.effectiveFrom,
+        },
+      },
+      update: {},
+      create: { orgId: org.id, ...r },
     });
   }
 

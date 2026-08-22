@@ -10,6 +10,7 @@ export type AuditEntry = {
     | "Department"
     | "Project"
     | "Category"
+    | "PerDiemRate"
     | "Expense"
     | "Receipt"
     | "ExpenseReport"

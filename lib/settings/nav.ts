@@ -82,6 +82,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         hint: "For billable expenses",
         minRole: "finance_admin",
       },
+      {
+        label: "Per-diem rates",
+        href: "/settings/per-diem",
+        // Mirrors requireRole("finance_admin") in the page — see the header.
+        hint: "Daily allowances by date",
+        minRole: "finance_admin",
+      },
     ],
   },
   {

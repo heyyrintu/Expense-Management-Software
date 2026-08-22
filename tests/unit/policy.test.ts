@@ -3,6 +3,10 @@ import {
   evaluateExpense,
   isDuplicateOf,
   monthWindow,
+  requiresReceipt,
+  type CategoryLimits,
+  type ExpenseForPolicy,
+  type ExpenseTypeForPolicy,
   type PolicyContext,
   type PolicyFlag,
 } from "@/lib/domain/policy";
@@ -134,5 +138,113 @@ describe("monthWindow", () => {
     const w = monthWindow(new Date("2026-12-15T00:00:00.000Z"));
     expect(w.start.toISOString()).toBe("2026-12-01T00:00:00.000Z");
     expect(w.end.toISOString()).toBe("2027-01-01T00:00:00.000Z");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Receipt exemption by expense type (PRD P1, per-diem)
+//
+// A per-diem is an allowance paid at the org's published rate. There is no
+// vendor, no transaction and therefore no receipt in existence — flagging one
+// for a missing receipt would ask for a document that cannot be obtained, on
+// every single claim, until approvers stopped reading the flag column.
+//
+// The exemption is narrow on purpose: it removes ONE rule and leaves the rest.
+// ---------------------------------------------------------------------------
+describe("receipt-required exemption by type", () => {
+  const LIMITS: CategoryLimits = {
+    perExpenseLimit: null,
+    monthlyLimit: null,
+    receiptRequiredAbove: 100_000, // ₹1,000
+  };
+
+  const ctx = (over: Partial<PolicyContext> = {}): PolicyContext => ({
+    category: LIMITS,
+    monthlySpent: 0,
+    duplicateCandidates: [],
+    maxAgeDays: null,
+    now: new Date("2026-08-20T00:00:00.000Z"),
+    formatAmount: (m) => `₹${(m / 100).toFixed(2)}`,
+    ...over,
+  });
+
+  const expense = (type?: ExpenseTypeForPolicy): ExpenseForPolicy => ({
+    baseAmount: 500_000, // well above the threshold
+    originalAmount: 500_000,
+    date: new Date("2026-08-18T00:00:00.000Z"),
+    merchant: "Per diem — Metro",
+    receiptCount: 0,
+    type,
+  });
+
+  it("flags a regular expense with no receipt", () => {
+    const flags = evaluateExpense(expense("regular"), ctx());
+    expect(flags.map((f) => f.rule)).toContain("receipt_required");
+  });
+
+  it("defaults to requiring a receipt when the type is absent", () => {
+    // The conservative reading: an unknown type still needs a receipt, so
+    // existing call sites that never passed a type keep their behaviour.
+    const flags = evaluateExpense(expense(undefined), ctx());
+    expect(flags.map((f) => f.rule)).toContain("receipt_required");
+  });
+
+  it("does NOT flag a per-diem for a missing receipt", () => {
+    const flags = evaluateExpense(expense("per_diem"), ctx());
+    expect(flags.map((f) => f.rule)).not.toContain("receipt_required");
+  });
+
+  it("does NOT flag mileage either", () => {
+    // Previously exempt only by accident — nothing set a threshold on the
+    // categories mileage happened to use. Now it is a decision.
+    const flags = evaluateExpense(expense("mileage"), ctx());
+    expect(flags.map((f) => f.rule)).not.toContain("receipt_required");
+  });
+
+  it("requiresReceipt states the rule directly", () => {
+    expect(requiresReceipt("regular")).toBe(true);
+    expect(requiresReceipt(undefined)).toBe(true);
+    expect(requiresReceipt("per_diem")).toBe(false);
+    expect(requiresReceipt("mileage")).toBe(false);
+  });
+
+  it("STILL applies the per-expense limit to a per-diem", () => {
+    // The exemption removes one rule, not the policy engine.
+    const flags = evaluateExpense(
+      expense("per_diem"),
+      ctx({ category: { ...LIMITS, perExpenseLimit: 200_000 } })
+    );
+    expect(flags.map((f) => f.rule)).toContain("per_expense_limit");
+  });
+
+  it("STILL applies the monthly limit to a per-diem", () => {
+    const flags = evaluateExpense(
+      expense("per_diem"),
+      ctx({ category: { ...LIMITS, monthlyLimit: 600_000 }, monthlySpent: 200_000 })
+    );
+    expect(flags.map((f) => f.rule)).toContain("monthly_limit");
+  });
+
+  it("STILL detects a duplicated per-diem claim", () => {
+    // This matters MORE for per-diem than for a receipted expense: there is
+    // no receipt to notice you have already seen.
+    const flags = evaluateExpense(
+      expense("per_diem"),
+      ctx({
+        duplicateCandidates: [
+          {
+            amount: 500_000,
+            date: new Date("2026-08-18T00:00:00.000Z"),
+            merchant: "Per diem — Metro",
+          },
+        ],
+      })
+    );
+    expect(flags.map((f) => f.rule)).toContain("duplicate");
+  });
+
+  it("STILL applies the age rule to a per-diem", () => {
+    const flags = evaluateExpense(expense("per_diem"), ctx({ maxAgeDays: 1 }));
+    expect(flags.map((f) => f.rule)).toContain("expense_age");
   });
 });

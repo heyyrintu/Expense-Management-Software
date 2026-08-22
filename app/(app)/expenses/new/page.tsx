@@ -8,11 +8,34 @@ import { NewExpenseSwitcher } from "./new-expense-switcher";
 export default async function NewExpensePage() {
   const ctx = await requireSession();
   const db = scopedDb(ctx.orgId);
-  const [org, categories, projects, clients] = await Promise.all([
+  const [org, categories, projects, clients, perDiemRates] = await Promise.all([
     db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } }),
     db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.project.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, code: true } }),
+    // Every version, not just the current one: which rate applies depends on
+    // the date the reader picks, so the form needs the history to preview an
+    // amount without a round trip.
+    db.perDiemRate.findMany({
+      orderBy: [{ name: "asc" }, { effectiveFrom: "desc" }],
+      select: {
+        id: true,
+        name: true,
+        location: true,
+        dailyAmount: true,
+        effectiveFrom: true,
+        active: true,
+      },
+    }) as Promise<
+      Array<{
+        id: string;
+        name: string;
+        location: string | null;
+        dailyAmount: number;
+        effectiveFrom: Date;
+        active: boolean;
+      }>
+    >,
   ]);
   const today = toDateInputValue(new Date());
 
@@ -52,11 +75,33 @@ export default async function NewExpensePage() {
           projectId: "",
           purpose: "",
         }}
+        perDiemDefaults={{
+          rateName: "",
+          start: today,
+          end: today,
+          firstDayHalf: false,
+          lastDayHalf: false,
+          categoryId: "",
+          projectId: "",
+          purpose: "",
+        }}
         categories={categories as Option[]}
         projects={projects as Option[]}
         clients={clients as { id: string; name: string; code: string }[]}
         currency={org.currency}
         ratePerKmMinor={org.mileageRate}
+        // Dates cross to the client as ISO strings and are parsed back there —
+        // never pre-formatted into display text (D1.1).
+        perDiemRates={perDiemRates.map(
+          (r: {
+            id: string;
+            name: string;
+            location: string | null;
+            dailyAmount: number;
+            effectiveFrom: Date;
+            active: boolean;
+          }) => ({ ...r, effectiveFrom: r.effectiveFrom.toISOString() })
+        )}
       />
     </>
   );

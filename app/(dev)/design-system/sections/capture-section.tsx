@@ -3,11 +3,17 @@
 // Capture-flow components (D2.1) — DESIGN-PRD §7.1.
 import * as React from "react";
 
+import { Amount } from "@/components/ui/amount";
 import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
 import { SavedIndicator } from "@/components/ui/saved-indicator";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import {
+  describeDays,
+  planPerDiem,
+  type PerDiemRateRow,
+} from "@/lib/domain/per-diem";
 import { normalizeAmountInput, parseToMinorUnits } from "@/lib/money";
 import { Block, Group, Panel, Row } from "./shared";
 
@@ -160,6 +166,72 @@ export function CaptureSection() {
           </StickyActionBar>
         </div>
       </Block>
+
+      <Block
+        title="Derived amount (mileage · per diem)"
+        description="Two capture variants where the amount is NOT typed. The field the reader fills is a distance or a date range; the money below it is a read-only preview of what the server will calculate. A field that looks editable and isn't is worse than no field."
+      >
+        <Panel>
+          <Row label="Per-diem preview — 3 days at ₹2,500">
+            <PerDiemPreview firstDayHalf={false} lastDayHalf={false} />
+          </Row>
+          <Row label="…with both travel days marked half">
+            <PerDiemPreview firstDayHalf lastDayHalf />
+          </Row>
+          <Row label="One-day claim, half day">
+            <PerDiemPreview single firstDayHalf />
+          </Row>
+        </Panel>
+        <p className="text-meta text-text-tertiary">
+          The half-day rule, stated once in <code>lib/domain/per-diem.ts</code>:
+          only the FIRST and LAST day of a range can be half, and on a one-day
+          claim the two flags collapse to a single half rather than cancelling
+          to zero. The preview calls the same <code>planPerDiem</code> the
+          server action calls, so what is shown and what is saved are one piece
+          of arithmetic rather than two that agree until they don&rsquo;t.
+        </p>
+      </Block>
     </Group>
+  );
+}
+
+/** The read-only amount box from the per-diem form, at three day counts. */
+function PerDiemPreview({
+  single = false,
+  firstDayHalf = false,
+  lastDayHalf = false,
+}: {
+  single?: boolean;
+  firstDayHalf?: boolean;
+  lastDayHalf?: boolean;
+}) {
+  const RATES: PerDiemRateRow[] = [
+    {
+      id: "demo",
+      name: "Metro",
+      location: "Mumbai",
+      dailyAmount: 250_000,
+      effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+      active: true,
+    },
+  ];
+  const plan = planPerDiem(RATES, {
+    rateName: "Metro",
+    start: new Date("2026-08-10T00:00:00.000Z"),
+    end: new Date(single ? "2026-08-10T00:00:00.000Z" : "2026-08-12T00:00:00.000Z"),
+    firstDayHalf,
+    lastDayHalf,
+  });
+  if ("error" in plan) return <span className="text-meta">{plan.error}</span>;
+  return (
+    <span className="border-line bg-bg-subtle grid gap-1 rounded-lg p-4">
+      <span className="text-label text-text-secondary">Amount</span>
+      <Amount value={plan.amount} currency="INR" size="display" />
+      <span className="text-meta text-text-tertiary">
+        {describeDays(plan.halfDays)} ×{" "}
+        <Amount value={plan.dailyAmount} currency="INR" size="meta" tone="muted" />
+        {" per day — calculated on save"}
+      </span>
+    </span>
   );
 }
