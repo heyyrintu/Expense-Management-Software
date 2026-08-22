@@ -127,11 +127,37 @@ test.describe("tenant routes", () => {
     await page.close();
   });
 
+  /**
+   * Every tenant route reachable without an id.
+   *
+   * ── COVERAGE IS PART OF THE ASSERTION ─────────────────────────────────────
+   * This list was 18 routes and the app has 29 without an id, so a third of
+   * the product was never scanned — including `/card-imports`,
+   * `/settings/whatsapp` and `/recurring`, three screens edited as recently as
+   * the last two commits. A suite that passes because it never looked is
+   * worse than no suite: it produces a green tick that stops anyone looking.
+   *
+   * All of these are reachable by the org_admin this run signs up as
+   * (org_admin ≥ finance_admin ≥ approver, and every guard below is one of
+   * those three), so a redirect here means a broken guard, not a missing role.
+   *
+   * STILL NOT COVERED, deliberately:
+   *   * `/` — a redirect that resolves before anything paints.
+   *   * `/:id` detail routes (`/expenses/[id]`, `/reports/[id]`,
+   *     `/approvals/[id]`, `/complaints/[id]`, `/settings/users/[id]`,
+   *     `/settings/categories/[id]`) — each needs an id captured during
+   *     setup. Worth adding; they are where StatusBadge, the timeline and the
+   *     decision panel actually render.
+   *   * `/design-system` — a dev surface that deliberately quotes bad copy
+   *     and unfinished components, so it would fail on purpose.
+   *   * `/super/**` — a separate auth realm this run has no session for.
+   */
   const ROUTES = [
     "/dashboard",
     "/expenses",
     "/expenses/new",
     "/reports",
+    "/reports/new",
     "/approvals",
     "/finance",
     "/ledger",
@@ -140,12 +166,22 @@ test.describe("tenant routes", () => {
     "/advances",
     "/budgets",
     "/analytics",
+    "/analytics/violations",
+    "/card-imports",
+    "/recurring",
     "/notifications",
     "/profile",
+    "/settings",
     "/settings/organization",
     "/settings/users",
     "/settings/categories",
+    "/settings/categories/new",
     "/settings/departments",
+    "/settings/approval-chains",
+    "/settings/clients",
+    "/settings/delegations",
+    "/settings/email-ingestion",
+    "/settings/whatsapp",
   ];
 
   for (const path of ROUTES) {

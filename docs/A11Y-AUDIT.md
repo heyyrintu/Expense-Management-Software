@@ -179,6 +179,38 @@ limit, not a code fault. Retried with `--max-old-space-size=4096`; same result.
 findings — that is what it is for. It should be run before this milestone is
 called done.
 
+**Update (2026-08-23).** Still unexecuted, but three things changed:
+
+1. **CI now runs it** (G4). `.github/workflows/ci.yml` installs Chromium and
+   invokes `test:e2e` and `test:a11y` after the isolation suite, uploading the
+   Playwright report on failure. Neither suite had ever been invoked by any
+   workflow, so the first pipeline after this commit is where they will run for
+   the first time — and it is expected to go red.
+2. **Its route coverage was a third short.** The spec scanned 18 routes; the
+   app serves 29 without an id. Unscanned were `/card-imports`,
+   `/settings/whatsapp`, `/recurring`, `/reports/new`, `/analytics/violations`,
+   `/settings`, `/settings/approval-chains`, `/settings/clients`,
+   `/settings/delegations`, `/settings/email-ingestion` and
+   `/settings/categories/new` — three of them edited in the two commits before
+   this one. All 29 are now in the list. A suite that never visits a route
+   reports zero violations for it, and zero reads exactly like a pass.
+3. **A unit test now guards that coverage.** `tests/unit/a11y-coverage.test.ts`
+   walks the real route tree and fails `npm run test` when a route exists that
+   the spec never visits, when the spec names a route that no longer exists, or
+   when an exclusion has no stated reason. It needs no browser, so it holds
+   while everything else here is blocked.
+
+Still outstanding: **the scan itself, and the diagnosis of why the dev server
+dies.** `docs/VERIFICATION-RUNBOOK.md` has both — including a concrete,
+evidence-backed cause (two package managers layered in one `node_modules`) that
+should be repaired before anything else is attempted.
+
+The dynamic routes remain unscanned — `/expenses/[id]`, `/reports/[id]`,
+`/approvals/[id]`, `/complaints/[id]`, `/settings/users/[id]`,
+`/settings/categories/[id]`. They need an id captured during setup, and they are
+where `StatusBadge`, the report timeline and the decision panel actually render,
+so they are the most valuable ones still missing.
+
 ### 2. No live keyboard walkthrough
 
 No browser has been connected in any session of this build. The keyboard table

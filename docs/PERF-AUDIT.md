@@ -41,6 +41,36 @@ against rather than a claim:
 
 **Run Lighthouse before calling this milestone done.**
 
+### Update (2026-08-23) — still not run, and D5.4 is now unticked
+
+`DESIGN-PLAN.md` had D5.4 ticked while this section said the numbers did not
+exist. That contradiction is resolved in the honest direction: **the box is
+unticked**, and it gets ticked when the numbers are here, not before.
+
+Nothing has been measured since. What changed is that the blocker now has a
+diagnosis rather than a shrug — `docs/VERIFICATION-RUNBOOK.md` §0 records the
+evidence that this repo carries **two lockfiles and a `node_modules` containing
+both npm's and pnpm's markers**, with `pnpm-workspace.yaml` left as literal
+placeholder text (`set this to true or false`) gating the postinstall builds of
+Prisma, `sharp`, `esbuild` and `tesseract.js`. A hybrid native dependency tree
+is a credible cause of both `STATUS_STACK_BUFFER_OVERRUN` and the dev server's
+heap exhaustion. It is a diagnosis, not a confirmed fix: it could not be
+reproduced, because the crash is Windows-native and the shell available for
+this work was Linux.
+
+Two notes for whoever runs it, so the numbers mean something:
+
+- **Measure against `npm run build && npm run start`, not `npm run dev`.** The
+  dev server ships unminified bundles and unoptimised images; a Performance
+  score from it understates the real one enough to send you optimising noise.
+- **Lighthouse does not measure INP in a lab run.** It reports CLS directly,
+  but INP needs real interaction — record a DevTools Performance trace while
+  clicking a filter facet, opening the submit dialog and paging the expenses
+  table, then read INP off the interactions track. A lab "INP" copied from a
+  Lighthouse JSON would be a fabricated number.
+
+The results table in the runbook is where these land.
+
 ---
 
 ## 2. Offenders

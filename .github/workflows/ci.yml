@@ -27,9 +27,16 @@ jobs:
     env:
       # app role — RLS enforced (created below); used by the isolation suite
       DATABASE_URL: postgresql://expense_app:expense_app@localhost:5432/expense_dev?schema=public
-      # owner — migrations + fixture provisioning
+      # owner — migrations + fixture provisioning, and `npm run seed`
       DIRECT_DATABASE_URL: postgresql://expense:expense@localhost:5432/expense_dev?schema=public
       AUTH_SECRET: ci-only-secret
+      # Required once CI actually signs in (G4). Auth.js builds its callback
+      # URLs from this; without it the e2e login redirects to the wrong origin
+      # and the run fails somewhere unhelpful, several steps later.
+      AUTH_URL: http://localhost:3000
+      # Deliberately NOT setting APP_ENCRYPTION_KEY: /settings/whatsapp renders
+      # its "set this before saving credentials" callout when the key is
+      # absent, and that callout is a real state the axe scan should see.
 
     steps:
       - uses: actions/checkout@v4
@@ -62,3 +69,48 @@ jobs:
 
       - name: Tenant isolation suite (red build on any cross-tenant access)
         run: npm run test:isolation
+
+      # ── Browser suites (G4) ────────────────────────────────────────────────
+      # These existed in package.json from 4.3 and D5.3 and no workflow ever
+      # invoked them, so the happy path and the axe scan could rot without
+      # anyone noticing — and did: the a11y suite's route list had drifted to
+      # 18 of the app's 29 id-less routes before tests/unit/a11y-coverage.test.ts
+      # started failing the build for it.
+      #
+      # They run AFTER the isolation suite deliberately. Both need a working
+      # database, and a cross-tenant leak is a more urgent signal than a
+      # focus-order regression — if isolation is red, nothing below it matters.
+      - name: Install Playwright browsers
+        # Chromium only: the suites assert semantics and structure (roles,
+        # names, focus, axe rules), none of which differ across engines. A
+        # three-browser matrix would triple the slowest job in CI to re-check
+        # the same DOM.
+        run: npx playwright install --with-deps chromium
+
+      - name: Seed demo data
+        # The e2e run signs up its own org, but `npm run seed` provisions the
+        # two demo orgs (acme, globex) the app's guards and role variants are
+        # written against — a dashboard with no rows exercises the empty state
+        # and nothing else.
+        run: npm run seed
+
+      - name: E2E happy path (signup → submit → approve → reimburse)
+        # Playwright starts the dev server itself (see playwright.config.ts
+        # `webServer`), so there is no separate start step to keep in sync.
+        run: npm run test:e2e
+
+      - name: Accessibility suite (axe, WCAG 2.1 AA)
+        run: npm run test:a11y
+
+      - name: Upload Playwright report
+        # `always()`: the report is worth most precisely when the step above
+        # failed, and the default `success()` would throw it away exactly then.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore

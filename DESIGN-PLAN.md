@@ -44,9 +44,22 @@ Run these **after** structural build; each task ≈ one Claude Code session and 
 
 - [x] **D5.1 Empty, loading, error states sweep**: every route gets purposeful empty state, shape-matched skeleton, and error boundary with recovery action. Audit checklist committed.
 - [x] **D5.2 Motion audit**: every animation checked against DESIGN-PRD §4.4 — duration ≤300ms, correct easing direction, transform/opacity only, interruptible, origin-anchored, reduced-motion respected. Remove anything decorative.
-- [x] **D5.3 Accessibility audit**: axe automated pass in CI, keyboard walkthrough of the three critical flows, screen-reader pass, contrast verification, focus-order fixes. Target Lighthouse a11y ≥95.
-- [x] **D5.4 Performance & responsive pass**: Lighthouse ≥90 on dashboard, CLS <0.05, INP <200ms; test at 360px, 768px, 1024px, 1440px; font loading without FOUT; image/receipt lazy loading.
-- [x] **D5.5 Design QA**: walk `/design-system` gallery, verify token-only styling (lint clean), consistent status colors across table/card/chart/print, and cross-screen consistency of amounts, dates, and empty states.
+- [ ] **D5.3 Accessibility audit**: axe automated pass in CI, keyboard walkthrough of the three critical flows, screen-reader pass, contrast verification, focus-order fixes. Target Lighthouse a11y ≥95.
+  - Done: contrast verified deterministically (`scripts/check-contrast.mjs`, 56 pairs, in `npm run lint`); focus-order fixes applied (D-6 command palette); the axe suite is written, now covers **all 29 id-less routes** (was 18 — see `tests/unit/a11y-coverage.test.ts`) and **is now invoked by CI**.
+  - **Not done: the axe suite has still never been executed**, so it is unproven. No keyboard walkthrough, no screen-reader pass, no Lighthouse a11y score. All four need a browser against a running app.
+  - Blocked on the build/dev-server failure — see `docs/VERIFICATION-RUNBOOK.md`, which has a diagnosis and the exact sequence.
+- [ ] **D5.4 Performance & responsive pass**: Lighthouse ≥90 on dashboard, CLS <0.05, INP <200ms; test at 360px, 768px, 1024px, 1440px; font loading without FOUT; image/receipt lazy loading.
+  - Done: bundle work is real and measured from a production build — `/dashboard` 342 → 229 kB, `/analytics` 237 → 119 kB; receipts lazy-load; charts are behind `next/dynamic`.
+  - **Not done: Lighthouse has never been run.** Performance, CLS and INP are all unmeasured. The three targets are predictions, not results.
+- [ ] **D5.5 Design QA**: walk `/design-system` gallery, verify token-only styling (lint clean), consistent status colors across table/card/chart/print, and cross-screen consistency of amounts, dates, and empty states.
+  - Done: gallery walked and extended; token-only lint clean across `app/**` and `components/**` (the palette-class rule was covering 4 paths and now covers both trees); status colour routed through `StatusBadge` everywhere.
+  - **Not done: the screenshot baseline was never captured** — `docs/screenshots/` holds only a README, so there is no visual regression reference to diff against.
+
+> **Why these three are unticked.** They were ticked while `docs/A11Y-AUDIT.md`
+> and `docs/PERF-AUDIT.md` each said, in their own words, that the work had not
+> run. A checkbox that disagrees with its own evidence is worse than an empty
+> one: it stops the next person looking. They get ticked when the numbers
+> exist, not before.
 
 ## Sequencing note
 
