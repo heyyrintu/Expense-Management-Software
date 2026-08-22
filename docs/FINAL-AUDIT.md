@@ -93,7 +93,7 @@ Recorded wins: dashboard First Load JS **342 → 229 kB** (−33%), analytics **
 | Card reconciliation (statement) | ✅ | 5.2 CSV import + amount/date matching |
 | Real-time card feeds (Visa/MC) | ❌ | Needs bank partnerships — explicit non-goal |
 | Virtual cards | ❌ | Explicit non-goal |
-| Accounting integrations (Intacct, QBO, NetSuite, Xero) | ⚠️ **export only** | CSV + **Tally XML**. Direct two-way sync is P2 — the largest remaining gap vs Sage |
+| Accounting integrations (Intacct, QBO, NetSuite, Xero) | ⚠️ **one-way export, mapped** | Built 2026-08-23: an account-mapping layer (`AccountingMapping`), a pure adapter interface, a **QuickBooks Online journal-entry CSV**, Tally moved behind the same interface, and export-run tracking with a double-export guard. Two-way API sync is still P2 — no OAuth, no live calls |
 | Native mobile app | ⚠️ responsive web | Explicit non-goal; capture flow is mobile-first |
 | AI copilot (natural-language spend) | ❌ | P2 |
 | Multi-entity / multi-org | ✅ | True multi-tenant with RLS — arguably stronger than Sage's |
@@ -141,7 +141,7 @@ Recorded wins: dashboard First Load JS **342 → 229 kB** (−33%), analytics **
 **Backlog**
 
 10. ~~Per-diem expense type~~ — **done 2026-08-23**. Schema + migration (RLS, org_id-leading indexes), finance settings screen, capture variant, policy exemption; 30 unit + 13 isolation assertions. The migration is UNAPPLIED — run `npx prisma migrate deploy` and `npx prisma generate` on the host.
-11. Direct accounting sync (QBO/Xero/NetSuite) — the strategic gap.
+11. Direct accounting sync (QBO/Xero/NetSuite) — **groundwork done 2026-08-23**: mapping layer, adapter interface, QuickBooks CSV, run tracking. What remains is the API half — OAuth, token storage, push, and conflict handling. `AccountingExport.fileKey` is nullable and `.remoteRef` exists so that adapter needs no migration. Xero and NetSuite are in the target enum with `adapterFor` returning null rather than a stand-in.
 12. Monthly summary as PDF attachment. *(G3)*
 13. Sync DESIGN-PRD §5 token names to the implemented names. *(D-8)*
 14. Delete dead dark-theme and shadcn blocks, or bring dark tokens under contrast checking. *(D-9)*

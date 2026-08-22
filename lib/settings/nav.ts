@@ -83,6 +83,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         minRole: "finance_admin",
       },
       {
+        label: "Accounting",
+        href: "/settings/accounting",
+        // Mirrors requireRole("finance_admin") in the page — see the header.
+        hint: "Account codes for exports",
+        minRole: "finance_admin",
+      },
+      {
         label: "Per-diem rates",
         href: "/settings/per-diem",
         // Mirrors requireRole("finance_admin") in the page — see the header.

@@ -18,6 +18,8 @@ import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
+import { fetchPriorExports } from "@/lib/accounting/queries";
+import { exportStatusFor } from "@/lib/domain/accounting-export";
 import {
   computeReportTotal,
   isReportEditable,
@@ -57,6 +59,12 @@ export default async function ReportDetailPage({
   const db = scopedDb(ctx.orgId);
   // own reports only (approver views arrive in 2.2)
   const acting = await resolveActing(ctx);
+  // Accounting-export history for this report (FINAL-AUDIT §4). Read here
+  // rather than in a child so the page has one round trip, and shown to the
+  // OWNER as well as finance: "has this reached the books yet" is the
+  // question behind most "where is my money" emails.
+  const priorExports = await fetchPriorExports(db, [id]);
+  const exportStatus = exportStatusFor(id, priorExports);
   const report = await db.expenseReport.findUnique({
     where: { id, userId: acting.effectiveUserId },
     include: {
@@ -222,6 +230,22 @@ export default async function ReportDetailPage({
       <section className="grid gap-6">
       {hasTimeline(report.status as ReportStatus) ? (
         <StatusTimeline steps={timeline} />
+      ) : null}
+
+      {exportStatus.length > 0 ? (
+        // Neutral, not success: reaching the accounting system is a fact about
+        // bookkeeping, not an outcome for the person who filed the report.
+        // Colouring it green would imply a payment that may not have happened.
+        <div className="border-line bg-bg-subtle grid gap-1 rounded-lg border p-3">
+          <p className="text-label text-text-secondary">Sent to accounting</p>
+          <ul className="grid gap-1">
+            {exportStatus.map((e) => (
+              <li key={e.target} className="text-meta text-text-tertiary">
+                {e.target} — <DateCell value={e.exportedAt.toISOString()} format="relative" />
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {reportFlags.length > 0 ? (

@@ -123,6 +123,9 @@ model Organization {
   projects       Project[]
   categories     Category[]
   perDiemRates   PerDiemRate[]
+  accountingMappings AccountingMapping[]
+  accountingExports  AccountingExport[]
+  accountingExportReports AccountingExportReport[]
   expenses       Expense[]
   receipts       Receipt[]
   reports        ExpenseReport[]
@@ -206,6 +209,7 @@ model User {
   whatsappLink       WhatsAppLink?
   whatsappInbound    WhatsAppInbound[]
   whatsappOutbound   WhatsAppOutbound[]
+  accountingExports  AccountingExport[]
 
   @@unique([orgId, email])
   @@index([orgId, role])
@@ -242,6 +246,131 @@ model Project {
   @@unique([orgId, code])
   @@index([orgId, name])
   @@map("projects")
+}
+
+/// Which accounting system an export targets.
+///
+/// `generic` is not a placeholder — it is the escape hatch for the long tail
+/// (Zoho Books, Sage 50, a bookkeeper's spreadsheet) and emits a plain,
+/// documented column set rather than a vendor dialect.
+enum AccountingTarget {
+  quickbooks
+  xero
+  netsuite
+  tally
+  generic
+
+  @@map("accounting_target")
+}
+
+/// What kind of local record a mapping row points at.
+///
+/// Deliberately an enum rather than a table name: `user` maps to a VENDOR or
+/// employee-payable account, `tax` to a tax code, and neither is a row in a
+/// table called that. The enum names the CONCEPT being mapped.
+enum AccountingEntityType {
+  category
+  department
+  project
+  user
+  tax
+
+  @@map("accounting_entity_type")
+}
+
+/// Local record → remote account code (P2 groundwork).
+///
+/// ── WHY `localId` HAS NO FOREIGN KEY ──────────────────────────────────────
+/// It points at one of five different tables depending on `entityType`, and
+/// Postgres has no polymorphic FK. The alternative — five nullable columns
+/// with five FKs and a check constraint — buys referential integrity at the
+/// cost of a schema that has to change every time a new entity type is
+/// mappable. `tax` in particular is not a table at all today.
+///
+/// The trade is real and the mitigation is explicit: a mapping whose target
+/// row has been deleted resolves to "unmapped" rather than to a stale code,
+/// because resolution goes through the live entity list (see
+/// lib/exports/accounting/mapping.ts), never through the mapping table alone.
+model AccountingMapping {
+  id         String               @id @default(uuid(7)) @db.Uuid
+  orgId      String               @map("org_id") @db.Uuid
+  target     AccountingTarget
+  entityType AccountingEntityType @map("entity_type")
+  /// The local record's UUID. See the note above on why this carries no FK.
+  localId    String               @map("local_id") @db.Uuid
+  /// The account code in the remote system — "6100", "Travel:Airfare".
+  remoteCode String               @map("remote_code")
+  /// Human label from the remote system, for the settings screen. Optional
+  /// because a bookkeeper often knows only the code.
+  remoteName String?              @map("remote_name")
+  createdAt  DateTime             @default(now()) @map("created_at")
+  updatedAt  DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  /// One mapping per local record PER TARGET: the same category maps to
+  /// different codes in QuickBooks and in Tally, and both must coexist.
+  @@unique([orgId, target, entityType, localId])
+  @@index([orgId, target, entityType])
+  @@map("accounting_mappings")
+}
+
+/// One export run.
+///
+/// ── SHAPED FOR A FUTURE API ADAPTER, NOT JUST A FILE ──────────────────────
+/// `fileKey` is NULLABLE and `remoteRef` exists although nothing writes it
+/// yet. A two-way adapter posting journal entries to the QuickBooks API
+/// produces no file and returns a remote id; recording that is the difference
+/// between "this run happened" and "this run happened and here is what the
+/// other system called it". Adding those columns later would mean migrating a
+/// table that already holds the audit trail of every export finance has run.
+model AccountingExport {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  orgId        String           @map("org_id") @db.Uuid
+  target       AccountingTarget
+  periodStart  DateTime         @map("period_start") @db.Date
+  periodEnd    DateTime         @map("period_end") @db.Date
+  exportedAt   DateTime         @default(now()) @map("exported_at")
+  exportedById String           @map("exported_by_id") @db.Uuid
+  /// Object-store key. Null for a delivery that produced no file.
+  fileKey      String?          @map("file_key")
+  /// What the remote system called this batch. Null until an API adapter exists.
+  remoteRef    String?          @map("remote_ref")
+  /// Denormalised from the artifact so the history list needs no re-derivation.
+  lineCount    Int              @map("line_count")
+  totalMinor   Int              @map("total_minor")
+
+  organization Organization             @relation(fields: [orgId], references: [id])
+  exportedBy   User                     @relation(fields: [exportedById], references: [id])
+  reports      AccountingExportReport[]
+
+  @@index([orgId, target, exportedAt])
+  @@map("accounting_exports")
+}
+
+/// Which reports went into which export run.
+///
+/// ── A JOIN TABLE, NOT A `report_ids` ARRAY ────────────────────────────────
+/// The double-export guard asks "has THIS report been exported to THIS
+/// target?" on every export and on every report detail page. Against a JSON
+/// array that is a sequential scan of every export row the org has ever made;
+/// against this table it is an index hit on (org_id, report_id). The guard is
+/// the feature — modelling it as something that gets slower the longer
+/// finance uses the product would undermine it.
+model AccountingExportReport {
+  id       String @id @default(uuid(7)) @db.Uuid
+  orgId    String @map("org_id") @db.Uuid
+  exportId String @map("export_id") @db.Uuid
+  reportId String @map("report_id") @db.Uuid
+
+  organization Organization     @relation(fields: [orgId], references: [id])
+  export       AccountingExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  report       ExpenseReport    @relation(fields: [reportId], references: [id])
+
+  @@unique([orgId, exportId, reportId])
+  /// THE double-export guard's lookup.
+  @@index([orgId, reportId])
+  @@map("accounting_export_reports")
 }
 
 /// Per-diem daily allowance rates (PRD P1). Finance-configurable, org-scoped.
@@ -396,6 +525,7 @@ model ExpenseReport {
   reimbursements Reimbursement[]
   comments       ReportComment[]
   complaints     Complaint[]
+  accountingExportReports AccountingExportReport[]
 
   @@index([orgId, userId, status])
   @@index([orgId, status, submittedAt])

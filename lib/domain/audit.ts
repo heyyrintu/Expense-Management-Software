@@ -11,6 +11,8 @@ export type AuditEntry = {
     | "Project"
     | "Category"
     | "PerDiemRate"
+    | "AccountingMapping"
+    | "AccountingExport"
     | "Expense"
     | "Receipt"
     | "ExpenseReport"

@@ -23,6 +23,7 @@ const ROUTE_GUARDS: Record<string, Role> = {
   "/settings/categories": "finance_admin",
   "/settings/clients": "finance_admin",
   "/settings/per-diem": "finance_admin",
+  "/settings/accounting": "finance_admin",
   "/settings/approval-chains": "org_admin",
   "/settings/delegations": "org_admin",
   "/settings/whatsapp": "org_admin",
