@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildApproverKpis,
+  buildComplaintsKpi,
   buildEmployeeKpis,
   buildFinanceKpis,
   expenseListHref,
@@ -215,5 +216,76 @@ describe("monthOverMonthDelta", () => {
     });
     expect(kpis[0].delta?.goodDirection).toBe("down");
     expect(kpis[0].delta?.percent).toBeCloseTo(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The complaints card (G2)
+//
+// The one card on the finance strip that is not an expense sum. What matters
+// is that it SAYS so — the `different` branch requires a note, and KpiStrip
+// prints it — and that its href points at the list its number came from.
+// ---------------------------------------------------------------------------
+describe("buildComplaintsKpi", () => {
+  const HREF = "/complaints?status=open&status=in_review";
+  const summary = (over: Partial<Parameters<typeof buildComplaintsKpi>[0]["summary"]> = {}) => ({
+    open: 4,
+    breached: 0,
+    warning: 0,
+    oldestOpenDays: 2,
+    ...over,
+  });
+
+  it("is a COUNT, not money — no currency, so it renders through formatCount", () => {
+    const kpi = buildComplaintsKpi({ summary: summary(), href: HREF });
+    expect(kpi.value).toBe(4);
+    expect(kpi.currency).toBeUndefined();
+  });
+
+  it("declares itself different from the filtered expense query, with a reason", () => {
+    const kpi = buildComplaintsKpi({ summary: summary(), href: HREF });
+    expect(kpi.agreement.kind).toBe("different");
+    // The type requires `note` on "different"; this asserts it actually
+    // explains rather than restating the label.
+    if (kpi.agreement.kind !== "different") throw new Error("expected different");
+    expect(kpi.agreement.note).toMatch(/not expenses/i);
+    expect(kpi.agreement.note.length).toBeGreaterThan(40);
+  });
+
+  it("surfaces its note under the grid via kpiNotes", () => {
+    const notes = kpiNotes([buildComplaintsKpi({ summary: summary(), href: HREF })]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0].label).toBe("Open complaints");
+  });
+
+  it("links to the list the number was counted from", () => {
+    const kpi = buildComplaintsKpi({ summary: summary(), href: HREF });
+    expect(kpi.agreement.href).toBe(HREF);
+  });
+
+  it("leads the hint with a breach — the only figure that means a missed promise", () => {
+    const kpi = buildComplaintsKpi({
+      summary: summary({ breached: 2, warning: 1, oldestOpenDays: 9 }),
+      href: HREF,
+    });
+    expect(kpi.hint).toBe("2 past SLA · oldest 9 days");
+  });
+
+  it("falls back to the warning count, then to age alone", () => {
+    expect(
+      buildComplaintsKpi({ summary: summary({ warning: 3, oldestOpenDays: 4 }), href: HREF }).hint
+    ).toBe("3 nearing SLA · oldest 4 days");
+    expect(
+      buildComplaintsKpi({ summary: summary({ oldestOpenDays: 1 }), href: HREF }).hint
+    ).toBe("Oldest 1 day");
+  });
+
+  it("says nothing is open rather than showing an age of zero", () => {
+    const kpi = buildComplaintsKpi({
+      summary: summary({ open: 0, oldestOpenDays: 0 }),
+      href: HREF,
+    });
+    expect(kpi.value).toBe(0);
+    expect(kpi.hint).toBe("Nothing open");
   });
 });

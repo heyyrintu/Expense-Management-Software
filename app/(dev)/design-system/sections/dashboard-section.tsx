@@ -13,6 +13,7 @@ import { KpiStrip } from "@/components/ui/kpi-strip";
 import { RankList, type RankRow } from "@/components/ui/rank-list";
 import {
   buildApproverKpis,
+  buildComplaintsKpi,
   buildEmployeeKpis,
   buildFinanceKpis,
 } from "@/lib/domain/dashboard-kpi";
@@ -43,6 +44,10 @@ const MONTHLY = [
 
 const BASE = { groups: GROUPS, filters: EMPTY_EXPENSE_FILTERS, currency: CURRENCY, monthly: MONTHLY };
 
+/** Finance's complaints card (G2) — a count, and one with a breach in it, so
+ *  the hint shows the branch that matters rather than the quiet one. */
+const COMPLAINTS = { open: 6, breached: 2, warning: 1, oldestOpenDays: 11 };
+
 const ROLES = ["employee", "approver", "finance"] as const;
 type RoleKey = (typeof ROLES)[number];
 
@@ -60,7 +65,11 @@ export function DashboardSection() {
 
   const kpis =
     role === "finance"
-      ? buildFinanceKpis({ ...BASE, payable: { count: 9, outstanding: 3_487_600 } })
+      ? [
+          ...buildFinanceKpis({ ...BASE, payable: { count: 9, outstanding: 3_487_600 } }),
+          // G2: finance's fifth card, exactly as the real screen assembles it.
+          buildComplaintsKpi({ summary: COMPLAINTS, href: "/complaints?status=open" }),
+        ]
       : role === "approver"
         ? buildApproverKpis({ ...BASE, queue: { count: 7, total: 1_240_000, flagged: 2 } })
         : buildEmployeeKpis(BASE);
@@ -74,7 +83,7 @@ export function DashboardSection() {
     >
       <Block
         title="KPI strip"
-        description="Four cards, 1 → 2 → 4 across the breakpoints. Never three-across: a fourth card alone on a second row reads as more important than the three above it."
+        description="1 → 2 → N across the breakpoints, where N is the number of cards (KpiStrip derives it). A strip must never leave one card alone on a second row: an orphan reads as a separate section rather than the last member of the set — which is what four hard-coded columns did to finance's fifth card in G2."
       >
         <Row label="Role">
           {ROLES.map((r) => (

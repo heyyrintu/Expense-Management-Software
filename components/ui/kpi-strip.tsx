@@ -21,6 +21,27 @@ import { StatCard } from "@/components/ui/stat-card";
 import { kpiNotes, type DashboardKpi } from "@/lib/domain/dashboard-kpi";
 import { cn } from "@/lib/utils";
 
+/**
+ * Large-screen columns for a strip of `n` cards.
+ *
+ * Four was hard-coded until G2 gave finance a fifth (open complaints), which
+ * under `lg:grid-cols-4` wrapped to a second row holding one card — a full-
+ * width-looking orphan that reads as a different section rather than the
+ * fifth member of a strip.
+ *
+ * Literal class strings, never `lg:grid-cols-${n}`: Tailwind scans source
+ * text, so an interpolated class generates no CSS and the grid would silently
+ * fall back to one column. Capped at five because a sixth card at 1/6 of the
+ * content width can no longer hold a 32px display amount without wrapping —
+ * a strip that wide wants to become two sections, not smaller type.
+ */
+function columnsFor(n: number): string {
+  if (n <= 2) return "lg:grid-cols-2";
+  if (n === 3) return "lg:grid-cols-3";
+  if (n === 4) return "lg:grid-cols-4";
+  return "lg:grid-cols-5";
+}
+
 export function KpiStrip({
   kpis,
   className,
@@ -34,7 +55,7 @@ export function KpiStrip({
 
   return (
     <div className="grid gap-3">
-      <div className={cn("grid gap-4 sm:grid-cols-2 lg:grid-cols-4", className)}>
+      <div className={cn("grid gap-4 sm:grid-cols-2", columnsFor(kpis.length), className)}>
         {kpis.map((kpi) => (
           <StatCard
             key={kpi.key}

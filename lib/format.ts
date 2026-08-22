@@ -1,6 +1,12 @@
-// Date formatting for the app. THE ONLY PLACE A DATE BECOMES A STRING —
-// components present through <DateCell>, and anything needing a plain string
-// (emails, WhatsApp messages, CSV cells) calls these directly.
+// Date and plain-number formatting for the app. THE ONLY PLACE A DATE OR A
+// COUNT BECOMES A STRING — components present through <DateCell> and
+// <Amount>, and anything needing a plain string (emails, WhatsApp messages,
+// CSV cells) calls these directly.
+//
+// Money is NOT here: it lives in lib/money.ts, which asserts integer minor
+// units before formatting. A count is a different type with a different
+// contract, and giving it its own function is what stops someone reaching for
+// formatMoney with a row count and getting "₹12.00".
 //
 // TIMEZONE: everything here works in UTC. Expense dates are calendar dates
 // stored at UTC midnight, so formatting them in the viewer's local zone would
@@ -8,6 +14,26 @@
 // Timestamps (createdAt, submittedAt) are instants and would be defensible in
 // local time, but two date formats in one product is how "which day was
 // that?" starts, so both use UTC and the whole app agrees with itself.
+
+/**
+ * A plain whole number with thousands separators — 1234567 → "12,34,567".
+ *
+ * THE ONLY PLACE A COUNT BECOMES A STRING (D-7). This existed inline in
+ * components/ui/stat-card.tsx as `value.toLocaleString("en-IN")`, which put a
+ * hard-coded locale inside a design-system primitive: every KPI in the
+ * product grouped Indian-style whether or not the tenant was Indian, and the
+ * one place to change that was buried in a component nobody would think to
+ * grep. The locale is still en-IN — the same one formatMoney and formatDate
+ * use — but it is now stated once, beside them, where making the app
+ * locale-aware is a single edit rather than a hunt.
+ *
+ * Non-finite input returns an em dash rather than "NaN": a KPI that has not
+ * loaded is a missing value, and "NaN" reads as a bug in the number itself.
+ */
+export function formatCount(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+}
 
 /** The project-wide date format: dd MMM yyyy → "12 Aug 2026". */
 export function formatDate(d: Date | string): string {

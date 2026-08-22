@@ -101,10 +101,16 @@ export function KpiSection() {
             trend={empty ? undefined : SPARK}
             loading={loading}
           />
+          {/* The non-currency branch (D-7). Deliberately a number large
+              enough to group: this path used to call toLocaleString("en-IN")
+              inline, and a specimen showing "7" would have looked identical
+              whether the formatter worked or not. It now goes through
+              formatCount in lib/format.ts, the same module formatDate lives
+              in — so "12,486" here is the assertion. */}
           <StatCard
-            label="Policy violations"
-            value={empty ? 0 : 7}
-            hint="not money — a plain count"
+            label="Receipts processed"
+            value={empty ? 0 : 12_486}
+            hint="not money — a plain count, grouped by formatCount"
             delta={{ percent: 0 }}
             loading={loading}
           />

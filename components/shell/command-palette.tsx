@@ -110,7 +110,21 @@ export function CommandPalette({ role }: { role: Role }) {
         <DialogContent showCloseButton={false} className="gap-0 p-0">
           <DialogTitle className="sr-only">Search and commands</DialogTitle>
 
-          <div className="border-line flex items-center gap-3 border-b px-4">
+          {/* The ring lives on the CONTAINER, not the input (D-6). The input
+              is a bare `outline-none` field inside a bordered row, so focus
+              had nothing to show at all — masked by autoFocus on open, and
+              plainly missing the moment anyone Shift+Tabbed back to it.
+              Same focus-within pattern as AmountInput in components/ui/
+              input.tsx; `ring-inset` rather than an offset ring because this
+              row sits flush against the dialog's rounded top edge, where an
+              outward ring would be clipped by the overflow. */}
+          <div
+            className={cn(
+              "border-line flex items-center gap-3 border-b px-4",
+              "focus-within:ring-2 focus-within:ring-focus-ring focus-within:ring-inset",
+              "transition-[box-shadow] duration-instant ease-out"
+            )}
+          >
             <Search aria-hidden="true" className="text-text-tertiary size-4 shrink-0" />
             <input
               autoFocus

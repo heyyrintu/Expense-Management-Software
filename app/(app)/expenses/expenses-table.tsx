@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { DateCell } from "@/components/ui/date-cell";
 import { StatCard } from "@/components/ui/stat-card";
 import { countHint, type ExpenseStat } from "@/lib/domain/expense-stats";
+import type { ExpenseViewScope } from "@/lib/domain/expense-scope";
 import { statusEntry } from "@/lib/design/status";
 import {
   EMPTY_EXPENSE_FILTERS,
@@ -35,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AddToReport, type OpenReport } from "./add-to-report";
 import { EXPENSE_PAGE_SIZE } from "./constants";
+import { ExportButton } from "./export-button";
 
 /** Serialisable row — this crosses the server/client boundary. */
 export type ExpenseTableRow = {
@@ -61,6 +63,7 @@ export function ExpensesTable({
   totalRows,
   pageIndex,
   openReports,
+  scope,
   canAttach = true,
 }: {
   rows: ExpenseTableRow[];
@@ -71,6 +74,13 @@ export function ExpensesTable({
   totalRows: number;
   pageIndex: number;
   openReports: OpenReport[];
+  /**
+   * The scope the SERVER resolved (D3.3), passed down so the export link
+   * carries the width the reader actually has rather than the one the URL
+   * asked for. Reading `?scope=` here instead would let an employee's
+   * `?scope=org` reach the export route as a request to widen.
+   */
+  scope: ExpenseViewScope;
   /**
    * False in the team and org views (D3.3). A report belongs to one person,
    * so offering "Add to report" over someone else's rows would put a button
@@ -258,7 +268,15 @@ export function ExpensesTable({
             }
       }
       toolbar={
-        <FilterBar config={filterConfig} value={filters} onChange={setFilters} />
+        // Filters left, export right. The export is deliberately BESIDE the
+        // filters rather than in the page header: it exports the filtered
+        // set, and putting it next to the controls that define that set is
+        // what makes "export what I'm looking at" legible without a label
+        // explaining it.
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <FilterBar config={filterConfig} value={filters} onChange={setFilters} />
+          <ExportButton filters={filters} scope={scope} totalRows={totalRows} />
+        </div>
       }
       renderCard={(row) => (
         <button

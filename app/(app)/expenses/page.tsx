@@ -5,20 +5,14 @@ import { PageHeader } from "@/components/ui/page-header";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
-import { applyExpenseFilters, EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
-import {
-  narrowViewScope,
-  parseViewScope,
-  resolveExpenseScope,
-  viewScopeCopy,
-  viewScopeWhere,
-} from "@/lib/domain/expense-scope";
+import { EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
+import { resolveExpenseListQuery } from "@/lib/domain/expense-list-query";
+import { viewScopeCopy } from "@/lib/domain/expense-scope";
 import {
   buildExpenseStats,
   parsePageIndex,
   type StatusGroup,
 } from "@/lib/domain/expense-stats";
-import { parseExpenseFilters } from "@/lib/schemas/expense-filters";
 import type { OpenReport } from "./add-to-report";
 import { EXPENSE_PAGE_SIZE } from "./constants";
 import { ExpensesTable, type ExpenseTableRow } from "./expenses-table";
@@ -45,28 +39,20 @@ export default async function ExpensesPage({
   const db = scopedDb(ctx.orgId);
 
   const raw = await searchParams;
-  // Filters come from the URL, so a filtered view survives refresh and can be
-  // shared. Anything unparseable is dropped rather than throwing.
-  const filters = parseExpenseFilters(raw);
   const pageIndex = parsePageIndex(raw.page);
 
-  // D3.3: the list can be widened to the team or the whole org so a dashboard
-  // KPI has somewhere honest to point (§7.4). The URL only REQUESTS a width —
-  // `resolveExpenseScope` sets the ceiling from the session role, and
-  // `viewScopeWhere` clamps to it, so `?scope=org` from an employee still
-  // resolves to their own rows. See lib/domain/expense-scope.ts.
-  const ceiling = await resolveExpenseScope(db, ctx);
-  const requestedScope = parseViewScope(raw.scope);
-  const scopeWhere = viewScopeWhere(ceiling, requestedScope, acting.effectiveUserId);
-  const effectiveScope = narrowViewScope(ceiling, requestedScope);
+  // ONE where-clause feeds the list, the count, the KPI strip AND the CSV
+  // export. That is what makes §7.4 hold — the cards and the rows cannot
+  // disagree, because they are the same query narrowed differently — and as
+  // of G1 it is what makes the export button honest: /api/exports/expenses
+  // calls this same function rather than parsing the URL a second way. See
+  // lib/domain/expense-list-query.ts.
+  const {
+    filters,
+    scope: effectiveScope,
+    where,
+  } = await resolveExpenseListQuery(db, ctx, acting, raw);
   const copy = viewScopeCopy(effectiveScope);
-
-  // ONE where-clause feeds the list, the count and the KPI strip. That is
-  // what makes §7.4 hold — the cards and the rows cannot disagree, because
-  // they are the same query narrowed differently. Scope stays pinned to the
-  // acting user; applyExpenseFilters ANDs the filters onto it so a filter can
-  // only ever narrow (see lib/domain/expense-query.ts).
-  const where = applyExpenseFilters(scopeWhere, filters);
 
   const [org, categories, projects, totalRows, statusGroups, expenses, openReportRows] =
     await Promise.all([
@@ -155,6 +141,7 @@ export default async function ExpensesPage({
         totalRows={totalRows}
         pageIndex={pageIndex}
         openReports={openReports}
+        scope={effectiveScope}
         canAttach={effectiveScope === "mine"}
       />
     </>

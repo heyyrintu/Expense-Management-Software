@@ -2,7 +2,13 @@
 // and the UTC contract are new and are what these lock down.
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatRelative, toDateInputValue, toIsoString } from "@/lib/format";
+import {
+  formatCount,
+  formatDate,
+  formatRelative,
+  toDateInputValue,
+  toIsoString,
+} from "@/lib/format";
 
 const NOW = new Date("2026-08-19T12:00:00Z");
 const ago = (ms: number) => new Date(NOW.getTime() - ms);
@@ -87,5 +93,46 @@ describe("formatRelative", () => {
       expect(out).not.toMatch(/NaN|undefined/);
       expect(out.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatCount (D-7)
+//
+// Extracted out of components/ui/stat-card.tsx, where it was an inline
+// `toLocaleString("en-IN")` — a hard-coded locale inside a design-system
+// primitive, which made every KPI in the product Indian-formatted from a line
+// nobody would think to grep. These lock the behaviour so moving the locale
+// later is one edit with a test that fails if it is missed.
+// ---------------------------------------------------------------------------
+describe("formatCount", () => {
+  it("groups Indian-style, matching formatMoney and formatDate", () => {
+    // 12,34,567 rather than 1,234,567 — the same convention as the rest of
+    // the app, which is the only reason it is acceptable to hard-code at all.
+    expect(formatCount(1234567)).toBe("12,34,567");
+    expect(formatCount(100000)).toBe("1,00,000");
+  });
+
+  it("leaves small numbers alone", () => {
+    expect(formatCount(0)).toBe("0");
+    expect(formatCount(7)).toBe("7");
+    expect(formatCount(999)).toBe("999");
+  });
+
+  it("renders a count as a whole number", () => {
+    // A KPI count is never fractional; if one arrives, showing "12.4 expenses"
+    // is worse than rounding it.
+    expect(formatCount(12.4)).toBe("12");
+  });
+
+  it("handles negatives", () => {
+    expect(formatCount(-4200)).toBe("-4,200");
+  });
+
+  it("returns an em dash for non-finite input, never 'NaN'", () => {
+    // A KPI that has not loaded is a missing value; "NaN" reads as a bug in
+    // the figure itself and sends the reader looking for one.
+    expect(formatCount(Number.NaN)).toBe("—");
+    expect(formatCount(Number.POSITIVE_INFINITY)).toBe("—");
   });
 });

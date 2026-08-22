@@ -1,15 +1,32 @@
 // CSV export (route handlers are reserved for uploads/webhooks/exports).
-// Uses the SAME scope resolver + where builder as the dashboard, so the
-// file always reconciles with what's on screen.
+//
+// ── SAME DERIVATION AS THE SCREEN, NOT A MATCHING ONE ─────────────────────
+// This route calls `resolveExpenseListQuery` — the same function
+// app/(app)/expenses/page.tsx calls — and sorts by `EXPENSE_LIST_ORDER`, the
+// same total order the list pages through. It parses no filters of its own
+// and builds no where-clause of its own, which is the only way "export what
+// I am looking at" stays true as either side changes.
+//
+// It used to do both itself, against the single-valued dashboard schema, and
+// silently returned a different set: `q` dropped, multi-select truncated to
+// its first value, `?scope=` ignored, delegation ignored. See the header of
+// lib/domain/expense-list-query.ts for the full list, and
+// tests/isolation/expense-export.test.ts for the proof that it no longer
+// happens.
+// ──────────────────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
+import { resolveActing } from "@/lib/auth/acting";
 import { getSessionCtx } from "@/lib/auth/guard";
 import { buildCsv } from "@/lib/domain/dashboard";
-import { buildExpenseWhere } from "@/lib/domain/expense-query";
-import { resolveExpenseScope } from "@/lib/domain/expense-scope";
+import { EXPENSE_LIST_ORDER } from "@/lib/domain/expense-query";
+import {
+  resolveExpenseListQuery,
+  EXPENSE_EXPORT_MAX_ROWS,
+} from "@/lib/domain/expense-list-query";
 import { scopedDb } from "@/lib/db/scoped";
 import { toDecimalString } from "@/lib/money";
 import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
-import { parseFilters } from "@/lib/schemas/dashboard";
+import { searchParamsToRecord } from "@/lib/schemas/expense-filters";
 
 export const runtime = "nodejs";
 
@@ -44,14 +61,22 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const url = new URL(request.url);
-  const filters = parseFilters(Object.fromEntries(url.searchParams.entries()));
-
   const db = scopedDb(ctx.orgId);
-  const scope = await resolveExpenseScope(db, ctx);
+  const acting = await resolveActing(ctx);
+  // searchParamsToRecord, not Object.fromEntries: repeated keys are how a
+  // multi-select travels, and fromEntries keeps only the last one — which is
+  // precisely how this route used to export one status out of three.
+  const { where } = await resolveExpenseListQuery(
+    db,
+    ctx,
+    acting,
+    searchParamsToRecord(url.searchParams)
+  );
+
   const rows = (await db.expense.findMany({
-    where: buildExpenseWhere(scope, filters),
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: 10000,
+    where,
+    orderBy: EXPENSE_LIST_ORDER,
+    take: EXPENSE_EXPORT_MAX_ROWS,
     include: {
       user: {
         select: {

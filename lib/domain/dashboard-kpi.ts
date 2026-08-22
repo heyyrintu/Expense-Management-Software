@@ -304,6 +304,74 @@ export function buildFinanceKpis(
   ];
 }
 
+/**
+ * Finance's fifth card: open complaints and how old they are (G2).
+ *
+ * `complaintSummary` in lib/complaints/queries.ts was written as the dashboard
+ * widget and documented as one, and its only caller was /complaints — the
+ * dashboard never mentioned complaints at all. So finance had no way to see a
+ * dispute ageing past its SLA without navigating to a screen they had no
+ * reason to open.
+ *
+ * ── WHY THIS ONE IS `different` ───────────────────────────────────────────
+ * Every other card on this strip is an expense sum, narrowed by the filter
+ * bar. A complaint is not an expense: it has no amount, no category and no
+ * project, and it is raised against a REPORT or a PAYMENT. None of the
+ * dashboard's facets apply to it, so the number deliberately ignores them.
+ *
+ * The type forces that admission into the UI rather than a commit message —
+ * `note` is required on "different", and KpiStrip prints it under the grid.
+ * Letting a count that ignores the filters sit unmarked between four figures
+ * that obey them is precisely how a reader learns the whole strip is
+ * approximate.
+ *
+ * The href still points at the list the number came from: /complaints,
+ * filtered to the same open statuses `complaintSummary` counted, serialised
+ * through `complaintFiltersToParams` — the inbox's own URL contract, not a
+ * hand-written query string.
+ */
+export function buildComplaintsKpi(args: {
+  summary: { open: number; breached: number; warning: number; oldestOpenDays: number };
+  /** The open statuses the summary counted, serialised back out. */
+  href: string;
+}): DashboardKpi {
+  const { open, breached, warning, oldestOpenDays } = args.summary;
+
+  // The hint leads with what is actionable. A breach is the only one of these
+  // that means a promise has already been missed, so it comes first when it
+  // exists; "oldest N days" is the fallback because a count with no age is a
+  // number you cannot triage.
+  const hint =
+    open === 0
+      ? "Nothing open"
+      : breached > 0
+        ? `${breached} past SLA · oldest ${plural(oldestOpenDays, "day")}`
+        : warning > 0
+          ? `${warning} nearing SLA · oldest ${plural(oldestOpenDays, "day")}`
+          : `Oldest ${plural(oldestOpenDays, "day")}`;
+
+  return {
+    key: "complaints",
+    label: "Open complaints",
+    // No `currency`: this is a count, and StatCard's non-currency branch
+    // renders it through the shared formatter.
+    value: open,
+    hint,
+    agreement: {
+      kind: "different",
+      href: args.href,
+      note:
+        "Open complaints counts disputes, not expenses — a complaint has no " +
+        "amount, category or project, so the filters above do not apply to " +
+        "it. It matches the open items on /complaints exactly.",
+    },
+  };
+}
+
+function plural(n: number, unit: string): string {
+  return `${n} ${unit}${n === 1 ? "" : "s"}`;
+}
+
 /** The footnotes to render under a KPI grid: one per card computed
  *  differently from the list it opens. Empty when every card is exact. */
 export function kpiNotes(kpis: DashboardKpi[]): Array<{ label: string; note: string }> {

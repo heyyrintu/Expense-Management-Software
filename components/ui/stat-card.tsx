@@ -18,6 +18,7 @@ import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Amount } from "@/components/ui/amount";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TONE_CLASSES } from "@/lib/design/status";
+import { formatCount } from "@/lib/format";
 import { DURATION } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +82,10 @@ export function StatCard({
         <Amount value={value === null || value === undefined ? null : displayValue} currency={currency} size="display" />
       ) : (
         <span className="tabular text-display text-text-primary">
-          {value === null || value === undefined ? "—" : displayValue.toLocaleString("en-IN")}
+          {/* Through the shared formatter (D-7), never toLocaleString here:
+              a primitive that hard-codes a locale makes every KPI in the
+              product Indian-formatted from a line nobody would grep for. */}
+          {value === null || value === undefined ? "—" : formatCount(displayValue)}
         </span>
       )}
 

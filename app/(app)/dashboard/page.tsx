@@ -42,9 +42,16 @@ import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { cn } from "@/lib/utils";
+import { complaintSummary } from "@/lib/complaints/queries";
 import { approvalQueueFor } from "@/lib/domain/approval-queue";
+import { OPEN_STATUSES } from "@/lib/domain/complaint";
+import {
+  EMPTY_COMPLAINT_FILTERS,
+  complaintFiltersToParams,
+} from "@/lib/domain/complaint-filters";
 import {
   buildApproverKpis,
+  buildComplaintsKpi,
   buildEmployeeKpis,
   buildFinanceKpis,
   expenseListHref,
@@ -73,6 +80,20 @@ import {
 
 /** How many months of history the trend chart and the deltas read. */
 const TREND_MONTHS = 6;
+
+/**
+ * The complaints card's destination (G2): the inbox filtered to exactly the
+ * statuses `complaintSummary` counts as open.
+ *
+ * Built from OPEN_STATUSES and the inbox's own serialiser rather than written
+ * out as "/complaints?status=open&status=in_review", so adding a third open
+ * status changes the count and the link together. A card whose list is one
+ * status behind its number is the failure §7.4 is about.
+ */
+const complaintsInboxHref = `/complaints?${complaintFiltersToParams({
+  ...EMPTY_COMPLAINT_FILTERS,
+  status: [...OPEN_STATUSES],
+}).toString()}`;
 /** Rows in the "recent expenses" panel. Enough to recognise this week. */
 const RECENT_LIMIT = 6;
 
@@ -224,7 +245,7 @@ export default async function DashboardPage({
   let spenders: RankRow[] = [];
 
   if (isFinance) {
-    const [payable, spenderRows] = await Promise.all([
+    const [payable, spenderRows, complaints] = await Promise.all([
       db.expenseReport.findMany({
         ...payableQuery(),
         select: { total: true, reimbursements: { select: { amountPaid: true } } },
@@ -235,15 +256,30 @@ export default async function DashboardPage({
         _sum: { baseAmount: true },
         _count: { _all: true },
       }) as Promise<SpenderRow[]>,
+      // G2: the same call /complaints makes, so the card and the inbox are
+      // one query counted twice rather than two hoping to agree. Finance
+      // only — `complaintSummary` is unscoped by raiser, and an approver or
+      // employee seeing an org-wide dispute count would be reading rows the
+      // complaints inbox itself would not show them.
+      complaintSummary(db, {}, now),
     ]);
 
-    kpis = buildFinanceKpis({
-      groups: statusGroups,
-      filters,
-      currency: org.currency,
-      monthly,
-      payable: summarisePayable(payable),
-    });
+    kpis = [
+      ...buildFinanceKpis({
+        groups: statusGroups,
+        filters,
+        currency: org.currency,
+        monthly,
+        payable: summarisePayable(payable),
+      }),
+      buildComplaintsKpi({
+        summary: complaints,
+        // The open statuses the summary counted, serialised back out through
+        // the inbox's own URL contract — so following the card lands on the
+        // list the number was taken from, not a plausible-looking neighbour.
+        href: complaintsInboxHref,
+      }),
+    ];
 
     const people = await db.user.findMany({
       where: { id: { in: spenderRows.map((r) => r.userId) } },

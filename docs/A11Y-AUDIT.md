@@ -36,6 +36,12 @@ shipped.
 | 5 | `StatusBadge` and `SlaBadge` carried `role="status"` — an **aria-live region**. A 50-row table therefore contained 50 live regions, and every filter change or re-render fired a burst of announcements over whatever the user was reading. | 4.1.2 / 4.1.3 | 🟡 Major | Role removed. The label is visible text a screen reader reads in place; an `sr-only` "Status: " / "Service level: " prefix supplies the word the colour carries visually. |
 | 6 | `text-text-inverse` was used on the wizard step indicators in two files. **That class does not exist** — the token is `--color-text-on-accent` — so the glyphs inherited the ambient colour on a filled indigo circle. | 1.4.3 | 🟡 Major | Corrected to `text-text-on-accent`. The **active** step also moved from `bg-accent` to `bg-accent-solid`, because it carries a numeral and white on the brand indigo is 4.47:1 — a hair under AA for text. |
 
+### Operable
+
+| # | Issue | Criterion | Severity | Fix |
+|---|---|---|---|---|
+| 7 | The command palette's search input (`components/shell/command-palette.tsx`) carried `outline-none` with **no focus style on it or its container** — the one `outline-none` site of 38 that was never paired with a ring. `autoFocus` masked it on open, so the field looked focused the only time most people looked at it; Shift+Tab back from the results list left no visible focus anywhere on screen. | 2.4.7 | 🟡 Major | `focus-within:ring-2 ring-focus-ring` on the container, the same pattern `AmountInput` uses. `ring-inset` rather than an offset ring: the row sits flush against the dialog's rounded top edge, where an outward ring is clipped by the overflow. |
+
 ---
 
 ## Colour contrast
@@ -132,7 +138,7 @@ walkthrough** — see the gaps section.
 | Dialogs trap focus, restore it, close on Esc | All dialogs are Radix `Dialog`; the behaviour is the primitive's, not hand-rolled | ✅ by construction |
 | Sheets trap focus, close on Esc | All sheets are Vaul `Drawer` | ✅ by construction |
 | Popovers/menus close on Esc, return focus | All are Radix `Popover` | ✅ by construction |
-| Visible focus ring everywhere | `focus-visible:ring-2 ring-focus-ring ring-offset-2` on every interactive class; ring measures 4.47:1 on surface (needs 3:1) | ✅ |
+| Visible focus ring everywhere | `focus-visible:ring-2 ring-focus-ring ring-offset-2` on every interactive class; ring measures 4.47:1 on surface (needs 3:1). The one gap — the command palette's bare input — is finding 7 above, now fixed | ✅ |
 | No positive `tabindex` | Grepped: none in `app/**` or `components/**` | ✅ |
 | Confirm button never takes initial focus | `ConfirmDestructiveDialog` puts Cancel first in the DOM and sets `autoFocus={false}` on confirm | ✅ |
 | Skip link | `AppShell` renders "Skip to content" as the first focusable element | ✅ |
