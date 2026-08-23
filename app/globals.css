@@ -10,9 +10,9 @@
    ----------------------
    1. `:root` below holds the RAW palette and scale values (hex, px, ms).
       These are the only place literal values are allowed to appear.
-   2. `[data-theme="dark"]` re-declares the same semantic names with dark
-      values. Nothing else in the codebase changes to support a dark theme —
-      components never reference a raw value, only a semantic token.
+   2. There is no dark palette: dark mode is a non-goal (§3) and the block
+      that used to sit here was deleted in D-9. Components still reference
+      only semantic names, so adding one later is a variable swap.
    3. `@theme inline` maps the semantic variables into Tailwind's theme so
       utilities resolve through `var()` at runtime. `inline` is what makes
       the theme switchable: the generated CSS keeps the `var()` reference
@@ -130,43 +130,25 @@
   --bucket-height: 24rem;          /* D4.2: bounds a reconciliation bucket's list */
 }
 
-/* Dark theme hook. Only colour tokens change — no component is aware of it.
-   Values are provisional until the dark pass; the structure is what D0.1
-   commits to. */
-[data-theme="dark"] {
-  --bg-app: #09090b;
-  --bg-surface: #18181b;
-  --bg-subtle: #27272a;
-  --line: #27272a;
-  --line-strong: #3f3f46;
+/* NO DARK THEME. Deleted in the D-9 cleanup, and this note is here so the
+   next person does not re-add it by accident.
 
-  --fg-primary: #fafafa;
-  --fg-secondary: #a1a1aa;
-  --fg-tertiary: #71717a;
-  --fg-on-accent: #ffffff;
+   A full [data-theme="dark"] palette lived here for five milestones: ~30
+   lines of colour that nothing applied, because dark mode is an explicit
+   non-goal (DESIGN-PRD §3) and no element ever carried the attribute. Five
+   of its status tokens were also invisible to scripts/check-contrast.mjs,
+   which reads the light :root block only.
 
-  --accent-base: #818cf8;
-  --accent-hover-base: #a5b4fc;
-  --accent-pressed-base: #c7d2fe;
-  --accent-subtle-base: #1e1b4b;
-  --accent-border-base: #3730a3;
-  --focus-ring-base: #818cf8;
+   Inert unverified colour is exactly how --fg-tertiary shipped at 2.56:1 for
+   five milestones — a value nobody measured because nothing appeared to use
+   it. Dead tokens that LOOK maintained are worse than no tokens.
 
-  --status-success: #34d399;  --status-success-subtle: #052e26;
-  --status-warning: #fbbf24;  --status-warning-subtle: #2e1f05;
-  --status-danger: #f87171;   --status-danger-subtle: #3b0a0a;
-  --status-info: #60a5fa;     --status-info-subtle: #0b1e3b;
-  --status-neutral: #a1a1aa;  --status-neutral-subtle: #27272a;
-  /* On dark subtle backgrounds the light brand shade is already the
-     readable one, so text and fill converge. */
-  --status-success-text: #6ee7b7;
-  --status-warning-text: #fcd34d;
-  --status-danger-text: #fca5a5;
-  --status-info-text: #93c5fd;
-  --status-neutral-text: #d4d4d8;
-  --accent-solid-base: #4f46e5;
-  --accent-text-base: #a5b4fc;
-}
+   The structural claim D0.1 made — components reference semantic names, never
+   raw values, so a dark theme is a variable swap rather than a rewrite —
+   still holds and is still true of every component. It just does not need a
+   provisional palette sitting in the stylesheet to prove it. When dark mode
+   is actually scheduled, add the block back AND extend check-contrast.mjs to
+   measure it in the same commit. */
 
 @theme inline {
   /* ---- Colour: semantic names only (colors.bg.*, text.*, accent.*, status.*) ---- */
@@ -471,7 +453,8 @@
    repointed at real tokens in the same change: text-muted-foreground →
    text-text-tertiary, bg-muted → bg-bg-subtle, border-ring → border-accent,
    rounded-xl → rounded-lg. `.dark` went with it — dark mode is a non-goal
-   (§3) and the app's own hook is [data-theme="dark"] above, not a class.
+   (§3), and the provisional [data-theme="dark"] palette that once sat above
+   was deleted in D-9 for being inert and unmeasured.
 
    Do not reintroduce a second @theme block. Add tokens to the one above. */
 

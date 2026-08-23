@@ -24,7 +24,7 @@ We need an interface where **the data is the interface**: numbers legible at a g
 
 | Non-goal | Why |
 |---|---|
-| Dark mode in v1 | Light theme locked; tokens are structured so dark mode is a later variable swap, not a rewrite |
+| Dark mode in v1 | Light theme locked; tokens are structured so dark mode is a later variable swap, not a rewrite. **A provisional `[data-theme="dark"]` palette sat in `app/globals.css` for five milestones and was deleted on 2026-08-23 (D-9)**: nothing applied the attribute, and five of its status tokens were invisible to `scripts/check-contrast.mjs`, which reads the light `:root` only. Inert unverified colour is how `--fg-tertiary` shipped at 2.56:1. The structural claim still holds — components reference semantic names, never raw values — and it does not need a palette in the stylesheet to prove it. When dark mode is scheduled, add the block back **and** extend the contrast checker in the same commit. |
 | Custom illustration set | Costly; use geometric empty-state marks built from existing icons |
 | Per-tenant theming beyond logo | White-label theming is a P2 platform feature |
 | Marketing site design | Different problem, different constraints |
@@ -59,56 +59,124 @@ We need an interface where **the data is the interface**: numbers legible at a g
 
 ## 5. Design Tokens
 
-Implemented as CSS custom properties in `app/globals.css` and mirrored in `tailwind.config.ts`. **No raw hex values anywhere in components.**
+Implemented as CSS custom properties in `app/globals.css`. **No raw hex values anywhere in components.**
+
+> **This section was rewritten on 2026-08-23 to match the code (D-8).** Names
+> changed during the build — `--text-*` → `--fg-*`, `--success` →
+> `--status-success`, `--border` → `--line` — and this document was not
+> updated, so for five milestones the PRD named tokens that did not exist.
+> A spec that has to be cross-checked against the source is not a spec.
+> **Docs follow code here**: three of the values below were also corrected
+> during the D5.3 contrast pass, and those corrections are the truth.
+>
+> There is no `tailwind.config.ts`. Tailwind v4 is CSS-first and the `@theme`
+> block in `app/globals.css` IS the config; adding a JS config alongside it
+> would create a second source of truth.
 
 ### 5.1 Color — Light theme
 
+The raw values live in `:root`; `@theme inline` maps them to the Tailwind
+utility names in the right-hand column.
+
 ```css
 /* Neutrals (the interface) */
---bg-app:        #FAFAFA;  /* page background */
---bg-surface:    #FFFFFF;  /* cards, tables, sheets */
---bg-subtle:     #F4F4F5;  /* hover rows, inset panels, disabled fills */
---border:        #E4E4E7;  /* default hairline */
---border-strong: #D4D4D8;  /* inputs, focused containers */
+--bg-app:      #FAFAFA;  /* page background          → bg-bg-app      */
+--bg-surface:  #FFFFFF;  /* cards, tables, sheets    → bg-bg-surface  */
+--bg-subtle:   #F4F4F5;  /* hover rows, inset panels → bg-bg-subtle   */
+--line:        #E4E4E7;  /* default hairline         → border-line    */
+--line-strong: #8A8A94;  /* input + control edges    → border-line-strong */
 
---text-primary:   #18181B;  /* headings, amounts */
---text-secondary: #52525B;  /* labels, body */
---text-tertiary:  #A1A1AA;  /* meta, placeholders, timestamps */
+--fg-primary:   #18181B;  /* headings, amounts       → text-text-primary   */
+--fg-secondary: #52525B;  /* labels, body            → text-text-secondary */
+--fg-tertiary:  #6B6B74;  /* meta, placeholders      → text-text-tertiary  */
+--fg-on-accent: #FFFFFF;  /* text on a filled accent → text-text-on-accent */
 
 /* Accent — indigo/violet */
---accent:         #6366F1;  /* primary buttons, links, active nav */
---accent-hover:   #4F46E5;
---accent-pressed: #4338CA;
---accent-subtle:  #EEF2FF;  /* selected row, active nav pill, badge bg */
---accent-border:  #C7D2FE;
---focus-ring:     #6366F1;  /* 2px ring, 2px offset — always visible */
+--accent-base:         #6366F1;  /* borders, icons, chart series → accent      */
+--accent-hover-base:   #4F46E5;  /*                              → accent-hover */
+--accent-pressed-base: #4338CA;  /*                              → accent-pressed */
+--accent-subtle-base:  #EEF2FF;  /* selected row, nav pill       → accent-subtle */
+--accent-border-base:  #C7D2FE;  /*                              → accent-border */
+--focus-ring-base:     #6366F1;  /* 2px ring, 2px offset         → focus-ring */
+--accent-solid-base:   #4F46E5;  /* filled buttons bearing white text → accent-solid */
+--accent-text-base:    #4F46E5;  /* links and accent text             → accent-text */
 
-/* Semantic — status only, never decoration */
---success:  #059669;  --success-subtle:  #ECFDF5;  /* approved, reimbursed, matched */
---warning:  #D97706;  --warning-subtle:  #FFFBEB;  /* policy flags, SLA amber, sent back */
---danger:   #DC2626;  --danger-subtle:   #FEF2F2;  /* rejected, missing in bank, overdue */
---info:     #2563EB;  --info-subtle:     #EFF6FF;  /* submitted, in review */
---neutral:  #71717A;  --neutral-subtle:  #F4F4F5;  /* draft, inactive */
+/* Semantic — status only, never decoration. TWO shades per status. */
+--status-success: #059669;  --status-success-subtle: #ECFDF5;  --status-success-text: #047857;
+--status-warning: #CE7008;  --status-warning-subtle: #FFFBEB;  --status-warning-text: #B45309;
+--status-danger:  #DC2626;  --status-danger-subtle:  #FEF2F2;  --status-danger-text:  #B91C1C;
+--status-info:    #2563EB;  --status-info-subtle:    #EFF6FF;  --status-info-text:    #1D4ED8;
+--status-neutral: #71717A;  --status-neutral-subtle: #F4F4F5;  --status-neutral-text: #52525B;
 ```
 
-**Contrast contract:** every text/background pair above meets ≥4.5:1 (verified for `--text-secondary` on `--bg-subtle` and all semantic text on their subtle backgrounds). Status is **never** communicated by color alone — always color + label, and shape/icon where space allows.
+**Why accent and status each have two shades.** The brand indigo `#6366F1`
+carries white text at 4.47:1 — just under AA — so filled controls and accent
+text use `--accent-solid-base` / `--accent-text-base` (`#4F46E5`, 6.29:1 on
+white). The brand indigo remains the border, icon and chart colour. The same
+split applies to status: `--status-*` is a **fill** (dots, bars, icons,
+borders, chart series) and `--status-*-text` is the accessible **foreground**
+for text on the matching subtle background.
+
+**Three values changed in the D5.3 contrast pass**, and the originals are
+recorded because the reason generalises:
+
+| Token | Was | Now | Why |
+|---|---|---|---|
+| `--fg-tertiary` | `#A1A1AA` | `#6B6B74` | 2.56:1 on white. The app's most-used meta colour carries real words, so it needs 4.5:1, not the 3:1 a decorative tint would. |
+| `--line-strong` | `#D4D4D8` | `#8A8A94` | 1.48:1. This is the border on every input, checkbox and secondary button — WCAG 1.4.11 wants 3:1 for a UI component boundary. |
+| `--status-warning` | `#D97706` | `#CE7008` | 2.90:1 as a fill on `--bg-subtle` (the flagged-row edge on a hovered row), against the same 3:1 floor. |
+
+`--line` stays light on purpose: it separates static content (card edges,
+table rules), which 1.4.11 does not govern.
+
+**Contrast contract:** enforced, not asserted. `scripts/check-contrast.mjs`
+runs in `npm run lint` and measures **every** foreground token against every
+surface it lands on — 56 pairs. The hand-written list this section used to
+carry is what let `--fg-tertiary` ship at 2.56:1 for five milestones. Status
+is **never** communicated by color alone — always color + label, and
+shape/icon where space allows.
 
 ### 5.2 Status → token map (single source of truth)
 
-| State | Token | Badge label |
+Held in code at `lib/design/status.ts` (`STATUS_MAP`) and rendered by exactly
+one component, `StatusBadge`. The table below is the same data; the **key**
+column is the literal database value, so a caller passes a raw status through
+without translating it first.
+
+| Key (DB value) | Tone | Badge label |
 |---|---|---|
-| Draft | neutral | Draft |
-| Submitted | info | Submitted |
-| In Review / InReview | info | In review |
-| Approved | success | Approved |
-| Rejected | danger | Rejected |
-| Sent Back | warning | Sent back |
-| Partially Reimbursed | warning | Partly paid |
-| Reimbursed | success (solid dot) | Paid |
-| Policy flag | warning | Flagged |
-| Matched (reconciliation) | success | Matched |
-| Missing in bank | danger | Not in bank |
-| Missing in app | warning | Not in app |
+| `draft` | neutral | Draft |
+| `submitted` | info | Submitted |
+| `in_review` | info | In review |
+| `approved` | success | Approved |
+| `rejected` | danger | Rejected |
+| `sent_back` | warning | Sent back |
+| `partially_reimbursed` | warning | Partly paid |
+| `reimbursed` | success (solid dot) | Paid |
+| `disbursed` | info | Disbursed |
+| `partially_settled` | warning | Partly settled |
+| `settled` | success (solid dot) | Settled |
+| `flagged` | warning | Flagged |
+| `matched` | success | Matched |
+| `missing_in_bank` | danger | Not in bank |
+| `missing_in_app` | warning | Not in app |
+| `open` | info | Open |
+| `resolved` | success | Resolved |
+| `wont_fix` | neutral | Won't fix |
+| `active` | success | Active |
+| `invited` | info | Invited |
+| `deactivated` | neutral | Deactivated |
+| `suspended` | danger | Suspended |
+
+A tone resolves to `bg-status-<tone>-subtle` + `text-status-<tone>-text` for
+the chip and `bg-status-<tone>` for the dot — the two-shade split from §5.1.
+An unknown key falls back to neutral with the raw value humanised, so a new
+status renders legibly before anyone adds a row here.
+
+**Nothing else may colour a status.** `scripts/check-design-tokens.mjs` bans
+Tailwind palette classes across all of `app/**` and `components/**`, which is
+what stops a screen hand-mapping a state to `bg-green-100` — as six of them
+had done before that rule was widened.
 
 ### 5.3 Typography
 
@@ -254,4 +322,4 @@ Thread layout like a support conversation: original complaint card, then message
 | 1 | Per-tenant branding beyond logo (accent override)? Affects token architecture | Product |
 | 2 | Dark mode timeline — tokens support it, but do we commit to shipping it? | Product |
 | 3 | Do finance users want a compact-density toggle after using comfortable for a month? | Research (post-launch) |
-| 4 | Print/PDF styling for ledger and reports — browser print CSS or server-rendered PDF? | Engineering |
+| 4 | ~~Print/PDF styling for ledger and reports — browser print CSS or server-rendered PDF?~~ **Answered 2026-08-23:** both, for different jobs. On-screen documents print through `@media print` in `app/globals.css` (real layout: repeating table headers, totals last, `break-inside: avoid`). The emailed monthly summary uses a dependency-free writer at `lib/exports/pdf.ts` — a headless browser to render six numbers would mean shipping ~300 MB of Chromium in a cron route. That writer is text-only and single-page **on purpose**; anything needing a chart or page breaks should take a real PDF library rather than growing it. | Engineering |

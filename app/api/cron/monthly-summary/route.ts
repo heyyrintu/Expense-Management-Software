@@ -8,6 +8,11 @@ import { NextResponse } from "next/server";
 import { fetchSpendRows } from "@/lib/analytics";
 import { violationLeaderboard } from "@/lib/analytics/aggregate";
 import { buildCsv } from "@/lib/domain/dashboard";
+import {
+  buildSummaryEmailText,
+  buildSummaryPdf,
+  summaryFilenames,
+} from "@/lib/exports/monthly-summary";
 import { prisma } from "@/lib/db/client";
 import { scopedDb } from "@/lib/db/scoped";
 import { formatMoney, toDecimalString } from "@/lib/money";
@@ -70,20 +75,35 @@ export async function POST(request: Request): Promise<NextResponse> {
           ])
         );
         const fmt = (m: number) => formatMoney(m, org.currency);
-        const text =
-          `Monthly expense summary — ${monthLabel}\n\n` +
-          `Total spend: ${fmt(total)} across ${rows.length} expenses\n` +
-          `Policy violations: ${violationCount}\n\n` +
-          `Top categories:\n` +
-          topCategories.map(([name, amt]) => `  • ${name}: ${fmt(amt)}`).join("\n") +
-          `\n\n--- CSV (${rows.length} rows) ---\n\n` +
-          csv;
+        const summary = {
+          monthLabel,
+          orgCurrency: org.currency,
+          totalMinor: total,
+          expenseCount: rows.length,
+          violationCount,
+          topCategories: topCategories.map(([name, totalMinor]) => ({
+            name,
+            totalMinor,
+          })),
+          formatMoney: fmt,
+        };
+
+        // G3: the CSV used to be pasted into the body, which buried the six
+        // numbers above it under 300 rows of commas. Both are attachments
+        // now — the PDF to read, the CSV to work with.
+        const text = buildSummaryEmailText(summary);
+        const pdf = buildSummaryPdf(summary);
+        const names = summaryFilenames(monthLabel);
 
         for (const admin of admins) {
           await sendEmail({
             to: admin.email,
             subject: `Expense summary ${monthLabel}: ${fmt(total)}, ${violationCount} violations`,
             text,
+            attachments: [
+              { filename: names.pdf, content: pdf, contentType: "application/pdf" },
+              { filename: names.csv, content: csv, contentType: "text/csv; charset=utf-8" },
+            ],
           });
           emailsSent += 1;
         }

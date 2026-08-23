@@ -16,10 +16,34 @@ import { readFileSync } from "node:fs";
 
 const css = readFileSync("app/globals.css", "utf8");
 
-/** Pull `--name: #rrggbb;` out of the :root block (light theme only — the
- *  dark hook is unused by any shipped screen and has its own values). */
+/**
+ * Pull `--name: #rrggbb;` out of the FIRST `:root` block.
+ *
+ * Bounded by brace depth rather than by a comment marker. It used to slice up
+ * to the string "/* Dark theme hook", which meant deleting that block (D-9)
+ * silently turned the end bound into -1 and swept the whole rest of the
+ * stylesheet into the token set. A parser whose correctness depends on a
+ * comment nobody knows is load-bearing is one edit away from being wrong.
+ */
 function readTokens() {
-  const root = css.slice(css.indexOf(":root {"), css.indexOf("/* Dark theme hook"));
+  const start = css.indexOf(":root {");
+  if (start === -1) {
+    console.error("✖ contrast: no :root block found in app/globals.css");
+    process.exit(1);
+  }
+  let depth = 0;
+  let end = start;
+  for (let i = start; i < css.length; i += 1) {
+    if (css[i] === "{") depth += 1;
+    else if (css[i] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  const root = css.slice(start, end);
   const tokens = {};
   for (const m of root.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)) {
     tokens[m[1]] = m[2].toUpperCase();

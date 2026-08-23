@@ -22,6 +22,35 @@ afterAll(async () => {
 });
 
 describe("RLS on the app role", () => {
+  /**
+   * PRECONDITION, asserted first so it fails with an explanation.
+   *
+   * Postgres exempts superusers from row security entirely, and exempts a
+   * table's OWNER unless the table is FORCEd. Point DATABASE_URL at either
+   * and every "org B is rejected" assertion below RESOLVES instead of
+   * rejecting — so the suite goes red in a way that reads exactly like a
+   * code regression, and the next hour is spent looking at scopedDb.
+   *
+   * This check used to live in scripts/check-rls-state.mjs, which nothing
+   * ran (G5). Folding it in here keeps the diagnosis and removes the third
+   * source of truth: coverage is asserted once, below, against every table
+   * that actually has an org_id rather than a hard-coded list of five.
+   */
+  it("precondition: the app role is not a superuser", async () => {
+    const rows = await appRaw.$queryRaw<
+      Array<{ user: string; superuser: boolean | null }>
+    >`SELECT current_user AS "user",
+             (SELECT usesuper FROM pg_user WHERE usename = current_user) AS "superuser"`;
+    const { user, superuser } = rows[0];
+    expect(
+      superuser ?? false,
+      `DATABASE_URL connects as "${user}", a SUPERUSER. Postgres ignores row ` +
+        `security for superusers, so every RLS assertion in this file would ` +
+        `pass vacuously. Point DATABASE_URL at the expense_app role ` +
+        `(docker/postgres-init/01-app-role.sql), not the migration owner.`
+    ).toBe(false);
+  });
+
   it("ground truth: fixtures exist (owner sees them)", async () => {
     expect(await owner.user.count({ where: { orgId: A.orgId } })).toBe(4);
   });
