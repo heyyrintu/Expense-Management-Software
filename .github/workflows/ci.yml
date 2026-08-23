@@ -61,8 +61,45 @@ jobs:
       - name: Unit tests
         run: npm run test
 
-      - name: Migrate
+      # ── THE MIGRATION REPLAY PROOF ────────────────────────────────────────
+      # The postgres service above is a fresh, empty container on every run, so
+      # this step IS the end-to-end proof that the migration history replays.
+      # It is the only check that would have caught `20260819044600_dep`, which
+      # sorted before the migrations creating the objects it altered and failed
+      # with P3006/P1014 on any database that did not already have them.
+      #
+      # It did not catch it in practice, for a reason worth writing down: that
+      # migration reached origin/master on 2026-08-20, and nothing has been
+      # pushed since. So this job has been RED since then, and then stopped
+      # running at all. `npm run lint` now carries a database-free version of
+      # the same check (scripts/check-migration-order.mjs) precisely because a
+      # guard that needs a green pipeline cannot protect the pipeline.
+      - name: Migrate (replays the full history against an empty database)
         run: npx prisma migrate deploy
+
+      - name: Replay the history on a THROWAWAY empty database
+        # Independent of the step above, and the stronger proof: a genuinely
+        # empty database, created here and used for nothing else.
+        #
+        # The step above runs against the same database the isolation suite
+        # then uses, so it stays green once the objects exist. This one cannot
+        # — it starts empty every time, so an out-of-order migration fails it
+        # on the first run and every run after.
+        #
+        # Deliberately NOT `prisma migrate diff --shadow-database-url`: that
+        # RESETS whatever database it is pointed at, and pointing it at the
+        # working database would destroy the fixtures the later steps need.
+        run: |
+          set -euo pipefail
+          PGPASSWORD=expense psql -h localhost -U expense -d postgres \
+            -c 'DROP DATABASE IF EXISTS replay_check;'
+          PGPASSWORD=expense psql -h localhost -U expense -d postgres \
+            -c 'CREATE DATABASE replay_check;'
+          DATABASE_URL='postgresql://expense:expense@localhost:5432/replay_check?schema=public' \
+          DIRECT_DATABASE_URL='postgresql://expense:expense@localhost:5432/replay_check?schema=public' \
+            npx prisma migrate deploy
+          PGPASSWORD=expense psql -h localhost -U expense -d postgres \
+            -c 'DROP DATABASE replay_check;'
 
       - name: Create app role (RLS-enforced, non-superuser)
         run: PGPASSWORD=expense psql -h localhost -U expense -d expense_dev -f docker/postgres-init/01-app-role.sql
