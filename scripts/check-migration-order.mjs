@@ -145,6 +145,38 @@ function main() {
     }
   }
 
+  // DUPLICATE CHECK, before anything else.
+  //
+  // Renaming a migration folder is a two-step operation — create the new one,
+  // delete the old — and a half-done rename leaves BOTH on disk. Prisma walks
+  // the filesystem, so it hits the old one first and fails exactly as it did
+  // before the rename, which reads as "the fix didn't work" rather than "the
+  // old folder is still there". That happened on the first real reset after
+  // this history was fixed, so it gets its own check with its own message.
+  const bySql = new Map(); // normalised SQL → first folder carrying it
+  for (const folder of folders) {
+    const sql = read(folder);
+    if (sql === null) continue;
+    const body = statements(sql).join(";");
+    if (body === "") continue;
+    const first = bySql.get(body);
+    if (first) {
+      console.error(
+        `\n✖ two migrations contain identical SQL\n\n` +
+          `    ${first}\n` +
+          `    ${folder}\n\n` +
+          `This is what a half-finished folder RENAME looks like: the new folder\n` +
+          `was created and the old one was never deleted. Prisma applies whichever\n` +
+          `sorts first, so the original problem is still live.\n\n` +
+          `Delete the one that should not exist — on Windows:\n` +
+          `    Remove-Item -Recurse -Force "prisma\\migrations\\${first}"\n` +
+          `then re-run \`npx prisma migrate reset\`.\n`
+      );
+      process.exit(1);
+    }
+    bySql.set(body, folder);
+  }
+
   // kind → Set of names that exist at this point in the replay
   const live = { table: new Set(), index: new Set(), constraint: new Set(), type: new Set(), policy: new Set() };
   const violations = [];
