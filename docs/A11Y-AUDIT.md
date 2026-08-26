@@ -102,8 +102,9 @@ tabular data.
 
 ## Automated checks (axe-core)
 
-`tests/e2e/a11y.spec.ts` runs `@axe-core/playwright` against **20 routes plus
-2 overlays**, tagged `wcag2a wcag2aa wcag21a wcag21aa`. Run with
+`tests/e2e/a11y.spec.ts` runs `@axe-core/playwright` against **34 routes plus
+2 overlays** — 36 scans: 2 public (`/login`, `/signup`) and 32 authenticated —
+tagged `wcag2a wcag2aa wcag21a wcag21aa`. Run with
 `npm run test:a11y`; CI fails on any violation, and the reporter prints each
 violation's impact, rule, help URL and the failing selectors.
 
@@ -233,7 +234,8 @@ expect a good score and not a substitute for having one.
 | Check | Runs in | Catches |
 |---|---|---|
 | `scripts/check-contrast.mjs` | `npm run lint` | Any token pair below 4.5:1 (text) or 3:1 (UI) |
-| `tests/e2e/a11y.spec.ts` | `npm run test:a11y` | axe violations on 20 routes + 2 overlays |
+| `tests/e2e/a11y.spec.ts` | `npm run test:a11y` | axe violations on 34 routes + 2 overlays |
+| `tests/unit/a11y-coverage.test.ts` | `npm run test` | A route the spec above never scans — no browser needed |
 | `tests/unit/design-tokens.test.ts` | `npm run test` | The hand-written contract, now including `text-tertiary` |
 
 The contrast script is the one that matters most here: findings 1 and 2 were

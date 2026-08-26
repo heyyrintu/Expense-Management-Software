@@ -239,7 +239,7 @@ Built on shadcn/ui, restyled to the tokens above. Each component documents varia
 | Component | Notes |
 |---|---|
 | **Button** | Variants: primary (filled indigo), secondary (border + white), ghost, destructive, link. Sizes sm/md/lg (32/36/44px). States: default/hover/active/focus-visible/disabled/loading (inline spinner replacing label, width preserved — **no layout shift**). Hover changes background 100ms; active scales to `0.98`. |
-| **Input / Select / DatePicker** | 36px height, 1px `--border-strong`, radius sm, focus = 2px accent ring + offset. Label above, helper below, error replaces helper in danger token. Amount input: right-aligned, tabular, currency prefix as static adornment. |
+| **Input / Select / DatePicker** | 36px height, 1px `--line-strong`, radius sm, focus = 2px accent ring + offset. Label above, helper below, error replaces helper in danger token. Amount input: right-aligned, tabular, currency prefix as static adornment. |
 | **AmountInput** | Dedicated component. Accepts pasted "1,234.56" / "₹1234", stores minor units, shows formatted value on blur, raw on focus. Never rounds silently. |
 | **Badge / StatusBadge** | One component reading the §5.2 map. Dot + label, subtle bg, sm radius, 12px text. Never invent a status color inline. |
 | **Card** | White surface, 1px border, `lg` radius, 20px padding, optional header row (title left, action right). No shadow at rest. |
@@ -263,7 +263,7 @@ Built on shadcn/ui, restyled to the tokens above. Each component documents varia
 | **ReconcileBuckets** | Three-column board (Matched / Not in bank / Not in app) with counts; drag-free — actions are explicit buttons. Colors from §5.2. |
 | **PaymentProofViewer** | Lightbox for proof images/PDFs, zoom, download, metadata sidebar (method, UTR, date, payer). |
 | **StatCard** | KPI: label (13px secondary), value (32px display, tabular), delta chip (success/danger + arrow), optional sparkline. Numbers animate in only on first mount, ≤400ms, respecting reduced-motion. |
-| **Charts (Recharts)** | Single accent for primary series; categorical palette = accent + 4 desaturated neutrals-with-hue, never rainbow. Grid `--border` at 50% opacity, no chart junk, tooltips match Card styling. Draw-in animation 300ms on mount only. |
+| **Charts (Recharts)** | Single accent for primary series; categorical palette = accent + 4 desaturated neutrals-with-hue, never rainbow. Grid `--line` at 50% opacity, no chart junk, tooltips match Card styling. Draw-in animation 300ms on mount only. |
 
 ---
 

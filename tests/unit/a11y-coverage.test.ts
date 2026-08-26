@@ -95,9 +95,31 @@ describe("a11y suite route coverage", () => {
     // If the spec is restructured and these regexes stop matching, every
     // assertion below would pass vacuously — so prove the parse worked first.
     const scanned = scannedRoutes();
-    expect(scanned.size).toBeGreaterThan(20);
     expect(scanned).toContain("/login");
     expect(scanned).toContain("/dashboard");
+
+    // An EXACT count, derived rather than hard-coded.
+    //
+    // This was `toBeGreaterThan(20)`, a floor — which is how three documents
+    // ended up claiming three different numbers (20, 29, and the spec's
+    // actual 34) with nothing to contradict them. A floor cannot catch a
+    // count drifting upward, and the count is exactly what the docs quote.
+    //
+    // Deriving it from the route tree rather than writing 34 keeps this true
+    // when a route is added: the expectation moves with the app, and the
+    // "scans every static route" test below is what forces the spec to move
+    // with it too. The number is stated in the message so a mismatch reports
+    // both sides.
+    const expected = realRoutes()
+      .filter((r) => !isDynamic(r))
+      .filter((r) => !(r in EXCLUDED));
+    expect(
+      scanned.size,
+      `the spec scans ${scanned.size} routes; the app has ${expected.length} ` +
+        `id-less, non-excluded routes (34 at the time of writing). If these ` +
+        `disagree, update tests/e2e/a11y.spec.ts AND the counts quoted in ` +
+        `docs/A11Y-AUDIT.md and DESIGN-PLAN.md.`
+    ).toBe(expected.length);
   });
 
   it("scans every static route the app serves", () => {
