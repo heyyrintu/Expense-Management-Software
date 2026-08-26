@@ -27,59 +27,95 @@ only shell available for this work was Linux.
 
 ### The evidence
 
-| Observation | Where |
+Originally written 2026-08-23 and **superseded by the re-examination below** —
+one of its five rows turned out to be wrong, so rather than leave a table that
+half-contradicts the section under it, the findings now live in one place.
+
+### Re-examined 2026-08-26 — what holds, and what does not
+
+The section above was written with more confidence than the evidence supports.
+Re-checked against the actual tree, here is what survives.
+
+**CONFIRMED — the hybrid tree is real and measurable.**
+
+| Evidence | Detail |
 |---|---|
-| **Two lockfiles**, written a minute apart | `package-lock.json` (Aug 20 01:13), `pnpm-lock.yaml` (Aug 20 01:12) |
-| **`node_modules` carries BOTH package managers' markers** | `.package-lock.json` (npm) *and* `.modules.yaml` (pnpm) in the same tree |
-| **`pnpm-workspace.yaml` is an unanswered prompt** | Every entry reads literally `set this to true or false` — for `@prisma/client`, `@prisma/engines`, `esbuild`, `sharp`, `tesseract.js`, `unrs-resolver` |
-| **Next actively shells out to pnpm** | Running `next build` produced `Failed to get registry from "pnpm"` — Next detects `pnpm-lock.yaml` and tries to use pnpm to fetch its SWC binary |
-| **Nothing pins a package manager or Node version** | No `packageManager` field, no `engines.node` in `package.json` |
+| Two lockfiles, both live | `package-lock.json` (mtime Aug 26 11:49), `pnpm-lock.yaml` (Aug 20 01:12) |
+| Both managers' markers | `node_modules/.package-lock.json` (Aug 26) **and** `node_modules/.modules.yaml` (Aug 20) |
+| A whole leftover pnpm store | `node_modules/.pnpm` holds **550 packages**, sitting under npm's flat tree — npm does not remove it |
+| The trees disagree on versions | `@aws-sdk/client-s3` is **3.1112.0** flat and **3.1113.0** in the store |
+| Nothing pins a manager or runtime | no `packageManager`, no `engines`, no `.nvmrc` — all three now added |
 
-### Why this plausibly causes both crashes
+So `node_modules` matches **neither** lockfile. That is a genuine defect and
+worth fixing on its own merits.
 
-`allowBuilds` in `pnpm-workspace.yaml` is pnpm's approval gate for postinstall
-scripts. Left as placeholder text, the native packages behind it — Prisma's
-query engine, `sharp`, `esbuild`, `tesseract.js` — may never have been built or
-linked correctly. Layer an npm install (flat hoisting) over a pnpm install
-(symlinked store) in one `node_modules` and it becomes possible to load two
-copies of the same native addon into one process. That is a textbook route to
-a stack-buffer overrun in a native module, and to heap exhaustion in a dev
-server holding a duplicated module graph.
+**REFUTED — the `allowBuilds` placeholder theory.**
 
-It also explains a detail that would otherwise be odd: the tree contained
-*only* `win32` native binaries, so it was undeniably installed on Windows —
-yet `next build` still went looking for a package manager to fetch SWC from.
+`pnpm-workspace.yaml` is a **pnpm-only** file; npm never reads it. npm was the
+*most recent* installer (Aug 26 > Aug 20), so postinstall scripts ran under
+npm's rules and those placeholders gate nothing today. The original section
+presented this as a likely cause. It is not one.
+
+**WEAKENED — "Next cannot find its SWC binary".**
+
+`node_modules/@next/swc-win32-x64-msvc` is present. Next *does* shell out to
+pnpm when it needs to fetch anything (observed directly: `Failed to get
+registry from "pnpm"`), which is a real bug caused by the stray lockfile — but
+the binary it would fetch is already there.
+
+**UNPROVEN — that any of this causes `STATUS_STACK_BUFFER_OVERRUN`.**
+
+`0xC0000409` is a stack-buffer-overrun `__fastfail`, usually from native code.
+The native packages that could plausibly do it — `sharp`, `tesseract.js` — are
+the **same version** in both trees, which is the opposite of what the
+two-copies theory predicts. The hybrid tree is a strong candidate and must be
+cleaned up regardless, but **treat the repair below as a hypothesis to test,
+not a known cure.** If the build still dies afterwards, the bisect ladder is
+the real work, and the cause is elsewhere.
 
 ### The repair
 
 Pick **one** package manager. CI uses `npm ci`, so npm is the lower-risk choice.
 
-```bash
-# From the repo root, on the build host.
-git rm --cached pnpm-lock.yaml pnpm-workspace.yaml   # or `git rm` to delete outright
-rm -rf node_modules .next
+The pnpm files are **already removed from git** and `package.json` now pins
+`packageManager: npm@10.9.8` and `engines.node >=22 <23`. What remains is the
+on-disk half, which only the build host can do:
+
+```powershell
+# PowerShell — no && ; run these as separate lines.
+git checkout .                       # drops pnpm-lock.yaml / pnpm-workspace.yaml
+Remove-Item -Recurse -Force node_modules, .next
 npm ci
 npx prisma generate
 npm run build
 ```
 
-Then pin it so the tree cannot go hybrid again — add to `package.json`:
+`npm run lint` now includes `scripts/check-lockfiles.mjs`, which fails the
+build if a second lockfile ever reappears or if a manager-specific config is
+left behind without its lockfile. That is the regression guard for this
+specific mistake; it is cheap and needs neither a database nor a network.
 
-```json
-"packageManager": "npm@10.9.8",
-"engines": { "node": ">=22 <23" }
-```
+**If the build still crashes after a clean `npm ci`** — which, per the
+re-examination above, is a real possibility — work the ladder in order and
+record the result of each rung. Each one splits the search space; stop at the
+first that changes the outcome.
 
-**If the build still crashes after a clean `npm ci`**, the dependency tree was
-not the cause. Next steps in order:
+| # | Try | What it tells you |
+|---|---|---|
+| 1 | `npx next build --no-lint` | Separates the ESLint pass from compilation. If this survives, the crash is in linting, not the build. |
+| 2 | `node --max-old-space-size=8192 ./node_modules/next/dist/bin/next build` | Distinguishes a memory ceiling from a stack overrun. `RangeError: Array buffer allocation failed` on `next dev` points at memory; `0xC0000409` does not, so if raising the heap fixes both they were one problem. |
+| 3 | `node -v` against the new `engines` pin (`>=22 <23`) | A Node major mismatch is the single most common source of native-addon `__fastfail` on Windows. This is now pinned but was not before — the crash may predate the pin. |
+| 4 | `$env:NEXT_TELEMETRY_DISABLED=1; npx next build --debug` | Captures the last module before the crash. That module name is the actual answer; everything above is elimination. |
+| 5 | Move `app/api/**` aside and build | Route-handler **trace collection** walks the dependency graph and is the phase most likely to recurse deeply. If the build survives without API routes, bisect them. |
+| 6 | Build in WSL2 | Sidesteps the Windows native loader entirely. Green in WSL2 and red on Win32 means the host, not the code — and that is a supportable place to stop. |
 
-1. `npm run build -- --debug` and capture the last module before the crash.
-2. Try Node 20 LTS — `STATUS_STACK_BUFFER_OVERRUN` in SWC has historically been
-   Node-version-sensitive on Windows.
-3. Build in WSL2, which sidesteps the Windows native loader entirely and is the
-   fastest way to separate "our code" from "this host".
-4. Only then suspect application code — nothing in `app/**` recurses deeply
-   enough to overflow a stack, and `tsc --noEmit` is clean.
+Two things worth knowing before you start: `tsc --noEmit` is clean and the full
+unit suite passes, so this is not a type or logic error; and nothing in
+`app/**` recurses deeply enough to overflow a stack by itself, which is why
+rungs 3–6 (host and toolchain) rank above "suspect our code".
+
+**Record what each rung did**, even the ones that changed nothing. A bisect
+whose negative results are not written down gets repeated.
 
 ---
 
@@ -94,16 +130,16 @@ docker compose up -d                 # postgres + minio
 npx prisma migrate deploy
 npm run seed                         # acme + globex, every role
 
-npm run test                         # 56 files / 618 tests — green on Linux
+npm run test                         # 59 files / 727 tests — green on Linux
 npm run test:isolation               # needs the DB above
 npx playwright install chromium
 npm run test:e2e                     # signup → submit → approve → reimburse
-npm run test:a11y                    # axe over 29 routes + 2 overlays
+npm run test:a11y                    # axe over 34 routes + 2 overlays
 npm run screenshots                  # writes the baseline into docs/screenshots/
 ```
 
 **Expect `test:a11y` to fail on its first real run.** It has never executed, and
-it now scans 29 routes rather than 18. That is the point of it — findings here
+it now scans 34 routes rather than 18. That is the point of it — findings here
 are the deliverable, not a setback. Fix each violation, then re-run.
 
 ## 2. Lighthouse
@@ -151,7 +187,7 @@ Fill this in as each is run. An empty cell means not run — never assume.
 
 | Check | Target | Result | Date |
 |---|---|---|---|
-| `npm run test` | green | **618 passed, 56 files** (Linux sandbox) | 2026-08-23 |
+| `npm run test` | green | **727 passed, 59 files** (Linux sandbox) | 2026-08-26 |
 | `npm run test:isolation` | green | — | |
 | `npm run test:e2e` | green | — | |
 | `npm run test:a11y` | 0 violations | — | |

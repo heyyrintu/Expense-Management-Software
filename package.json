@@ -2,11 +2,16 @@
   "name": "expense-management",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.9.8",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <11"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . && tsc --noEmit && node scripts/check-design-tokens.mjs && node scripts/check-copy-voice.mjs && node scripts/check-motion.mjs && node scripts/check-contrast.mjs && node scripts/check-migration-order.mjs",
+    "lint": "eslint . && tsc --noEmit && node scripts/check-design-tokens.mjs && node scripts/check-copy-voice.mjs && node scripts/check-motion.mjs && node scripts/check-contrast.mjs && node scripts/check-migration-order.mjs && node scripts/check-lockfiles.mjs",
     "test": "vitest run",
     "seed": "tsx prisma/seed.ts",
     "test:isolation": "vitest run --config vitest.isolation.config.ts",
@@ -14,7 +19,8 @@
     "test:a11y": "playwright test tests/e2e/a11y.spec.ts",
     "screenshots": "playwright test tests/e2e/screenshots.spec.ts",
     "lint:tokens": "node scripts/check-design-tokens.mjs",
-    "lint:migrations": "node scripts/check-migration-order.mjs"
+    "lint:migrations": "node scripts/check-migration-order.mjs",
+    "lint:lockfiles": "node scripts/check-lockfiles.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1112.0",
