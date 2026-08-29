@@ -46,9 +46,22 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * `as` exists because a card title is sometimes the only heading on a screen.
+ * The auth screens are the case that forced it: their card carries the page's
+ * real title ("Sign in", "Join your team"), so rendering it as a bare <div>
+ * left login, signup and invite with NO heading element at all — nothing for
+ * a screen reader to jump to, and a heading-order violation that axe would
+ * flag the moment it ran. Cards nested inside a page that already has an h1
+ * keep the default: a heading here would compete with the page title.
+ */
+function CardTitle({
+  className,
+  as: Tag = "div",
+  ...props
+}: React.ComponentProps<"div"> & { as?: "div" | "h1" | "h2" | "h3" }) {
   return (
-    <div
+    <Tag
       data-slot="card-title"
       className={cn("text-h3 text-text-primary", className)}
       {...props}

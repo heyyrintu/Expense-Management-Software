@@ -188,20 +188,86 @@ Fill this in as each is run. An empty cell means not run — never assume.
 | Check | Target | Result | Date |
 |---|---|---|---|
 | `npm run test` | green | **727 passed, 59 files** (Linux sandbox) | 2026-08-26 |
-| `npm run test:isolation` | green | — | |
-| `npm run test:e2e` | green | — | |
-| `npm run test:a11y` | 0 violations | — | |
-| `npm run screenshots` | baseline committed | — | |
-| Lighthouse `/dashboard` — Performance | ≥90 | — | |
-| Lighthouse `/dashboard` — Accessibility | ≥95 | — | |
-| Lighthouse `/dashboard` — CLS | <0.05 | — | |
-| Lighthouse `/expenses` — Performance | ≥90 | — | |
-| Lighthouse `/expenses` — Accessibility | ≥95 | — | |
-| Lighthouse `/expenses/new` — Performance | ≥90 | — | |
-| Lighthouse `/expenses/new` — Accessibility | ≥95 | — | |
+| `npm run test` | green | **728 passed, 59 files** — first run on the Windows host | 2026-08-28 |
+| `next build` | green | **passes** — every route compiled (see "the build is fixed" below) | 2026-08-28 |
+| `tsc --noEmit` | green | **passes** | 2026-08-28 |
+| design checkers (5) | green | **pass** — tokens, copy voice, motion, contrast (64 pairs), migrations, lockfiles | 2026-08-28 |
+| `eslint .` | green | **fails — environment only.** 358 errors, all inside `.claude/worktrees/<agent-worktree>/`, a duplicate checkout of this repo. Scoped `npx eslint app components lib scripts tests` is clean. Fix: add `.claude/**` to the `ignores` array in `eslint.config.mjs` (one line), or remove the worktree when its task lands. | 2026-08-28 |
+| `npm run test:isolation` | green | **BLOCKED** — see "two blockers" below | |
+| `npm run test:e2e` | green | **BLOCKED** — needs DB | |
+| `npm run test:a11y` | 0 violations | **BLOCKED** — needs DB | |
+| `npm run screenshots` | baseline committed | **BLOCKED** — needs DB | |
+| Lighthouse `/login` — Accessibility | ≥95 | **100** | 2026-08-28 |
+| Lighthouse `/login` — Performance | ≥90 | **91** | 2026-08-28 |
+| Lighthouse `/login` — CLS | <0.05 | **0** | 2026-08-28 |
+| Lighthouse `/signup` — Accessibility | ≥95 | **100** | 2026-08-28 |
+| Lighthouse `/signup` — Performance | ≥90 | 80 (mobile throttling on a loaded dev host; `/login` on the same run scored 91, so treat this as host noise rather than a page defect) | 2026-08-28 |
+| Lighthouse `/signup` — CLS | <0.05 | **0** | 2026-08-28 |
+| Screenshot baseline — public routes | committed | **`docs/screenshots/{login,signup}-{desktop,mobile}.png`** (1280×900 and 390×844, 2× DPR) | 2026-08-28 |
+| Lighthouse `/dashboard`, `/expenses`, `/expenses/new` | ≥90 / ≥95 | **BLOCKED** — auth-gated, needs DB | |
 | INP (DevTools, interaction trace) | <200ms | — | |
 | Keyboard walkthrough — 3 flows | pass | — | |
 | Screen-reader pass — 3 flows | pass | — | |
+
+**CLS 0 on both audited pages answers the open question from the Neoclassical redesign's N0.3:** adding Bodoni Moda
+as a second `next/font` family introduces no layout shift.
+
+---
+
+## Update 2026-08-28 — the build is fixed, and two blockers remain
+
+### The build works. Step 0 above is resolved.
+
+`next build` and `next dev` both run on this Windows host. The cure was **not** a `node_modules` reinstall: it was
+deleting the stray `pnpm-lock.yaml` and `pnpm-workspace.yaml` (the on-disk half of the repair `f2cd67c` had already
+made in git). Next was sniffing those files, shelling out to pnpm, and dying. `scripts/check-lockfiles.mjs` now
+guards the regression. The bisect ladder above was never needed — record that as its result.
+
+**One new failure mode worth knowing**, because it looks catastrophic and is not: running `next dev` and then
+`next build` against the same `.next` directory leaves mixed artifacts, and the production build then dies inside
+webpack with
+
+```
+TypeError: Cannot read properties of undefined (reading 'length')
+    at WasmHash._updateWithBuffer (.../webpack/bundle5.js)
+```
+
+That is a corrupt cache, not a code error — `tsc` stays clean throughout. `rm -rf .next && npm run build` fixes it
+every time. Always clear `.next` when switching between dev and a production build on this host.
+
+### Blocker 1 — Docker Desktop's engine does not start (machine-level)
+
+`docker info` hangs and `\\.\pipe\dockerDesktopLinuxEngine` never appears, while Docker Desktop's own processes are
+running. WSL2 itself is healthy (`wsl -d docker-desktop -e echo ok` returns immediately), so this is Docker's
+backend, not WSL. The GUI was sitting on its "Docker Desktop — something went wrong" dialog. Relaunching after
+`wsl --shutdown` did not help.
+
+Untried, in ascending order of destructiveness: reboot; disable the NordLynx VPN adapter (VPN virtual adapters are a
+common cause of WSL2/Docker networking failures on Windows) and restart Docker; repair/reinstall Docker Desktop;
+**Reset to factory defaults** — which destroys the `postgres-data` volume and every local image, and so should be the
+last resort, not the first.
+
+Every remaining unrun suite — isolation, e2e, a11y, screenshots, and the three auth-gated Lighthouse pages — needs a
+database, so all of them are behind this one blocker.
+
+### Blocker 2 — `.env` points at a REMOTE database, so the runbook's own step 1 is unsafe here
+
+**Do not run `npx prisma migrate deploy`, `npm run seed`, or `npm run test:isolation` on this machine as written.**
+
+`tests/isolation/setup.ts` calls `dotenv.config()` and only falls back to a localhost URL with `??=`, i.e. *when
+`DATABASE_URL` is unset*. This checkout's `.env` **does** set `DATABASE_URL`, to a host on the public internet
+(`72.60.200.116:4785`) rather than to the `docker-compose.yml` Postgres on `localhost:5432`. So the isolation suite —
+which creates and deletes tenant rows — and the migrate/seed steps would all run against that remote database.
+
+Fix before anyone runs step 1 here, either:
+- give the local stack its own env file (`.env.test` / `.env.local`) and load that in the test setup and the runbook
+  commands, or
+- make `tests/isolation/setup.ts` **override** rather than defer (`process.env.DATABASE_URL = ...localhost...`
+  unless an explicit `ISOLATION_DATABASE_URL` is provided), so a developer's ambient `.env` can never redirect a
+  destructive suite at a shared server.
+
+This is a latent hazard independent of the redesign, and it is the reason the isolation row above says BLOCKED rather
+than FAILED.
 
 When a row is filled, copy the number into `docs/A11Y-AUDIT.md` or
 `docs/PERF-AUDIT.md` **and** tick the matching box in `DESIGN-PLAN.md`. If a

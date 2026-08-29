@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { MATCH_WINDOW_DAYS } from "@/lib/domain/card-import";
 import { scopedDb } from "@/lib/db/scoped";
@@ -65,14 +66,10 @@ export default async function CardImportsPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Card imports</h1>
-        <p className="text-text-tertiary text-sm">
-          {totalCount} transaction{totalCount === 1 ? "" : "s"} imported ·{" "}
-          {matchedCount} matched · {totalCount - matchedCount} open. Auto-match
-          pairs exact amounts within ±{MATCH_WINDOW_DAYS} days.
-        </p>
-      </div>
+      <PageHeader
+        title="Card imports"
+        description={`${totalCount} transaction${totalCount === 1 ? "" : "s"} imported · ${matchedCount} matched · ${totalCount - matchedCount} open. Auto-match pairs exact amounts within ±${MATCH_WINDOW_DAYS} days.`}
+      />
 
       <CardImportPanel unmatched={unmatched} />
 

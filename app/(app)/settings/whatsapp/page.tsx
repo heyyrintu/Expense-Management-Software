@@ -2,6 +2,7 @@
 // from the browser's point of view: only a masked hint comes back.
 import { redirect } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { hasEncryptionKey } from "@/lib/crypto/secret-box";
@@ -38,14 +39,10 @@ export default async function WhatsAppSettingsPage() {
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-lg font-semibold">WhatsApp</h1>
-        <p className="text-text-tertiary text-sm">
-          Connect your Meta WhatsApp Business number so your team can send
-          receipts and get updates in chat. Leave it off and nothing about
-          WhatsApp appears anywhere in the app.
-        </p>
-      </div>
+      <PageHeader
+        title="WhatsApp"
+        description="Connect your Meta WhatsApp Business number so your team can send receipts and get updates in chat. Leave it off and nothing about WhatsApp appears anywhere in the app."
+      />
 
       <WhatsAppSettingsForm
         view={{

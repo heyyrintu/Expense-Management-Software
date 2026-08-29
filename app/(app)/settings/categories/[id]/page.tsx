@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { toDecimalString } from "@/lib/money";
@@ -23,7 +24,10 @@ export default async function EditCategoryPage({
 
   return (
     <section className="grid gap-4">
-      <h1 className="text-xl font-semibold">Edit category</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Categories", href: "/settings/categories" }, { label: "Edit category" }]}
+        title="Edit category"
+      />
       <EditCategoryFormWrapper
         categoryId={category.id}
         defaults={{

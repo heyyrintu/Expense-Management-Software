@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { fetchSpendRows } from "@/lib/analytics";
 import {
   approverBottlenecks,
@@ -131,13 +132,10 @@ export default async function AnalyticsPage({
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">Analytics</h1>
-        <p className="text-text-tertiary text-sm">
-          Spend = submitted, approved, and reimbursed expenses in {org.currency},
-          last 12 months.
-        </p>
-      </div>
+      <PageHeader
+        title="Analytics"
+        description={`Spend = submitted, approved, and reimbursed expenses in ${org.currency}, last 12 months.`}
+      />
 
       <Card>
         <CardHeader>

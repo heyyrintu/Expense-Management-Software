@@ -84,7 +84,16 @@ export function TrendAreaChart({
             />
             <Legend
               iconType="circle"
-              wrapperStyle={{ fontSize: 12, color: "var(--fg-tertiary)" }}
+              wrapperStyle={{ fontSize: 12 }}
+              // Recharts colours each legend LABEL with its series colour,
+              // and wrapperStyle only reaches the container — so the label
+              // text inherited sage (3.17:1) and stone (3.72:1) and failed
+              // AA for text. The colour cue belongs to the circle icon,
+              // which is a graphic and only owes 3:1; the words take the
+              // meta ink like every other label in the product.
+              formatter={(value) => (
+                <span style={{ color: "var(--fg-tertiary)" }}>{value}</span>
+              )}
             />
             {labels.map((l, i) => (
               <Area

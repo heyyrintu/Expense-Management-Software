@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DateCell } from "@/components/ui/date-cell";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 
@@ -27,16 +28,10 @@ export default async function EmailIngestionPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Email ingestion</h1>
-        <p className="text-text-tertiary text-sm">
-          Employees can email receipts to{" "}
-          <code className="bg-bg-subtle rounded px-1">
-            receipts+{ctx.orgSlug}@{mailDomain}
-          </code>{" "}
-          from their work email — each attachment becomes a draft expense.
-        </p>
-      </div>
+      <PageHeader
+        title="Email ingestion"
+        description={`Employees can email receipts to receipts+${ctx.orgSlug}@${mailDomain} from their work email — each attachment becomes a draft expense.`}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Dead letters</CardTitle>

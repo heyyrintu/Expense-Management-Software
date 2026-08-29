@@ -16,7 +16,7 @@ export default async function SignupPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Create your organization</CardTitle>
+        <CardTitle as="h1" className="text-h2">Create your organization</CardTitle>
         <CardDescription>
           You&apos;ll be the organization admin.
         </CardDescription>

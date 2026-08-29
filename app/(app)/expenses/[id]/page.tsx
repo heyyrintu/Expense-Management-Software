@@ -10,6 +10,7 @@ import { asFlags, FlagChips } from "@/components/flag-chips";
 import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
+import { PageHeader } from "@/components/ui/page-header";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
 import { isExpenseEditable, type ExpenseStatus } from "@/lib/domain/expense";
@@ -93,10 +94,10 @@ export default async function ExpenseDetailPage({
       const org = await db.organization.findUniqueOrThrow({ where: { id: ctx.orgId } });
       return (
         <section className="grid gap-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">Edit mileage expense</h1>
-            <StatusBadge status={expense.status} />
-          </div>
+          <PageHeader
+            title="Edit mileage expense"
+            action={<StatusBadge status={expense.status} />}
+          />
           <EditMileageWrapper
             expenseId={expense.id}
             defaults={{
@@ -123,10 +124,10 @@ export default async function ExpenseDetailPage({
     }
     return (
       <section className="grid gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold">Edit expense</h1>
-          <StatusBadge status={expense.status} />
-        </div>
+        <PageHeader
+          title="Edit expense"
+          action={<StatusBadge status={expense.status} />}
+        />
         <EditExpenseWrapper
           expenseId={expense.id}
           defaults={{
@@ -172,10 +173,11 @@ export default async function ExpenseDetailPage({
   // read-only detail for non-draft expenses
   return (
     <section className="grid max-w-md gap-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">{expense.merchant}</h1>
-        <StatusBadge status={expense.status} />
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Expenses", href: "/expenses" }, { label: expense.merchant }]}
+        title={expense.merchant}
+        action={<StatusBadge status={expense.status} />}
+      />
       <Card>
         <CardHeader>
           <CardTitle>

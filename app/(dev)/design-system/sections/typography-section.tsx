@@ -1,8 +1,13 @@
-// Typography (D0.5). The full §5.3 scale with real specimen text.
+// Typography (D0.5 · N0.5). The full §5.3 scale with real specimen text.
 //
 // Specimens use product copy, not lorem ipsum: the scale has to be judged on
 // the words it will actually carry. A 13px label reads differently as "Amount
 // reimbursed" than as "consectetur adipiscing".
+//
+// The display and h1 rows render through `font-display` (Bodoni Moda, N0.3),
+// exactly as their call sites must — the registry's `family` field is the
+// jurisdiction, and this page is where the pairing is demonstrated.
+import { cn } from "@/lib/utils";
 import { TYPE_SCALE } from "@/lib/design/tokens";
 import { Block, Group, Panel } from "./shared";
 
@@ -16,6 +21,7 @@ const SPECIMENS: Record<string, string> = {
   "body-strong": "₹4,500.00",
   label: "Amount reimbursed",
   meta: "Updated 2 days ago · via WhatsApp",
+  eyebrow: "Awaiting reimbursement",
   micro: "99+",
 };
 
@@ -25,7 +31,7 @@ export function TypographySection() {
       id="typography"
       eyebrow="§5.3"
       title="Typography"
-      description="Inter, variable weight, self-hosted through next/font. Nine roles, and the rules that govern them: at most three sizes on a screen, never bold a label and its value both, and every numeral tabular."
+      description="Two faces, strict jurisdiction (N0.3): Bodoni Moda for display and h1, Inter for everything else — including every numeral, because Bodoni has no tabular figures. Ten roles, and the rules that govern them: at most three sizes on a screen, never bold a label and its value both, and every numeral tabular."
     >
       <Block
         title="The scale"
@@ -37,7 +43,9 @@ export function TypographySection() {
               key={type.name}
               className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-baseline sm:gap-6"
             >
-              <p className={type.className}>{SPECIMENS[type.name] ?? type.role}</p>
+              <p className={cn(type.className, type.family === "display" && "font-display")}>
+                {SPECIMENS[type.name] ?? type.role}
+              </p>
               <span className="text-meta text-text-tertiary tabular sm:text-right">
                 {type.className} · {type.size}/{type.lineHeight} · {type.weight} · {type.tracking}
                 <br />

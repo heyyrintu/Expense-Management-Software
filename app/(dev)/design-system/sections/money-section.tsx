@@ -35,6 +35,13 @@ export function MoneySection() {
                 <Amount value={1245600} currency="INR" size={size} />
               </div>
             ))}
+            {/* The hero face (N2.2): Bodoni Moda, one figure per screen —
+                the dashboard's first KPI and the ledger's closing balance.
+                Never in a column: Bodoni has no tabular figures. */}
+            <div className="flex flex-wrap items-baseline gap-4">
+              <code className="text-meta text-text-tertiary w-16">hero</code>
+              <Amount value={1245600} currency="INR" size="display" face="display" />
+            </div>
           </div>
         </Panel>
       </Block>

@@ -1,9 +1,13 @@
 "use client";
 
-// App shell specimens (D0.4). The live shell needs a session, so the gallery
-// renders its parts statically at both widths instead of embedding it: the
-// sidebar expanded and as a rail, the top bar, the mobile tab bar, and the
-// page header with and without breadcrumbs.
+// App shell specimens (D0.4 · N1). The live shell needs a session, so the
+// gallery renders its parts statically at both widths instead of embedding
+// it: the sidebar expanded and as a rail, the top bar, the mobile tab bar,
+// and the page header with and without breadcrumbs.
+//
+// N1 treatments mirrored here: the sidebar is the stone panel (bg-subtle)
+// with the active row as a white inlay tile carrying laurel text, and the
+// top bar carries the plate rule on its bottom edge instead of a border.
 //
 // Role is switchable here because role-aware nav is the part most likely to
 // regress — flipping to `employee` should make Approvals, Finance and
@@ -39,8 +43,8 @@ export function ShellSection() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Specimen label="Sidebar — 240px">
-          <div className="w-sidebar border-line bg-bg-surface border-r p-2">
+        <Specimen label="Sidebar — 240px stone panel, active row inlaid">
+          <div className="w-sidebar border-line bg-bg-subtle border-r p-2">
             {sections.map((section) => (
               <div key={section.id} className="mt-4 first:mt-0">
                 {section.label ? (
@@ -55,7 +59,7 @@ export function ShellSection() {
                       className={cn(
                         "flex h-11 items-center gap-3 rounded-md px-3 text-label",
                         section.id === "expenses" && i === 0
-                          ? "bg-accent-subtle text-accent-text"
+                          ? "bg-bg-surface text-accent-text"
                           : "text-text-secondary"
                       )}
                     >
@@ -70,7 +74,7 @@ export function ShellSection() {
         </Specimen>
 
         <Specimen label="Rail — 64px (labels become tooltips)">
-          <div className="w-sidebar-rail border-line bg-bg-surface border-r p-2">
+          <div className="w-sidebar-rail border-line bg-bg-subtle border-r p-2">
             {sections.map((section) => (
               <ul key={section.id} className="mt-4 grid gap-1 first:mt-0">
                 {section.items.map((item, i) => (
@@ -79,7 +83,7 @@ export function ShellSection() {
                     className={cn(
                       "grid h-11 place-items-center rounded-md",
                       section.id === "expenses" && i === 0
-                        ? "bg-accent-subtle text-accent-text"
+                        ? "bg-bg-surface text-accent-text"
                         : "text-text-secondary"
                     )}
                   >
@@ -92,8 +96,8 @@ export function ShellSection() {
         </Specimen>
       </div>
 
-      <Specimen label="Top bar — sticky, 1px border, no shadow">
-        <div className="border-line bg-bg-surface flex h-topbar items-center gap-3 border-b px-6">
+      <Specimen label="Top bar — sticky, plate-rule bottom edge, no shadow">
+        <div className="bg-bg-surface relative flex h-topbar items-center gap-3 px-6">
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
             <span className="text-h3 text-text-primary">Expenses</span>
             <span className="text-meta text-text-tertiary">Acme Inc</span>
@@ -108,6 +112,7 @@ export function ShellSection() {
             <span className="bg-accent border-bg-surface absolute top-2 right-2 size-2 rounded-full border-2" />
           </span>
           <Avatar name="Riya Kapoor" />
+          <div aria-hidden="true" className="plate-rule absolute inset-x-0 bottom-0" />
         </div>
       </Specimen>
 

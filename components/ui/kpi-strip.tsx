@@ -56,7 +56,7 @@ export function KpiStrip({
   return (
     <div className="grid gap-3">
       <div className={cn("grid gap-4 sm:grid-cols-2", columnsFor(kpis.length), className)}>
-        {kpis.map((kpi) => (
+        {kpis.map((kpi, i) => (
           <StatCard
             key={kpi.key}
             label={kpi.label}
@@ -66,6 +66,10 @@ export function KpiStrip({
             delta={kpi.delta}
             trend={kpi.trend}
             href={kpi.agreement.href}
+            // The strip's first card is the dashboard's hero balance (N2.2):
+            // every role's strip leads with its total, and one Bodoni figure
+            // per screen is the whole allowance.
+            hero={i === 0}
             loading={loading}
           />
         ))}

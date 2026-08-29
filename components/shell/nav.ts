@@ -140,6 +140,28 @@ export function activeItem(pathname: string, role: Role): NavItem | null {
   return matches.reduce((best, item) => (item.href.length > best.href.length ? item : best));
 }
 
+/**
+ * The nav SECTION a route belongs to, for the page-header eyebrow (N2.1).
+ * Deliberately role-blind: it names where a screen sits in the product's
+ * architecture, and a screen's address does not change with who is looking
+ * at it — role still gates the routes themselves server-side. Longest match
+ * wins for the same reason as activeItem. Null for unlabelled sections
+ * (Home) and for routes outside the nav; the header simply shows no eyebrow.
+ */
+export function sectionLabelFor(pathname: string): string | null {
+  let best: { label: string; hrefLength: number } | null = null;
+  for (const section of NAV_SECTIONS) {
+    if (!section.label) continue;
+    for (const item of section.items) {
+      if (!isActiveHref(pathname, item)) continue;
+      if (!best || item.href.length > best.hrefLength) {
+        best = { label: section.label, hrefLength: item.href.length };
+      }
+    }
+  }
+  return best?.label ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Mobile tab bar (§5.5): Home · Expenses · Add · Reports · More.
 // Fixed five, deliberately: the tab bar is muscle memory, so it does not

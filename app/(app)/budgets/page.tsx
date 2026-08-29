@@ -1,5 +1,6 @@
 import { computeBudgetUtilization } from "@/lib/analytics/budgets";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { BudgetsPanel, type BudgetView } from "./budgets-panel";
@@ -37,13 +38,10 @@ export default async function BudgetsPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Budgets</h1>
-        <p className="text-text-tertiary text-sm">
-          Utilization for the current period. Spend counts submitted, approved,
-          and reimbursed expenses.
-        </p>
-      </div>
+      <PageHeader
+        title="Budgets"
+        description="Utilization for the current period. Spend counts submitted, approved, and reimbursed expenses."
+      />
       {views.length === 0 ? (
         <EmptyState
           headline="No budgets yet"

@@ -10,6 +10,7 @@ import {
   CHART_AXIS_FONT_SIZE,
   CHART_GRID_OPACITY,
   CHART_GRID_STROKE,
+  CHART_REIMBURSED,
   CHART_SERIES,
   animationProps,
   axisProps,
@@ -18,6 +19,7 @@ import {
   seriesColor,
 } from "@/lib/charts/theme";
 import { COLOR_GROUPS, contrastRatio } from "@/lib/design/tokens";
+import { TREND_TOP_N } from "@/lib/analytics/aggregate";
 
 /** Look a token's hex up from the registry the gallery renders. */
 function token(name: string): string {
@@ -53,8 +55,27 @@ describe("categorical palette", () => {
     expect(CHART_SERIES[0]).toBe(CHART_ACCENT);
   });
 
-  it("has five distinct entries — no duplicates to confuse two series", () => {
+  it("has distinct entries — no duplicates to confuse two series", () => {
     expect(new Set(CHART_SERIES).size).toBe(CHART_SERIES.length);
+  });
+
+  it("has more colours than the widest chart has series", () => {
+    // seriesColor() CYCLES, so a palette shorter than the number of bands a
+    // chart can stack hands two different series the same colour and the
+    // chart lies. The analytics trend stacks TREND_TOP_N categories plus an
+    // "Other" band, so the palette needs at least TREND_TOP_N + 1. This
+    // regressed once (N3.2 shrank the palette to four while TREND_TOP_N was
+    // five) and nothing caught it, because every gate reads colours one at
+    // a time and this is a claim about the SET.
+    expect(CHART_SERIES.length).toBeGreaterThan(TREND_TOP_N);
+  });
+
+  it("keeps gilt out of the rotation — reimbursed money only (N3.2)", () => {
+    // The gilt usage law: a series goes gold only when it plots money that
+    // was actually paid out, so the rotation must never deal it to an
+    // arbitrary category.
+    expect(CHART_REIMBURSED.toLowerCase()).toBe(token("gilt"));
+    expect(CHART_SERIES).not.toContain(CHART_REIMBURSED);
   });
 
   it("is not a rainbow: every series is legible on the surface", () => {
