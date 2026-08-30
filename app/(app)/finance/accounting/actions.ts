@@ -266,8 +266,12 @@ export async function runExportAction(
         lineCount: artifact.lineCount,
         totalMinor: artifact.totalMinor,
         reports: {
+          // orgId is no longer set here: the export -> reports relation is
+          // now composite (org_id, export_id), so Prisma derives the child's
+          // org from the parent it is being created under. That is the point
+          // of the composite key — the org cannot be stated independently,
+          // and therefore cannot be stated wrongly.
           create: r.included.map((rep) => ({
-            orgId: ctx.orgId,
             reportId: rep.id,
           })),
         },

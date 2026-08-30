@@ -37,6 +37,10 @@ export const TENANT_MODELS = [
   "WhatsAppLink",
   "WhatsAppInbound",
   "WhatsAppOutbound",
+  "PerDiemRate",
+  "AccountingMapping",
+  "AccountingExport",
+  "AccountingExportReport",
 ] as const;
 
 /** Organization is scoped by its own id; only reads/updates allowed. */
@@ -111,7 +115,18 @@ export function scopeArgs(
       );
     }
     if (UNIQUE_WHERE_OPS.has(operation)) {
-      return { ...a, where: { ...asRec(a.where), id: orgId } };
+      // Do NOT overwrite a caller-supplied id. `{ ...where, id: orgId }`
+      // silently rewrites "read org A" into "read my own org", so a lookup
+      // for another tenant returns a row instead of nothing — the caller
+      // gets an answer to a question it did not ask. ANDing the scope on
+      // top resolves to no row instead, which is the honest result.
+      const w = asRec(a.where);
+      const prior =
+        w.AND === undefined ? [] : Array.isArray(w.AND) ? w.AND : [w.AND];
+      return {
+        ...a,
+        where: { ...w, id: w.id ?? orgId, AND: [...prior, { id: orgId }] },
+      };
     }
     if (FILTER_WHERE_OPS.has(operation)) {
       return { ...a, where: { AND: [asRec(a.where), { id: orgId }] } };
@@ -121,7 +136,18 @@ export function scopeArgs(
 
   // Tenant models (incl. any future model — fail closed by scoping orgId).
   if (UNIQUE_WHERE_OPS.has(operation)) {
-    const scoped: Rec = { ...a, where: { ...asRec(a.where), orgId } };
+    // Same reasoning as Organization above: a caller-supplied orgId must
+    // NARROW the query, never be overwritten by it. Models with a unique
+    // orgId (WhatsAppAccount is one per org) are where the difference
+    // shows — `{ ...where, orgId }` turned "read A's account" into "read
+    // my own account" and handed back a row.
+    const w = asRec(a.where);
+    const prior =
+      w.AND === undefined ? [] : Array.isArray(w.AND) ? w.AND : [w.AND];
+    const scoped: Rec = {
+      ...a,
+      where: { ...w, orgId: w.orgId ?? orgId, AND: [...prior, { orgId }] },
+    };
     if (operation === "upsert") {
       scoped.create = { ...asRec(a.create), orgId };
     }
