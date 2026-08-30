@@ -122,7 +122,10 @@ jobs:
             sleep 1
           done
           curl -sf http://localhost:9000/minio/health/live
-          docker run --rm --network host minio/mc:latest sh -c             "mc alias set local http://localhost:9000 minioadmin minioadmin &&              mc mb --ignore-existing local/receipts"
+          # --entrypoint sh is required: the minio/mc image sets `mc` as its
+          # ENTRYPOINT, so a bare `sh -c ...` is parsed as an mc subcommand
+          # and fails with "`sh` is not a recognized command".
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c             "mc alias set local http://localhost:9000 minioadmin minioadmin &&              mc mb --ignore-existing local/receipts"
 
       - name: Tenant isolation suite (red build on any cross-tenant access)
         run: npm run test:isolation
