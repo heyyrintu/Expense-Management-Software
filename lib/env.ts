@@ -11,7 +11,7 @@
 // not in somebody's expense claim. In development it warns, so a partial
 // .env still lets you work on unrelated screens.
 
-import { hasEncryptionKey } from "@/lib/crypto/secret-box";
+import { hasEncryptionKey } from "@/lib/crypto/key";
 
 type Problem = { key: string; detail: string };
 
