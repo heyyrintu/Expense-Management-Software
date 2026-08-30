@@ -47,6 +47,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Traces the server and its dependencies into .next/standalone, so the
+  // runtime image copies one directory instead of installing node_modules
+  // again. It is also what lets the final stage carry no package manager
+  // and no build toolchain.
+  output: "standalone",
   // Do not advertise the framework version to scanners.
   poweredByHeader: false,
   async headers() {

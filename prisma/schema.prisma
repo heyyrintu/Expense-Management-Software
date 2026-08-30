@@ -27,6 +27,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  // The query engine is a NATIVE binary, and the musl build (Alpine, which
+  // the Dockerfile uses) is a different artifact from the glibc one. Left
+  // to autodetect, `prisma generate` emits only the engine for the machine
+  // that ran it, so an image built on a glibc host starts and then fails on
+  // the first query with "Query engine library for current platform could
+  // not be found". Listing both makes the generate step produce both.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
