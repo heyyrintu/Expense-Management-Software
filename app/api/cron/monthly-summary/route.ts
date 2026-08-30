@@ -5,6 +5,7 @@
 // of that month's spend — built from the SAME lib/analytics fetch as the
 // dashboards. Last-run status is stored in org settings.
 import { NextResponse } from "next/server";
+import { bearerMatches } from "@/lib/auth/bearer";
 import { fetchSpendRows } from "@/lib/analytics";
 import { violationLeaderboard } from "@/lib/analytics/aggregate";
 import { buildCsv } from "@/lib/domain/dashboard";
@@ -22,7 +23,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 

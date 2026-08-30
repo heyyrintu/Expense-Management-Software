@@ -15,13 +15,26 @@ import {
 } from "@/lib/schemas/auth";
 import { checkRateLimit, rateLimitedMessage } from "@/lib/rate-limit";
 
+/**
+ * Rate-limit bucket key. X-Forwarded-For is APPENDED to by each hop, so its
+ * leftmost entry is whatever the CLIENT sent — trusting it lets an attacker
+ * mint a fresh login bucket per request by varying one header. Only the
+ * rightmost TRUSTED_PROXY_HOPS entries were written by infrastructure we
+ * control, so we count in from the right; with no proxy configured we do
+ * not read the header at all.
+ */
 async function clientIp(): Promise<string> {
   const h = await headers();
-  return (
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    h.get("x-real-ip") ??
-    "local"
-  );
+  const hops = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "0", 10);
+  if (Number.isFinite(hops) && hops > 0) {
+    const chain = (h.get("x-forwarded-for") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const ip = chain[chain.length - hops];
+    if (ip) return ip;
+  }
+  return h.get("x-real-ip") ?? "local";
 }
 
 export async function loginAction(input: unknown): Promise<Result> {

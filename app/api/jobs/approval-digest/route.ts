@@ -6,6 +6,7 @@
 // inside an org goes through scopedDb, reusing the exact chain-aware queue
 // logic approvers see in the app — the digest can never disagree with the UI.
 import { NextResponse } from "next/server";
+import { bearerMatches } from "@/lib/auth/bearer";
 import type { Role } from "@/lib/auth/roles";
 import { approvalQueueFor } from "@/lib/domain/approval-queue";
 import { buildApprovalDigest } from "@/lib/domain/digest";
@@ -17,8 +18,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
-  const provided = request.headers.get("authorization");
-  if (!secret || provided !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
