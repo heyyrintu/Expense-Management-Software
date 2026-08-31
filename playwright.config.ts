@@ -19,7 +19,20 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev -- --port ${PORT}`,
+    // CI serves the PRODUCTION build; locally it runs the dev server.
+    //
+    // `next dev` compiles each route on its first visit, so in CI every
+    // navigation in a suite that visits ~35 routes paid a cold webpack
+    // build and the run died on timeouts that had nothing to do with the
+    // assertions. CI already runs `npm run build` before these steps, so
+    // `next start` costs nothing extra and removes the compile entirely.
+    //
+    // It is also the more honest target: it exercises the bundle that
+    // actually ships, including the production CSP (dev needs
+    // 'unsafe-eval' for its bundler; production does not).
+    command: process.env.CI
+      ? `npm run start -- --port ${PORT}`
+      : `npm run dev -- --port ${PORT}`,
     url: `${BASE_URL}/login`,
     reuseExistingServer: true,
     timeout: 120_000,

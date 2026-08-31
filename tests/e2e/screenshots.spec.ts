@@ -88,7 +88,11 @@ test.describe("visual baseline", () => {
       test(`${screen.name} @ ${viewport.name}`, async () => {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await page.goto(screen.path);
-        await page.waitForLoadState("networkidle");
+        // NOT networkidle — see the note in a11y.spec.ts. Under `next dev`
+        // the HMR websocket keeps a connection open forever, so this can
+        // only ever end at the timeout.
+        await page.waitForLoadState("load");
+        await page.locator("main").waitFor({ state: "visible", timeout: 30_000 });
         // Skeletons pulse and charts animate in; a moment of settling keeps
         // the baseline from capturing a half-drawn frame.
         await page.waitForTimeout(500);
