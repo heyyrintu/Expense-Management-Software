@@ -21,6 +21,12 @@ and verified, not when it is planned.
 | CI had no MinIO — S3 isolation cases hit `ECONNREFUSED` | MinIO step in `ci.yml` |
 | No deploy path or rollback procedure | `Dockerfile` + `docs/DEPLOY.md`; image built, booted and health-checked |
 | Route boundaries discarded the error | `lib/observability/report.ts`, wired into all 10 boundaries |
+| **/reports/[id] was dead for every user** — `ReportControls.AddButton` is a compound component and static properties do not survive the client-reference boundary | e2e happy path green; named exports |
+| `asFlags()` called from the server on 4 screens (imported through a `"use client"` re-export) | reports/[id], approvals/[id], expenses/[id], analytics/violations all render |
+| Sticky table header parked over the first row, making its controls unclickable (the "expense list not showing" report) | Playwright named the interception; `top-0` instead of `top-topbar` |
+| Critical axe violation: `role="tablist"` with non-tab children and no tabpanel | now a radiogroup; 35 axe scans green |
+| The e2e and axe suites had **never run anywhere** — axe never even executed (rejected page context), and every scan waited on a `networkidle` that `next dev` can never satisfy | both green in CI |
+| **CI had never passed once** in the repository's history | green end to end: install → lint → build → unit → 2× migration replay → RLS role → isolation → e2e → axe |
 
 ## Open
 
