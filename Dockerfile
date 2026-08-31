@@ -26,6 +26,8 @@ RUN apk add --no-cache libc6-compat openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Opt into standalone tracing for THIS build only — see next.config.ts.
+ENV NEXT_OUTPUT=standalone
 # Generate the client for musl explicitly; the schema's default target is
 # whatever the developer's machine happens to be.
 RUN npx prisma generate

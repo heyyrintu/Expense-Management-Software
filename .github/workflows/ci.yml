@@ -34,6 +34,10 @@ jobs:
       # URLs from this; without it the e2e login redirects to the wrong origin
       # and the run fails somewhere unhelpful, several steps later.
       AUTH_URL: http://localhost:3000
+      # Required once the browser suites serve a PRODUCTION build: lib/env.ts
+      # refuses to boot in production without it, because an unconfigured
+      # deployment would expose job endpoints that mutate every org's data.
+      CRON_SECRET: ci-only-cron-secret
       # Receipt store for the isolation + e2e suites. Started as a step
       # below rather than a `services:` entry: the minio image needs the
       # `server /data` command, and GitHub service containers cannot set one.

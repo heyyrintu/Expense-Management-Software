@@ -60,11 +60,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Traces the server and its dependencies into .next/standalone, so the
-  // runtime image copies one directory instead of installing node_modules
-  // again. It is also what lets the final stage carry no package manager
-  // and no build toolchain.
-  output: "standalone",
+  // Standalone ONLY for the container build. It traces the server and its
+  // dependencies into .next/standalone so the runtime image copies one
+  // directory instead of installing node_modules again — but it also makes
+  // `next start` refuse to serve ("next start does not work with output:
+  // standalone"), which is how CI runs the browser suites. The Dockerfile
+  // sets NEXT_OUTPUT=standalone; nothing else does.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // Do not advertise the framework version to scanners.
   poweredByHeader: false,
   async headers() {
