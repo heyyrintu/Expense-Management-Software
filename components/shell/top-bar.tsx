@@ -7,8 +7,8 @@
 // over. The plate rule (the redesign's engraved double hairline) is an
 // ABSOLUTE overlay on the bar's bottom edge, not a border or an extra row:
 // the bar's rendered height must stay exactly --topbar-height, because
-// every sticky table header parks at `top-topbar` and would underlap a
-// taller bar. This is one of the plate rule's three sanctioned positions.
+// the settings nav parks at `top-topbar` and would underlap a taller bar.
+// This is one of the plate rule's three sanctioned positions.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
