@@ -11,3 +11,5 @@ npm-debug.log*
 /minio-data
 /postgres-data
 docker-compose.override.yml
+test-results/
+playwright-report/

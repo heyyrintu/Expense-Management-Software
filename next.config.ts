@@ -16,6 +16,8 @@ import type { NextConfig } from "next";
 //   - frame-ancestors 'none' is the one that matters most for a finance
 //     app: it is what X-Frame-Options says, but enforced by browsers that
 //     have dropped the older header.
+const isDev = process.env.NODE_ENV !== "production";
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -25,7 +27,18 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
+  // 'unsafe-eval' in DEVELOPMENT ONLY. Next's dev bundler evaluates module
+  // code with eval for hot reload, so a policy without it silently blocks
+  // every client script — the page still renders (it is server-rendered),
+  // but nothing hydrates. The failure is genuinely nasty: forms fall back
+  // to NATIVE submission, so the signup form issued
+  //   GET /signup?...&password=Password123!
+  // putting the password in the URL and the access log. Caught by the e2e
+  // happy path, which is the first thing that ever exercised interactivity.
+  // Production builds do not eval, so the directive is not added there.
+  isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'",
   "connect-src 'self' https:",
 ].join("; ");
 

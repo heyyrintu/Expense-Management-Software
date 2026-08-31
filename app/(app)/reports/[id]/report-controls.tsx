@@ -109,7 +109,7 @@ export function ReportControls({
   );
 }
 
-function AddButton({ reportId, expenseId }: { reportId: string; expenseId: string }) {
+export function AddButton({ reportId, expenseId }: { reportId: string; expenseId: string }) {
   const { error, pending, act } = useAct();
   return (
     <span className="grid justify-items-end gap-1">
@@ -126,7 +126,7 @@ function AddButton({ reportId, expenseId }: { reportId: string; expenseId: strin
   );
 }
 
-function RemoveButton({ reportId, expenseId }: { reportId: string; expenseId: string }) {
+export function RemoveButton({ reportId, expenseId }: { reportId: string; expenseId: string }) {
   const { error, pending, act } = useAct();
   return (
     <span className="grid justify-items-end gap-1">
@@ -143,5 +143,11 @@ function RemoveButton({ reportId, expenseId }: { reportId: string; expenseId: st
   );
 }
 
-ReportControls.AddButton = AddButton;
-ReportControls.RemoveButton = RemoveButton;
+// NOT compound components. `ReportControls.AddButton = AddButton` looks
+// tidier, but this module is "use client" and the report page is a SERVER
+// component: Next replaces a client module's exports with client-reference
+// proxies, and a static property hung off a function does not survive that
+// boundary. `ReportControls.AddButton` arrived as undefined and React threw
+//   "Element type is invalid ... got: undefined"
+// which took down the whole report detail screen. Named exports cross the
+// boundary; properties do not.

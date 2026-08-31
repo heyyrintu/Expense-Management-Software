@@ -14,7 +14,12 @@ import { StatusTimeline } from "@/components/ui/status-timeline";
 import { PaymentProgress } from "@/components/ui/payment-progress";
 import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
 import { DateCell } from "@/components/ui/date-cell";
-import { asFlags, FlagChips } from "@/components/flag-chips";
+import { FlagChips } from "@/components/flag-chips";
+// asFlags comes from the DOMAIN module, not the client component that
+// re-exports it: importing it from "@/components/flag-chips" in a server
+// component turns a pure function into a client reference, and calling it
+// on the server throws "Attempted to call asFlags() from the server".
+import { asFlags } from "@/lib/domain/policy-flags";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
 import { requireSession } from "@/lib/auth/guard";
@@ -35,7 +40,7 @@ import type { SubmitPreview } from "./submit-dialog";
 import { signedProofUrl } from "@/lib/storage/payment-proofs";
 import { RaiseComplaint } from "../../complaints/raise-complaint";
 // inside template literals — lib/money is the sanctioned string formatter.
-import { ReportControls } from "./report-controls";
+import { AddButton, RemoveButton, ReportControls } from "./report-controls";
 
 type ExpenseRow = {
   id: string;
@@ -369,7 +374,7 @@ export default async function ReportDetailPage({
                       }
                     />
                     {editable ? (
-                      <ReportControls.RemoveButton
+                      <RemoveButton
                         reportId={report.id}
                         expenseId={e.id}
                       />
@@ -417,7 +422,7 @@ export default async function ReportDetailPage({
                     </span>
                     <span className="flex items-center gap-3">
                       <Amount value={e.amount} currency={e.currency} align="right" />
-                      <ReportControls.AddButton
+                      <AddButton
                         reportId={report.id}
                         expenseId={e.id}
                       />

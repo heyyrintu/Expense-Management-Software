@@ -2,7 +2,12 @@
 // list length always equals the leaderboard count.
 import Link from "next/link";
 
-import { asFlags, FlagChips } from "@/components/flag-chips";
+import { FlagChips } from "@/components/flag-chips";
+// asFlags comes from the DOMAIN module, not the client component that
+// re-exports it: importing it from "@/components/flag-chips" in a server
+// component turns a pure function into a client reference, and calling it
+// on the server throws "Attempted to call asFlags() from the server".
+import { asFlags } from "@/lib/domain/policy-flags";
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
 import { PageHeader } from "@/components/ui/page-header";

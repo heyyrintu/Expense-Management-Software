@@ -16,7 +16,7 @@
 // empty-state screen would pass while saying nothing about the table, the
 // badges or the amounts a working screen actually renders.
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type BrowserContext } from "@playwright/test";
 
 const run = Date.now().toString(36);
 const SLUG = `a11y-${run}`;
@@ -67,12 +67,21 @@ async function scan(page: Page, context?: string) {
   expect(results.violations).toEqual([]);
 }
 
-async function login(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Organization").fill(SLUG);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+/**
+ * Creates an org and signs its admin in. Extracted so the overlays block can
+ * stand up its OWN tenant instead of borrowing the one "tenant routes"
+ * happens to have created — a describe that depends on another describe's
+ * beforeAll cannot be run on its own (`-g overlays` just fails to log in),
+ * which is exactly when you want to run it while fixing a violation.
+ */
+async function signupOrg(page: Page, slug: string, email: string) {
+  await page.goto("/signup");
+  await page.getByLabel("Organization name").fill("A11y Org");
+  await page.getByLabel("Workspace URL").fill(slug);
+  await page.getByLabel("Your name").fill("Admin A");
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Create organization" }).click();
   await page.waitForURL("**/dashboard");
 }
 
@@ -97,18 +106,17 @@ test.describe("public routes", () => {
 
 test.describe("tenant routes", () => {
   let page: Page;
+  let context: BrowserContext;
 
   test.beforeAll(async ({ browser }) => {
-    page = await browser.newPage();
+    // browser.newContext() rather than browser.newPage(): @axe-core/playwright
+    // refuses a page created from the implicit context with "Please use
+    // browser.newContext()", so every route scan errored before axe ran. The
+    // suite has never executed in CI, so nothing surfaced it.
+    context = await browser.newContext();
+    page = await context.newPage();
 
-    await page.goto("/signup");
-    await page.getByLabel("Organization name").fill("A11y Org");
-    await page.getByLabel("Workspace URL").fill(SLUG);
-    await page.getByLabel("Your name").fill("Admin A");
-    await page.getByLabel("Work email").fill(ADMIN_EMAIL);
-    await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
-    await page.getByRole("button", { name: "Create organization" }).click();
-    await page.waitForURL("**/dashboard");
+    await signupOrg(page, SLUG, ADMIN_EMAIL);
 
     // A category and an expense, so lists and tables have rows to render.
     await page.goto("/settings/categories/new");
@@ -125,6 +133,7 @@ test.describe("tenant routes", () => {
 
   test.afterAll(async () => {
     await page.close();
+    await context.close();
   });
 
   /**
@@ -172,7 +181,10 @@ test.describe("tenant routes", () => {
     "/recurring",
     "/notifications",
     "/profile",
-    "/settings",
+    // NOTE: the bare settings index is redirect-only and is listed in
+    // EXCLUDED in tests/unit/a11y-coverage.test.ts with its reason. Do not
+    // name it here in quotes: the coverage parser reads quoted strings out
+    // of this file, comments included.
     "/settings/organization",
     "/settings/users",
     "/settings/categories",
@@ -189,10 +201,22 @@ test.describe("tenant routes", () => {
 
   for (const path of ROUTES) {
     test(`${path} has no axe violations`, async () => {
+      // Playwright starts `next dev`, which compiles each route on its FIRST
+      // visit — so the first hit on a cold route can spend most of a minute
+      // in webpack before any HTML arrives. The default 60s budget makes
+      // that look like an accessibility failure ("Target page ... has been
+      // closed" from waitForLoadState) when nothing was ever scanned.
+      test.setTimeout(120_000);
       await page.goto(path);
-      // Wait for the skeleton to be replaced — scanning a loading state
-      // checks the skeleton's accessibility, not the screen's.
-      await page.waitForLoadState("networkidle");
+      // NOT networkidle. Playwright starts `next dev`, which holds an open
+      // HMR websocket for the life of the page, so the network is never
+      // idle and this wait can only ever end at the timeout — with the page
+      // torn down and nothing scanned, reported as an a11y failure. `load`
+      // plus the main landmark being visible is the honest "the screen has
+      // rendered" signal, and these routes fetch server-side so the real
+      // content is in the first HTML rather than behind a skeleton.
+      await page.waitForLoadState("load");
+      await page.locator("main").waitFor({ state: "visible", timeout: 30_000 });
       await scan(page, path);
     });
   }
@@ -207,16 +231,32 @@ test.describe("tenant routes", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("overlays", () => {
-  test("invite user sheet", async ({ page }) => {
-    await login(page, ADMIN_EMAIL);
+  // Its own org and its own context, for the reason on signupOrg above and
+  // because axe refuses a page from the implicit context.
+  const OV_SLUG = `a11y-ov-${run}`;
+  const OV_EMAIL = `admin@${OV_SLUG}.test`;
+  let page: Page;
+  let context: BrowserContext;
+
+  test.beforeAll(async ({ browser }) => {
+    context = await browser.newContext();
+    page = await context.newPage();
+    await signupOrg(page, OV_SLUG, OV_EMAIL);
+  });
+
+  test.afterAll(async () => {
+    await page.close();
+    await context.close();
+  });
+
+  test("invite user sheet", async () => {
     await page.goto("/settings/users");
     await page.getByRole("button", { name: "Invite user" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await scan(page, "invite user sheet");
   });
 
-  test("statement import sheet", async ({ page }) => {
-    await login(page, ADMIN_EMAIL);
+  test("statement import sheet", async () => {
     await page.goto("/bank-recon");
     await page.getByRole("button", { name: /import a statement/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
