@@ -8,11 +8,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CommentThread, type CommentView } from "@/components/comment-thread";
-import { asFlags, FlagChips } from "@/components/flag-chips";
+import { FlagChips } from "@/components/flag-chips";
+// asFlags comes from the DOMAIN module, not the client component that
+// re-exports it: importing it from "@/components/flag-chips" in a server
+// component turns a pure function into a client reference, and calling it
+// on the server throws "Attempted to call asFlags() from the server".
+import { asFlags } from "@/lib/domain/policy-flags";
 import { StatusBadge } from "@/components/status-badge";
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
+import { formatDate } from "@/lib/format";
 import {
   resolveChain,
   type ChainRule,
@@ -116,25 +123,19 @@ export default async function ApprovalReviewPage({
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">{report.title}</h1>
+      <PageHeader
+        breadcrumbs={[{ label: "Approvals", href: "/approvals" }, { label: report.title }]}
+        title={report.title}
+        description={`${report.user.name}${
+          report.submittedAt ? ` · submitted ${formatDate(report.submittedAt)}` : ""
+        }${required === 2 ? ` · needs 2 approvals` : ""}`}
+        action={
+          <>
             <StatusBadge status={report.status} />
-          </div>
-          <p className="text-text-tertiary text-sm">
-            {report.user.name}
-            {report.submittedAt ? (
-              <>
-                {" · submitted "}
-                <DateCell value={report.submittedAt} tone="muted" />
-              </>
-            ) : null}
-            {required === 2 ? ` · needs 2 approvals` : ""}
-          </p>
-        </div>
-        <Amount value={report.total} currency={org.currency} size="display" align="right" />
-      </div>
+            <Amount value={report.total} currency={org.currency} size="display" align="right" />
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

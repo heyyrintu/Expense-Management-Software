@@ -42,6 +42,13 @@ export type AmountProps = {
   currency: string;
   size?: AmountSize;
   /**
+   * `display` renders the figure in Bodoni Moda (N2.2) — the sanctioned
+   * Didone-numeral moment. ONLY for a lone hero figure (the dashboard's
+   * first KPI, the ledger's closing balance): Bodoni has no tabular figures,
+   * so this face must never appear in a column or beside a sibling amount.
+   */
+  face?: "sans" | "display";
+  /**
    * The same money in the org's base currency, shown on a second line.
    * For multi-currency expenses (6.4): primary is what was actually spent,
    * secondary is what it converts to — that ordering is deliberate, since
@@ -65,6 +72,7 @@ function Amount({
   value,
   currency,
   size = "body",
+  face = "sans",
   converted,
   align = "left",
   tone = "default",
@@ -72,6 +80,7 @@ function Amount({
   className,
 }: AmountProps) {
   const alignment = align === "right" ? "text-right" : "text-left";
+  const faceClass = face === "display" ? "font-display" : null;
 
   // Missing is not zero. A blank advance balance and a settled one mean very
   // different things, and rendering both as ₹0.00 hides the difference.
@@ -98,7 +107,7 @@ function Amount({
     <span
       data-slot="amount"
       data-negative={negative ? "" : undefined}
-      className={cn(SIZE_CLASSES[size], alignment, toneClass, className)}
+      className={cn(SIZE_CLASSES[size], faceClass, alignment, toneClass, className)}
     >
       {formatMoney(value, currency)}
     </span>

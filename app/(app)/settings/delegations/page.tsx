@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { DelegationsPanel } from "./delegations-panel";
@@ -30,14 +31,10 @@ export default async function DelegationsPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Delegate access</h1>
-        <p className="text-text-tertiary text-sm">
-          A delegate can create expenses and reports on a principal&apos;s
-          behalf — both identities are recorded, and delegates can never
-          approve as the principal.
-        </p>
-      </div>
+      <PageHeader
+        title="Delegate access"
+        description="A delegate can create expenses and reports on a principal's behalf — both identities are recorded, and delegates can never approve as the principal."
+      />
       <DelegationsPanel
         delegations={delegations.map((d) => ({
           id: d.id,

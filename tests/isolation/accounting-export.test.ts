@@ -55,7 +55,7 @@ beforeAll(async () => {
       exportedById: A.users.finance_admin,
       lineCount: 3,
       totalMinor: 700_000,
-      reports: { create: [{ orgId: A.orgId, reportId: A.reportId }] },
+      reports: { create: [{ reportId: A.reportId }] },
     },
   });
   exportA = ea.id;
@@ -69,7 +69,7 @@ beforeAll(async () => {
       exportedById: B.users.finance_admin,
       lineCount: 1,
       totalMinor: 12_345,
-      reports: { create: [{ orgId: B.orgId, reportId: B.reportId }] },
+      reports: { create: [{ reportId: B.reportId }] },
     },
   });
   exportB = eb.id;
@@ -210,7 +210,7 @@ describe("an exported report cannot be deleted out from under its audit trail", 
         exportedById: A.users.finance_admin,
         lineCount: 1,
         totalMinor: 1,
-        reports: { create: [{ orgId: A.orgId, reportId: A.reportId }] },
+        reports: { create: [{ reportId: A.reportId }] },
       },
     });
     await owner.accountingExport.delete({ where: { id: tmp.id } });

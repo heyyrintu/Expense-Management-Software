@@ -204,10 +204,15 @@ export function DataTable<TData>({
                           scope="col"
                           // Sticky on the cells, not the row: <thead
                           // position:sticky> is still uneven across browsers.
-                          // top-topbar parks it under the app bar, not behind it.
+                          // top-0, NOT top-topbar: the overflow-x-auto wrapper
+                          // is the nearest scroll container, so sticky offsets
+                          // resolve against IT — a topbar-height offset shoves
+                          // the header down INTO the body, covering the first
+                          // row (it hid the entire table when only one row
+                          // matched). The ledger table is the same pattern.
                           className={cn(
                             "border-line bg-bg-subtle text-label text-text-secondary",
-                            "sticky top-topbar z-10 border-b px-4 py-2 font-medium",
+                            "sticky top-0 z-10 border-b px-4 py-2 font-medium",
                             meta?.align === "right" ? "text-right" : "text-left"
                           )}
                           aria-sort={

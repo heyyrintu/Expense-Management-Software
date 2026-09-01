@@ -64,6 +64,20 @@ export function ScalesSection() {
           ))}
         </div>
       </Block>
+
+      <Block
+        title="The plate rule"
+        description="The redesign's one sanctioned ornamental line (N0.4): two 1px hairlines, 3px apart, like the ruled head of an engraved plate. Exactly three positions may carry it — under a page header, as a StatCard's top edge, as the top bar's bottom edge. Tables and cards keep their single hairlines; a fourth position goes through the token exception process, not a call site."
+      >
+        <div className="bg-bg-surface border-line grid gap-4 rounded-lg border p-6">
+          <span className="eyebrow text-text-tertiary">Section eyebrow</span>
+          <p className="text-h1 font-display text-text-primary">A page title above the rule</p>
+          <div aria-hidden="true" className="plate-rule" />
+          <code className="text-meta text-text-tertiary">
+            .plate-rule — a standalone 4px element; mark it aria-hidden, it is punctuation, not content
+          </code>
+        </div>
+      </Block>
     </Group>
   );
 }

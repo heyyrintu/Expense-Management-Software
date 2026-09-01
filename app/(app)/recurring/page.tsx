@@ -1,5 +1,4 @@
-import Link from "next/link";
-
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { RecurringPanel, type TemplateView } from "./recurring-panel";
@@ -49,14 +48,10 @@ export default async function RecurringPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Recurring expenses</h1>
-        <p className="text-text-tertiary text-sm">
-          Templates draft an expense automatically on schedule — you review it
-          in <Link href="/expenses" className="underline">your expenses</Link>{" "}
-          before submitting.
-        </p>
-      </div>
+      <PageHeader
+        title="Recurring expenses"
+        description="Templates draft an expense automatically on schedule — you review it in your expenses before submitting."
+      />
       <RecurringPanel templates={views} categories={categories} />
     </section>
   );

@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { roleAtLeast } from "@/lib/auth/roles";
 import { outstandingAdvance } from "@/lib/domain/advance";
@@ -88,13 +89,10 @@ export default async function AdvancesPage({
 
   return (
     <section className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">Advances</h1>
-        <p className="text-text-tertiary text-sm">
-          Request money before a trip — approved advances settle against your
-          future expense reports.
-        </p>
-      </div>
+      <PageHeader
+        title="Advances"
+        description="Request money before a trip — approved advances settle against your future expense reports."
+      />
 
       <AdvancesPanel mine={mine.map(toView)} />
 

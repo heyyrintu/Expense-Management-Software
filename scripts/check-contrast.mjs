@@ -112,8 +112,24 @@ const PAIRS = [
   // active step use accent-solid, which is checked as text above.
   { fg: "fg-on-accent", bg: "status-success", kind: "ui" },
 
+  // ── Gilt (N0.2) — the ceremonial family from the Neoclassical redesign.
+  // gilt-text carries words (the seal badge label, the wordmark rule's
+  // caption); gilt-base is only ever a fill, a rule or a chart series, so
+  // it is held to 1.4.11's 3:1 — including on its own subtle, where the
+  // seal badge draws its border.
+  ...SURFACES.map((bg) => ({ fg: "gilt-text", bg, kind: "text" })),
+  { fg: "gilt-text", bg: "gilt-subtle", kind: "text" },
+  { fg: "gilt-base", bg: "bg-surface", kind: "ui" },
+  { fg: "gilt-base", bg: "bg-app", kind: "ui" },
+
   // ── UI boundaries and graphics: 3:1 (1.4.11) ───────────────────────────
+  // line-strong is the control edge on every surface an input sits on —
+  // N0.2 widened this from bg-surface alone after the limestone swap, so a
+  // future neutral edit can't quietly fail on bg-subtle the way the first
+  // limestone candidate did (2.98:1).
   { fg: "line-strong", bg: "bg-surface", kind: "ui" },
+  { fg: "line-strong", bg: "bg-app", kind: "ui" },
+  { fg: "line-strong", bg: "bg-subtle", kind: "ui" },
   { fg: "focus-ring-base", bg: "bg-surface", kind: "ui" },
   { fg: "focus-ring-base", bg: "bg-app", kind: "ui" },
   { fg: "focus-ring-base", bg: "bg-subtle", kind: "ui" },

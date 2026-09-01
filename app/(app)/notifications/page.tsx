@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { NotificationList } from "./notification-list";
@@ -26,7 +27,7 @@ export default async function NotificationsPage() {
   if (notifications.length === 0) {
     return (
       <section className="grid gap-4">
-        <h1 className="text-xl font-semibold">Notifications</h1>
+        <PageHeader title="Notifications" />
         <EmptyState
           headline="Nothing to catch up on"
           description="Approvals, payments and complaint updates land here as they happen."
@@ -42,7 +43,7 @@ export default async function NotificationsPage() {
 
   return (
     <section className="grid gap-4">
-      <h1 className="text-xl font-semibold">Notifications</h1>
+      <PageHeader title="Notifications" />
       <NotificationList
         items={notifications.map((n) => ({
           id: n.id,

@@ -6,7 +6,10 @@
 // route under (app). Detail routes add their own only where the useful
 // recovery differs — see components/ui/route-error.tsx.
 import { RouteError } from "@/components/ui/route-error";
+import { useErrorReport } from "@/lib/observability/use-error-report";
 
-export default function AppError({ reset }: { error: Error; reset: () => void }) {
+export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useErrorReport(error, "(app)");
+
   return <RouteError headline="Couldn't load this page" reset={reset} />;
 }

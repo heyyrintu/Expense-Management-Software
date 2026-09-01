@@ -73,13 +73,14 @@ describe("the PRD contrast contract holds", () => {
 
   it("records why each brand fill needs a darker text shade", () => {
     // The gap this documents is real: these are the measured ratios, and
-    // four of the seven would fail as small text.
+    // five of the eight would fail as small text. The laurel accent pairs
+    // (N0.1) left this list — the base clears AA outright — and the gilt
+    // fill joined it.
     const belowAa = BRAND_FILL_PAIRS.filter(
       (p) => contrastRatio(p.foreground, p.background) < 4.5
     ).map((p) => p.label);
     expect(belowAa).toEqual([
-      "white on accent",
-      "accent on accent-subtle",
+      "gilt on its subtle",
       "status-success on its subtle",
       "status-warning on its subtle",
       "status-danger on its subtle",
@@ -104,8 +105,8 @@ describe("token registry integrity", () => {
   it("keeps the type scale ordered and on-spec", () => {
     const sizes = TYPE_SCALE.map((t) => t.size);
     expect([...sizes].sort((a, b) => b - a)).toEqual(sizes);
-    // §5.3 sizes, plus micro for counter badges.
-    expect(sizes).toEqual([32, 24, 18, 15, 14, 14, 13, 12, 10]);
+    // §5.3 sizes, plus eyebrow (N0.3) and micro for counter badges.
+    expect(sizes).toEqual([32, 24, 18, 15, 14, 14, 13, 12, 11, 10]);
     for (const t of TYPE_SCALE) {
       expect(t.lineHeight).toBeGreaterThan(t.size);
     }

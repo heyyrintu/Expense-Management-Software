@@ -8,8 +8,11 @@
 //
 // No "go back": the reader isn't signed in, so there is nowhere behind them.
 import { RouteError } from "@/components/ui/route-error";
+import { useErrorReport } from "@/lib/observability/use-error-report";
 
-export default function AuthError({ reset }: { error: Error; reset: () => void }) {
+export default function AuthError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useErrorReport(error, "(auth)");
+
   return (
     <div className="mx-auto grid min-h-screen max-w-md place-items-center p-6">
       <RouteError

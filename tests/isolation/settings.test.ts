@@ -53,16 +53,31 @@ describe("category CRUD isolation", () => {
 
 describe("org settings isolation", () => {
   it("B's scope cannot update A's organization settings", async () => {
-    // scopedDb pins organization.update to the session org id — an attempt
-    // aimed at A from B's scope updates B (own org) or fails, never A.
-    await scopedDb(B.orgId).organization.update({
-      where: { id: A.orgId },
-      data: { currency: "USD" },
-    });
+    // This previously asserted the write LANDED ON B — scope-args replaced
+    // where.id with the session org, so an update aimed at A silently
+    // mutated B's own settings and reported success. A caller that passed
+    // the wrong id would corrupt its own row and never find out. The scope
+    // is ANDed now, so the update matches no record and Prisma raises.
+    await expect(
+      scopedDb(B.orgId).organization.update({
+        where: { id: A.orgId },
+        data: { currency: "USD" },
+      })
+    ).rejects.toThrow();
+
     const a = await owner.organization.findUnique({ where: { id: A.orgId } });
     const b = await owner.organization.findUnique({ where: { id: B.orgId } });
     expect(a?.currency).toBe("INR"); // A untouched
-    expect(b?.currency).toBe("USD"); // write landed on the session org only
+    expect(b?.currency).toBe("INR"); // and B not collaterally rewritten
+  });
+
+  it("B's scope can still update its OWN organization settings", async () => {
+    await scopedDb(B.orgId).organization.update({
+      where: { id: B.orgId },
+      data: { currency: "USD" },
+    });
+    const b = await owner.organization.findUnique({ where: { id: B.orgId } });
+    expect(b?.currency).toBe("USD");
   });
 
   it("audit rows are stamped with the writer's org", async () => {

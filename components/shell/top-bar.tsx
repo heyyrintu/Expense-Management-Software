@@ -1,9 +1,14 @@
 "use client";
 
-// Top bar (D0.4): page context left · search / ⌘K · notifications · avatar.
+// Top bar (D0.4 · N1.2): page context left · search / ⌘K · notifications · avatar.
 //
-// Sticky, 1px bottom border, NO shadow — §4.2 "border or shadow, not both",
-// and a shadow here would make the bar float above content it isn't over.
+// Sticky, plate-rule bottom edge, NO shadow — §4.2 "border or shadow, not
+// both", and a shadow here would make the bar float above content it isn't
+// over. The plate rule (the redesign's engraved double hairline) is an
+// ABSOLUTE overlay on the bar's bottom edge, not a border or an extra row:
+// the bar's rendered height must stay exactly --topbar-height, because
+// the settings nav parks at `top-topbar` and would underlap a taller bar.
+// This is one of the plate rule's three sanctioned positions.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
@@ -39,8 +44,16 @@ export function TopBar({
     <header
       data-slot="app-topbar"
       className={cn(
-        "border-line bg-bg-surface sticky top-0 z-20 border-b print:hidden",
-        // Border, not shadow (§5.4).
+        "bg-bg-surface sticky top-0 z-20 print:hidden",
+        // Rule, not shadow (§5.4).
+        //
+        // Do NOT add `relative` here to anchor the plate rule below.
+        // `position: sticky` is already a positioned value, so it is the
+        // containing block for the absolutely-positioned rule — and
+        // `relative` and `sticky` are the SAME tailwind-merge group, so
+        // passing both silently deletes `sticky` and the bar stops sticking.
+        // That shipped once (N1.2) and was invisible to every gate:
+        // the class string still looked right in source.
         "shadow-flat"
       )}
     >
@@ -65,6 +78,8 @@ export function TopBar({
           signOutAction={signOutAction}
         />
       </div>
+      {/* The engraved bottom edge — punctuation, not content. */}
+      <div aria-hidden="true" className="plate-rule absolute inset-x-0 bottom-0" />
     </header>
   );
 }

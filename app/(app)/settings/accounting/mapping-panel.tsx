@@ -102,12 +102,25 @@ export function MappingPanel({
     <div className="grid gap-6">
       <div className="grid gap-2">
         <span className="text-label text-text-secondary">Accounting system</span>
-        <div role="tablist" aria-label="Accounting system" className="flex flex-wrap gap-2">
+        {/* radiogroup, not tablist. This is a single-select CHOICE, and
+            there is no tabpanel anywhere on the screen for a tab to control
+            — role="tab" outside a tab widget is a promise to a screen
+            reader that nothing keeps. It also failed axe outright
+            (aria-required-children, critical): the "not yet" buttons sat
+            inside the tablist without role="tab", so the container had
+            children it was not allowed to have. Every option is a radio
+            now, including the unavailable ones, which is what a sighted
+            reader sees too — the roadmap is deliberately legible here. */}
+        <div
+          role="radiogroup"
+          aria-label="Accounting system"
+          className="flex flex-wrap gap-2"
+        >
           {targets.map((t) => (
             <Button
               key={t.target}
-              role="tab"
-              aria-selected={t.target === target}
+              role="radio"
+              aria-checked={t.target === target}
               size="sm"
               variant={t.target === target ? "default" : "secondary"}
               onClick={() => switchTarget(t.target)}
@@ -118,7 +131,15 @@ export function MappingPanel({
           {unavailable.map((t) => (
             // Shown, not hidden: the roadmap is legible from the product
             // rather than from a backlog nobody outside the team reads.
-            <Button key={t} size="sm" variant="ghost" disabled>
+            <Button
+              key={t}
+              role="radio"
+              aria-checked={false}
+              aria-disabled
+              size="sm"
+              variant="ghost"
+              disabled
+            >
               {t} — not yet
             </Button>
           ))}

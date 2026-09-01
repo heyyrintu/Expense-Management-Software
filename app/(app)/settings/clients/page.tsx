@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { ClientsPanel } from "./clients-panel";
@@ -13,12 +14,10 @@ export default async function ClientsPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Billing clients</h1>
-        <p className="text-text-tertiary text-sm">
-          Billable expenses are tagged to a client for invoicing and reporting.
-        </p>
-      </div>
+      <PageHeader
+        title="Billing clients"
+        description="Billable expenses are tagged to a client for invoicing and reporting."
+      />
       <ClientsPanel
         clients={clients.map((c) => ({
           id: c.id,

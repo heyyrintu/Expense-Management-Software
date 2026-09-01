@@ -1,10 +1,13 @@
 "use client";
 
-// StatCard (D1.4) — DESIGN-PRD §6.2.
+// StatCard (D1.4 · N2.2) — DESIGN-PRD §6.2, Ledger Hall plaque treatment.
 //
-// Label at 13px secondary, value at 32px display and tabular, a delta chip
-// with an arrow, an optional sparkline, and the whole card is a link when
-// there is a filtered list behind the number.
+// Eyebrow label in Roman capitals under an engraved top line, value at 32px
+// display and tabular, a delta chip with an arrow, an optional sparkline,
+// and the whole card is a link when there is a filtered list behind the
+// number. `hero` renders the value in Bodoni Moda — sanctioned for exactly
+// one card per dashboard (the first), because Bodoni has no tabular figures
+// and a lone figure is the only place that cannot matter.
 //
 // §7.4 is the rule this component exists to keep: "every KPI clicks through
 // to its filtered table — the number and the list must always agree." The
@@ -54,6 +57,8 @@ export type StatCardProps = {
   href?: string;
   /** Extra context under the value — "12 expenses". */
   hint?: string;
+  /** Bodoni Moda value (N2.2). One card per strip, never a column. */
+  hero?: boolean;
   loading?: boolean;
   className?: string;
 };
@@ -66,22 +71,36 @@ export function StatCard({
   trend,
   href,
   hint,
+  hero = false,
   loading = false,
   className,
 }: StatCardProps) {
   const reducedMotion = useReducedMotion();
-  const displayValue = useCountUp(value ?? 0, { enabled: !reducedMotion && !loading });
+  // A hero figure never counts up: Bodoni's figures are proportional, so a
+  // running count would change width on every frame — exactly the jitter
+  // the tabular rule exists to prevent. The hero is there when you look.
+  const displayValue = useCountUp(value ?? 0, { enabled: !reducedMotion && !loading && !hero });
 
   const body = (
     <>
-      <span className="text-label text-text-secondary">{label}</span>
+      {/* The engraved top line (N2.2): the card's own 1px border is the
+          first stroke and this hairline, 3px inside it, is the second —
+          together they form the plate rule on the card's top edge without
+          stacking a third line. Negative margins mirror the p-5 padding. */}
+      <div aria-hidden="true" className="border-line -mx-5 -mt-5 h-1 border-b" />
+      <span className="eyebrow text-text-tertiary">{label}</span>
 
       {loading ? (
         <Skeleton className="h-8 w-32" />
       ) : currency ? (
-        <Amount value={value === null || value === undefined ? null : displayValue} currency={currency} size="display" />
+        <Amount
+          value={value === null || value === undefined ? null : displayValue}
+          currency={currency}
+          size="display"
+          face={hero ? "display" : "sans"}
+        />
       ) : (
-        <span className="tabular text-display text-text-primary">
+        <span className={cn("tabular text-display text-text-primary", hero && "font-display")}>
           {/* Through the shared formatter (D-7), never toLocaleString here:
               a primitive that hard-codes a locale makes every KPI in the
               product Indian-formatted from a line nobody would grep for. */}

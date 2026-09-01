@@ -34,6 +34,19 @@ jobs:
       # URLs from this; without it the e2e login redirects to the wrong origin
       # and the run fails somewhere unhelpful, several steps later.
       AUTH_URL: http://localhost:3000
+      # Required once the browser suites serve a PRODUCTION build: lib/env.ts
+      # refuses to boot in production without it, because an unconfigured
+      # deployment would expose job endpoints that mutate every org's data.
+      CRON_SECRET: ci-only-cron-secret
+      # Receipt store for the isolation + e2e suites. Started as a step
+      # below rather than a `services:` entry: the minio image needs the
+      # `server /data` command, and GitHub service containers cannot set one.
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_BUCKET: receipts
+      S3_FORCE_PATH_STYLE: "true"
       # Deliberately NOT setting APP_ENCRYPTION_KEY: /settings/whatsapp renders
       # its "set this before saving credentials" callout when the key is
       # absent, and that callout is a real state the axe scan should see.
@@ -103,6 +116,20 @@ jobs:
 
       - name: Create app role (RLS-enforced, non-superuser)
         run: PGPASSWORD=expense psql -h localhost -U expense -d expense_dev -f docker/postgres-init/01-app-role.sql
+
+      - name: Start MinIO (receipt store)
+        run: |
+          set -euo pipefail
+          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin             minio/minio:latest server /data
+          for _ in $(seq 1 60); do
+            curl -sf http://localhost:9000/minio/health/live && break
+            sleep 1
+          done
+          curl -sf http://localhost:9000/minio/health/live
+          # --entrypoint sh is required: the minio/mc image sets `mc` as its
+          # ENTRYPOINT, so a bare `sh -c ...` is parsed as an mc subcommand
+          # and fails with "`sh` is not a recognized command".
+          docker run --rm --network host --entrypoint sh minio/mc:latest -c             "mc alias set local http://localhost:9000 minioadmin minioadmin &&              mc mb --ignore-existing local/receipts"
 
       - name: Tenant isolation suite (red build on any cross-tenant access)
         run: npm run test:isolation

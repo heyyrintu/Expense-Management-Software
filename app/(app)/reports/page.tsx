@@ -12,6 +12,7 @@ import { DateCell } from "@/components/ui/date-cell";
 import { StatusBadge } from "@/components/status-badge";
 import { resolveActing } from "@/lib/auth/acting";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 // inside a template literal, which is what lib/format is for.
@@ -40,21 +41,19 @@ export default async function ReportsPage() {
 
   return (
     <section className="grid gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">My reports</h1>
-          <p className="text-text-tertiary text-sm">
-            Group draft expenses into a report and submit it for approval.
-          </p>
-        </div>
-        {/* D5.5: the empty state below carries this same action as ITS
-            primary, so showing both put two filled buttons on screen. */}
-        {reports.length > 0 ? (
-          <Button asChild>
-            <Link href="/reports/new">New report</Link>
-          </Button>
-        ) : null}
-      </div>
+      {/* D5.5: the empty state below carries this same action as ITS
+          primary, so showing both put two filled buttons on screen. */}
+      <PageHeader
+        title="My reports"
+        description="Group draft expenses into a report and submit it for approval."
+        action={
+          reports.length > 0 ? (
+            <Button asChild>
+              <Link href="/reports/new">New report</Link>
+            </Button>
+          ) : null
+        }
+      />
 
       {reports.length === 0 ? (
         <EmptyState

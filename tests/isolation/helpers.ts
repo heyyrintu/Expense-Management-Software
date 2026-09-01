@@ -100,17 +100,55 @@ export async function provisionOrg(tag: string): Promise<OrgFixture> {
  */
 export async function teardownOrgs(orgIds: string[]): Promise<void> {
   const where = { orgId: { in: orgIds } };
-  await owner.receipt.deleteMany({ where });
-  await owner.approval.deleteMany({ where });
-  await owner.reimbursement.deleteMany({ where });
-  await owner.expense.deleteMany({ where });
-  await owner.expenseReport.deleteMany({ where });
-  await owner.auditLog.deleteMany({ where });
-  // notifications_user_id_fkey is RESTRICT, so these must precede users.
-  await owner.notification.deleteMany({ where });
-  await owner.user.deleteMany({ where });
-  await owner.category.deleteMany({ where });
-  await owner.project.deleteMany({ where });
-  await owner.department.deleteMany({ where });
+  // ORDER IS THE WHOLE FUNCTION. Every child has to go before its parent, or
+  // Postgres refuses the delete on a RESTRICT foreign key and the suite fails
+  // in teardown having already passed — which reads as a mystery failure and
+  // leaves rows behind for the NEXT file to trip over. That is exactly how
+  // per-diem and accounting-export came to fail at suite level: the list
+  // below used to stop at `departments`, so every table added after 5.x
+  // (per_diem_rates, advances, complaints, the whatsapp and bank tables...)
+  // kept its rows and blocked the organizations delete.
+  //
+  // Deletes run through the OWNER client, which bypasses RLS by design —
+  // fixtures span two orgs and teardown has to reach both.
+  for (const del of [
+    () => owner.accountingExportReport.deleteMany({ where }),
+    () => owner.accountingExport.deleteMany({ where }),
+    () => owner.accountingMapping.deleteMany({ where }),
+    () => owner.bankStatementLine.deleteMany({ where }),
+    () => owner.bankStatementImport.deleteMany({ where }),
+    () => owner.complaintMessage.deleteMany({ where }),
+    () => owner.complaint.deleteMany({ where }),
+    () => owner.reportComment.deleteMany({ where }),
+    () => owner.expenseSplit.deleteMany({ where }),
+    () => owner.receipt.deleteMany({ where }),
+    () => owner.approval.deleteMany({ where }),
+    () => owner.whatsAppOutbound.deleteMany({ where }),
+    () => owner.whatsAppInbound.deleteMany({ where }),
+    () => owner.whatsAppLink.deleteMany({ where }),
+    () => owner.whatsAppAccount.deleteMany({ where }),
+    () => owner.cardTransaction.deleteMany({ where }),
+    () => owner.notification.deleteMany({ where }),
+    () => owner.auditLog.deleteMany({ where }),
+    // reimbursements before payment_batches (batch_id), and before expenses
+    () => owner.reimbursement.deleteMany({ where }),
+    () => owner.paymentBatch.deleteMany({ where }),
+    () => owner.expense.deleteMany({ where }),
+    () => owner.expenseReport.deleteMany({ where }),
+    () => owner.advance.deleteMany({ where }),
+    () => owner.recurringTemplate.deleteMany({ where }),
+    () => owner.delegation.deleteMany({ where }),
+    () => owner.budget.deleteMany({ where }),
+    () => owner.approvalRule.deleteMany({ where }),
+    () => owner.perDiemRate.deleteMany({ where }),
+    () => owner.inboundEmailFailure.deleteMany({ where }),
+    () => owner.client.deleteMany({ where }),
+    () => owner.category.deleteMany({ where }),
+    () => owner.project.deleteMany({ where }),
+    () => owner.user.deleteMany({ where }),
+    () => owner.department.deleteMany({ where }),
+  ]) {
+    await del();
+  }
   await owner.organization.deleteMany({ where: { id: { in: orgIds } } });
 }

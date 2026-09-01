@@ -22,7 +22,7 @@ export default async function InvitePage({
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Invite not valid</CardTitle>
+          <CardTitle as="h1" className="text-h2">Invite not valid</CardTitle>
           <CardDescription>
             This invite link is invalid or has expired. Ask your admin to send
             a new one.
@@ -40,7 +40,7 @@ export default async function InvitePage({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Join your team</CardTitle>
+        <CardTitle as="h1" className="text-h2">Join your team</CardTitle>
         <CardDescription>Set a password to activate your account.</CardDescription>
       </CardHeader>
       <CardContent>

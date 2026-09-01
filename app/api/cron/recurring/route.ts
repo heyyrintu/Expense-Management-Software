@@ -4,6 +4,7 @@
 // Duplicate-safe: last_run_at is compared against the latest scheduled
 // occurrence (lib/domain/recurring), so re-runs and missed days are safe.
 import { NextResponse } from "next/server";
+import { bearerMatches } from "@/lib/auth/bearer";
 import { computeExpenseFlags } from "@/lib/domain/policy-eval";
 import { isDue, type Cadence } from "@/lib/domain/recurring";
 import { prisma } from "@/lib/db/client";
@@ -20,7 +21,7 @@ const AUTO_FLAG = {
 
 export async function POST(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 

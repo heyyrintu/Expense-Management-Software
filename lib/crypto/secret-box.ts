@@ -5,6 +5,7 @@
 // APP_ENCRYPTION_KEY (32 bytes, base64 or hex) and never touches the database.
 //
 // Format: v1.<iv-b64>.<tag-b64>.<ciphertext-b64>
+import { encryptionKey } from "./key";
 import {
   createCipheriv,
   createDecipheriv,
@@ -15,33 +16,14 @@ import {
 const VERSION = "v1";
 const IV_BYTES = 12;
 
-export class MissingEncryptionKeyError extends Error {
-  constructor() {
-    super("APP_ENCRYPTION_KEY is not set — cannot store credentials.");
-    this.name = "MissingEncryptionKeyError";
-  }
-}
-
-/** 32-byte key from base64 or hex. Throws when absent/mis-sized. */
-export function encryptionKey(raw = process.env.APP_ENCRYPTION_KEY): Buffer {
-  if (!raw) throw new MissingEncryptionKeyError();
-  const buf = /^[0-9a-fA-F]{64}$/.test(raw)
-    ? Buffer.from(raw, "hex")
-    : Buffer.from(raw, "base64");
-  if (buf.length !== 32) {
-    throw new Error("APP_ENCRYPTION_KEY must decode to exactly 32 bytes.");
-  }
-  return buf;
-}
-
-export function hasEncryptionKey(raw = process.env.APP_ENCRYPTION_KEY): boolean {
-  try {
-    encryptionKey(raw);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Key parsing lives in ./key so lib/env can validate at boot without
+// pulling node:crypto into the edge bundle. Re-exported here so existing
+// call sites and tests keep importing it from secret-box.
+export {
+  MissingEncryptionKeyError,
+  encryptionKey,
+  hasEncryptionKey,
+} from "./key";
 
 export function encryptSecret(plaintext: string, key = encryptionKey()): string {
   const iv = randomBytes(IV_BYTES);

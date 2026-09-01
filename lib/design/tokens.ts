@@ -27,30 +27,40 @@ export type ColorGroup = {
 export const COLOR_GROUPS: ColorGroup[] = [
   {
     title: "Neutrals",
-    description: "The interface itself — surfaces, lines and text.",
+    description: "The interface itself — limestone surfaces, lines and warm ink (N0.1).",
     tokens: [
-      { name: "bg-app", cssVar: "--bg-app", hex: "#FAFAFA", usage: "Page background" },
-      { name: "bg-surface", cssVar: "--bg-surface", hex: "#FFFFFF", usage: "Cards, tables, sheets" },
-      { name: "bg-subtle", cssVar: "--bg-subtle", hex: "#F4F4F5", usage: "Hover rows, inset panels, disabled fills" },
-      { name: "line", cssVar: "--line", hex: "#E4E4E7", usage: "Default hairline" },
-      { name: "line-strong", cssVar: "--line-strong", hex: "#8A8A94", usage: "Inputs, focused containers — 3:1 control edge (D5.3)" },
-      { name: "text-primary", cssVar: "--fg-primary", hex: "#18181B", usage: "Headings, amounts" },
-      { name: "text-secondary", cssVar: "--fg-secondary", hex: "#52525B", usage: "Labels, body" },
-      { name: "text-tertiary", cssVar: "--fg-tertiary", hex: "#6B6B74", usage: "Meta, placeholders, timestamps — 4.5:1 (D5.3)" },
+      { name: "bg-app", cssVar: "--bg-app", hex: "#F4F2ED", usage: "Page background — limestone" },
+      { name: "bg-surface", cssVar: "--bg-surface", hex: "#FFFFFF", usage: "Cards, tables, sheets — the marble slab" },
+      { name: "bg-subtle", cssVar: "--bg-subtle", hex: "#EDEAE3", usage: "Hover rows, inset panels, disabled fills" },
+      { name: "line", cssVar: "--line", hex: "#E2DFD7", usage: "Default hairline" },
+      { name: "line-strong", cssVar: "--line-strong", hex: "#878279", usage: "Inputs, focused containers — 3:1 control edge on every surface" },
+      { name: "text-primary", cssVar: "--fg-primary", hex: "#1E1B16", usage: "Headings, amounts" },
+      { name: "text-secondary", cssVar: "--fg-secondary", hex: "#54514A", usage: "Labels, body" },
+      { name: "text-tertiary", cssVar: "--fg-tertiary", hex: "#6B675D", usage: "Meta, placeholders, timestamps — 4.5:1 (D5.3 rule)" },
     ],
   },
   {
     title: "Accent",
-    description: "One accent, used sparingly, always meaning “act here”.",
+    description: "One accent — laurel green — used sparingly, always meaning “act here”.",
     tokens: [
-      { name: "accent", cssVar: "--accent-base", hex: "#6366F1", usage: "Primary buttons, links, active nav" },
-      { name: "accent-hover", cssVar: "--accent-hover-base", hex: "#4F46E5", usage: "Hover on accent surfaces" },
-      { name: "accent-pressed", cssVar: "--accent-pressed-base", hex: "#4338CA", usage: "Active/pressed" },
-      { name: "accent-subtle", cssVar: "--accent-subtle-base", hex: "#EEF2FF", usage: "Selected row, nav pill, badge background" },
-      { name: "accent-border", cssVar: "--accent-border-base", hex: "#C7D2FE", usage: "Border on accent-subtle surfaces" },
-      { name: "focus-ring", cssVar: "--focus-ring-base", hex: "#6366F1", usage: "2px ring, 2px offset — always visible" },
-      { name: "accent-solid", cssVar: "--accent-solid-base", hex: "#4F46E5", usage: "Filled buttons carrying white text (AA)" },
-      { name: "accent-text", cssVar: "--accent-text-base", hex: "#4F46E5", usage: "Links and accent text (AA on subtle)" },
+      { name: "accent", cssVar: "--accent-base", hex: "#35604F", usage: "Primary buttons, links, active nav" },
+      { name: "accent-hover", cssVar: "--accent-hover-base", hex: "#2C5142", usage: "Hover on accent surfaces" },
+      { name: "accent-pressed", cssVar: "--accent-pressed-base", hex: "#244337", usage: "Active/pressed" },
+      { name: "accent-subtle", cssVar: "--accent-subtle-base", hex: "#E9F0EA", usage: "Selected row, nav pill, badge background" },
+      { name: "accent-border", cssVar: "--accent-border-base", hex: "#B9CEC2", usage: "Border on accent-subtle surfaces" },
+      { name: "focus-ring", cssVar: "--focus-ring-base", hex: "#35604F", usage: "2px ring, 2px offset — always visible" },
+      { name: "accent-solid", cssVar: "--accent-solid-base", hex: "#2F5747", usage: "Filled buttons carrying white text (AA)" },
+      { name: "accent-text", cssVar: "--accent-text-base", hex: "#2F5747", usage: "Links and accent text (AA on subtle)" },
+    ],
+  },
+  {
+    title: "Gilt",
+    description:
+      "Bronze, ceremonial — money that is FINISHED. Three sanctioned uses only: the ledger closing balance, the Paid/Settled seal badge, the auth wordmark rule. Never buttons, never links, never nav.",
+    tokens: [
+      { name: "gilt", cssVar: "--gilt-base", hex: "#A5761F", usage: "Fills, rules, the one chart series — never small text (3:1 as a fill)" },
+      { name: "gilt-text", cssVar: "--gilt-text", hex: "#7A5410", usage: "Glyphs on white, bg-app or gilt-subtle (AA)" },
+      { name: "gilt-subtle", cssVar: "--gilt-subtle", hex: "#F6EFDD", usage: "Seal badge background" },
     ],
   },
   {
@@ -60,7 +70,7 @@ export const COLOR_GROUPS: ColorGroup[] = [
     tokens: [
       { name: "status-success", cssVar: "--status-success", hex: "#059669", usage: "Approved, reimbursed, matched" },
       { name: "status-success-subtle", cssVar: "--status-success-subtle", hex: "#ECFDF5", usage: "Success badge background" },
-      { name: "status-warning", cssVar: "--status-warning", hex: "#CE7008", usage: "Policy flags, SLA amber, sent back" },
+      { name: "status-warning", cssVar: "--status-warning", hex: "#C46A08", usage: "Policy flags, SLA amber, sent back" },
       { name: "status-warning-subtle", cssVar: "--status-warning-subtle", hex: "#FFFBEB", usage: "Warning badge background" },
       { name: "status-danger", cssVar: "--status-danger", hex: "#DC2626", usage: "Rejected, missing in bank, overdue" },
       { name: "status-danger-subtle", cssVar: "--status-danger-subtle", hex: "#FEF2F2", usage: "Danger badge background" },
@@ -76,7 +86,7 @@ export const COLOR_GROUPS: ColorGroup[] = [
       "The accessible foreground for each status on its subtle background. The brand shade above is a FILL — as small text it misses AA, so glyphs use these.",
     tokens: [
       { name: "status-success-text", cssVar: "--status-success-text", hex: "#047857", usage: "Text on success-subtle" },
-      { name: "status-warning-text", cssVar: "--status-warning-text", hex: "#B45309", usage: "Text on warning-subtle" },
+      { name: "status-warning-text", cssVar: "--status-warning-text", hex: "#A84D08", usage: "Text on warning-subtle" },
       { name: "status-danger-text", cssVar: "--status-danger-text", hex: "#B91C1C", usage: "Text on danger-subtle" },
       { name: "status-info-text", cssVar: "--status-info-text", hex: "#1D4ED8", usage: "Text on info-subtle" },
       { name: "status-neutral-text", cssVar: "--status-neutral-text", hex: "#52525B", usage: "Text on neutral-subtle" },
@@ -108,17 +118,25 @@ export type TypeToken = {
   weight: number;
   tracking: string;
   role: string;
+  /** Which face carries the style. Absent = Inter (--font-sans); "display"
+      = Bodoni Moda via the `font-display` utility (N0.3) — display, h1 and
+      the auth wordmark only, never tabular data. */
+  family?: "display";
 };
 
 export const TYPE_SCALE: TypeToken[] = [
-  { name: "display", className: "text-display", size: 32, lineHeight: 38, weight: 600, tracking: "-0.02em", role: "Amount hero, ledger balance" },
-  { name: "h1", className: "text-h1", size: 24, lineHeight: 32, weight: 600, tracking: "-0.015em", role: "Page title" },
+  // display and h1 are the two Bodoni Moda styles (N0.3): the size utility
+  // pairs with `font-display` at the call site — Tailwind's --text-*
+  // namespace carries no family. Everything else is Inter.
+  { name: "display", className: "text-display", size: 32, lineHeight: 38, weight: 700, tracking: "-0.01em", role: "Amount hero, ledger balance — Bodoni Moda", family: "display" },
+  { name: "h1", className: "text-h1", size: 24, lineHeight: 32, weight: 700, tracking: "-0.005em", role: "Page title — Bodoni Moda", family: "display" },
   { name: "h2", className: "text-h2", size: 18, lineHeight: 26, weight: 600, tracking: "-0.01em", role: "Section heading" },
   { name: "h3", className: "text-h3", size: 15, lineHeight: 22, weight: 600, tracking: "0", role: "Card title" },
   { name: "body", className: "text-body", size: 14, lineHeight: 22, weight: 400, tracking: "0", role: "Body copy" },
   { name: "body-strong", className: "text-body-strong", size: 14, lineHeight: 22, weight: 600, tracking: "0", role: "Table amount, emphasis" },
   { name: "label", className: "text-label", size: 13, lineHeight: 18, weight: 500, tracking: "0", role: "Field label, caption" },
   { name: "meta", className: "text-meta", size: 12, lineHeight: 16, weight: 400, tracking: "0.01em", role: "Timestamp, meta" },
+  { name: "eyebrow", className: "eyebrow", size: 11, lineHeight: 16, weight: 600, tracking: "0.14em", role: "Roman capitals above page titles and StatCard labels (uppercase via the eyebrow utility)" },
   { name: "micro", className: "text-micro", size: 10, lineHeight: 14, weight: 600, tracking: "0.02em", role: "Counter badges only" },
 ];
 
@@ -137,9 +155,10 @@ export const SPACING_SCALE = [
 ] as const;
 
 export const RADIUS_SCALE = [
-  { name: "sm", className: "rounded-sm", px: "6px", usage: "Badges, inputs" },
-  { name: "md", className: "rounded-md", px: "8px", usage: "Buttons, dropdowns" },
-  { name: "lg", className: "rounded-lg", px: "12px", usage: "Cards, sheets" },
+  // One notch sharper across the scale (N0.1) — rectilinear neoclassicism.
+  { name: "sm", className: "rounded-sm", px: "4px", usage: "Badges, inputs" },
+  { name: "md", className: "rounded-md", px: "6px", usage: "Buttons, dropdowns" },
+  { name: "lg", className: "rounded-lg", px: "8px", usage: "Cards, sheets" },
   { name: "full", className: "rounded-full", px: "9999px", usage: "Avatars, pills" },
 ] as const;
 
@@ -210,7 +229,7 @@ export function contrastRatio(foreground: string, background: string): number {
  */
 export const REFERENCE_COLORS = {
   surface: "#FFFFFF",
-  textPrimary: "#18181B",
+  textPrimary: "#1E1B16",
 } as const;
 
 export type ContrastLevel = "AAA" | "AA" | "AA Large" | "Fail";
@@ -235,20 +254,26 @@ export type ContrastPair = {
  * accessibility fails the build rather than shipping.
  */
 export const CONTRAST_CONTRACT: ContrastPair[] = [
-  { label: "text-primary on bg-app", foreground: "#18181B", background: "#FAFAFA" },
-  { label: "text-primary on bg-surface", foreground: "#18181B", background: "#FFFFFF" },
-  { label: "text-secondary on bg-surface", foreground: "#52525B", background: "#FFFFFF" },
-  { label: "text-secondary on bg-subtle", foreground: "#52525B", background: "#F4F4F5" },
+  { label: "text-primary on bg-app", foreground: "#1E1B16", background: "#F4F2ED" },
+  { label: "text-primary on bg-surface", foreground: "#1E1B16", background: "#FFFFFF" },
+  { label: "text-secondary on bg-surface", foreground: "#54514A", background: "#FFFFFF" },
+  { label: "text-secondary on bg-subtle", foreground: "#54514A", background: "#EDEAE3" },
   // Added in D5.3. text-tertiary is the app's most-used meta colour and had
-  // never been in this list — it measured 2.56:1 before being darkened.
-  { label: "text-tertiary on bg-surface", foreground: "#6B6B74", background: "#FFFFFF" },
-  { label: "text-tertiary on bg-app", foreground: "#6B6B74", background: "#FAFAFA" },
-  { label: "text-tertiary on bg-subtle", foreground: "#6B6B74", background: "#F4F4F5" },
-  { label: "text-on-accent on accent-solid", foreground: "#FFFFFF", background: "#4F46E5" },
-  { label: "accent-text on accent-subtle", foreground: "#4F46E5", background: "#EEF2FF" },
-  { label: "accent-text on bg-surface", foreground: "#4F46E5", background: "#FFFFFF" },
+  // never been in this list — it measured 2.56:1 before being darkened. The
+  // limestone value keeps the same discipline.
+  { label: "text-tertiary on bg-surface", foreground: "#6B675D", background: "#FFFFFF" },
+  { label: "text-tertiary on bg-app", foreground: "#6B675D", background: "#F4F2ED" },
+  { label: "text-tertiary on bg-subtle", foreground: "#6B675D", background: "#EDEAE3" },
+  { label: "text-on-accent on accent-solid", foreground: "#FFFFFF", background: "#2F5747" },
+  { label: "accent-text on accent-subtle", foreground: "#2F5747", background: "#E9F0EA" },
+  { label: "accent-text on bg-surface", foreground: "#2F5747", background: "#FFFFFF" },
+  // Gilt (N0.2): the ceremonial family's text shade, everywhere it carries
+  // words — the seal badge label and the wordmark caption.
+  { label: "gilt-text on bg-surface", foreground: "#7A5410", background: "#FFFFFF" },
+  { label: "gilt-text on bg-app", foreground: "#7A5410", background: "#F4F2ED" },
+  { label: "gilt-text on gilt-subtle", foreground: "#7A5410", background: "#F6EFDD" },
   { label: "status-success-text on its subtle", foreground: "#047857", background: "#ECFDF5" },
-  { label: "status-warning-text on its subtle", foreground: "#B45309", background: "#FFFBEB" },
+  { label: "status-warning-text on its subtle", foreground: "#A84D08", background: "#FFFBEB" },
   { label: "status-danger-text on its subtle", foreground: "#B91C1C", background: "#FEF2F2" },
   { label: "status-info-text on its subtle", foreground: "#1D4ED8", background: "#EFF6FF" },
   { label: "status-neutral-text on its subtle", foreground: "#52525B", background: "#F4F4F5" },
@@ -265,14 +290,20 @@ export const BRAND_FILL_PAIRS: Array<ContrastPair & { note: string }> = [
   {
     label: "white on accent",
     foreground: "#FFFFFF",
-    background: "#6366F1",
-    note: "4.47:1 — just under AA for small text; accent-solid is used instead on buttons.",
+    background: "#35604F",
+    note: "7.15:1 — the laurel base clears AA outright (the old indigo missed at 4.47:1). The solid/text split is retained as an architectural seam, not a contrast rescue.",
   },
   {
     label: "accent on accent-subtle",
-    foreground: "#6366F1",
-    background: "#EEF2FF",
-    note: "Fill and border only; accent-text carries the words.",
+    foreground: "#35604F",
+    background: "#E9F0EA",
+    note: "Clears AA at 6.17:1, but the -text shade keeps the set consistent: fills and borders here, accent-text for words.",
+  },
+  {
+    label: "gilt on its subtle",
+    foreground: "#A5761F",
+    background: "#F6EFDD",
+    note: "3.51:1 — the seal badge's border and rule, held to 1.4.11's 3:1. Never text; gilt-text carries the label.",
   },
   {
     label: "status-success on its subtle",
@@ -282,9 +313,9 @@ export const BRAND_FILL_PAIRS: Array<ContrastPair & { note: string }> = [
   },
   {
     label: "status-warning on its subtle",
-    foreground: "#CE7008",
+    foreground: "#C46A08",
     background: "#FFFBEB",
-    note: "3.21:1 as a fill after D5.3 nudged it from #D97706 (2.90:1 on bg-subtle). Still never used as text — status-warning-text carries the words.",
+    note: "3.74:1 as a fill after the N0.1 limestone surfaces forced a second darkening (D5.3's #CE7008 fell to 2.94:1 on the new bg-subtle). Still never used as text — status-warning-text carries the words.",
   },
   {
     label: "status-danger on its subtle",

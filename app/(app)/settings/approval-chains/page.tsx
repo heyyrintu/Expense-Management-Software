@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { ChainsPanel, type RuleView } from "./chains-panel";
@@ -46,15 +47,10 @@ export default async function ApprovalChainsPage() {
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Approval chains</h1>
-        <p className="text-text-tertiary text-sm">
-          The most specific matching rule (department + amount, then
-          department, then amount) decides who approves. Without a rule,
-          reports go to the submitter&apos;s assigned approver, with finance
-          sign-off above the org threshold.
-        </p>
-      </div>
+      <PageHeader
+        title="Approval chains"
+        description="The most specific matching rule (department + amount, then department, then amount) decides who approves. Without a rule, reports go to the submitter's assigned approver, with finance sign-off above the org threshold."
+      />
       <ChainsPanel
         rules={views}
         departments={departments}

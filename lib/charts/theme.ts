@@ -15,28 +15,53 @@
  * Primary series = the accent (§6.2). One accent, used sparingly, so a chart
  * with a single series reads as part of the product rather than as decoration.
  */
-export const CHART_ACCENT = "#6366f1"; // --accent-base
+export const CHART_ACCENT = "#35604f"; // --accent-base (laurel, N3.2)
 
 /**
- * Categorical palette: the accent plus four DESATURATED hues.
+ * Categorical palette (N3.2): laurel plus three DESATURATED companions —
+ * sage, slate blue, stone.
  *
  * Never a rainbow. Fully saturated categorical palettes make every series
- * shout equally, which is the opposite of what a chart is for — and at five
- * or six series they stop being distinguishable to anyone with a common
- * colour-vision deficiency. These four sit at roughly half the accent's
- * chroma so the accent stays the thing your eye lands on, and they are
- * ordered by how different they are from it rather than by hue.
+ * shout equally, which is the opposite of what a chart is for — and past a
+ * handful of series they stop being distinguishable to anyone with a common
+ * colour-vision deficiency. These sit at roughly half the accent's chroma
+ * so the accent stays the thing your eye lands on. Every entry is measured
+ * ≥3:1 on white (the test below the token registry holds them to it):
+ * laurel 7.15, sage 4.20, slate 5.18, stone 3.72.
  *
- * Grey is always LAST, so it lands on the "Other" bucket that categorical
- * breakdowns almost always end with.
+ * Stone is always LAST, so it lands on the "Other" bucket that categorical
+ * breakdowns almost always end with. Gilt is deliberately NOT in this
+ * rotation — see CHART_REIMBURSED.
+ */
+/**
+ * SIX entries, and the count is load-bearing: the analytics trend chart
+ * stacks `TREND_TOP_N` (5) categories plus an "Other" band, and seriesColor()
+ * CYCLES — so a palette shorter than 6 hands two different bands the same
+ * colour and the chart quietly lies. A four-entry version shipped in N3.2 and
+ * did exactly that; tests/unit/chart-theme.test.ts now pins
+ * CHART_SERIES.length > TREND_TOP_N so it cannot regress silently again.
+ *
+ * Ordered so ADJACENT entries are the most separated, because in a stacked
+ * area chart neighbouring bands share an edge. Every entry clears 3:1 on
+ * white (WCAG 1.4.11 for meaningful graphics) and none strays into gilt's
+ * warm-gold territory, which is reserved (see CHART_REIMBURSED).
  */
 export const CHART_SERIES = [
-  CHART_ACCENT, // indigo — the accent
-  "#0d9488", // teal 600, desaturated against the accent
-  "#b45309", // amber 700 — the warning -text shade, readable as a fill
-  "#9333ea", // violet 600 — adjacent to the accent, distinct in mass
-  "#64748b", // slate 500 — "Other", always last
+  CHART_ACCENT, // laurel  #35604f — the accent, 7.15:1
+  "#4a6f95", // slate blue      5.25:1
+  "#75997f", // sage            3.17:1
+  "#6b4f6e", // plum            7.07:1
+  "#2f7d7a", // teal            4.84:1
+  "#8a8478", // stone — "Other", always last, 3.72:1
 ] as const;
+
+/**
+ * The reimbursed series (N3.2) — gilt, and gilt's ONLY chart appearance
+ * per the usage law in app/globals.css: a series may take this colour only
+ * when it plots money that has actually been paid out. Never part of the
+ * categorical rotation, so an arbitrary fourth category can't come up gold.
+ */
+export const CHART_REIMBURSED = "#a5761f"; // --gilt-base
 
 /** Single-series bars in a secondary context (category breakdown). */
 export const CHART_SECONDARY = CHART_SERIES[1];
@@ -53,12 +78,11 @@ export function seriesColor(index: number): string {
  * faint enough that the data is what you see. Axis labels are --text-tertiary
  * at 12px — the meta role, because an axis label is orientation, not content.
  */
-export const CHART_GRID_STROKE = "#e4e4e7"; // --line
+export const CHART_GRID_STROKE = "#e2dfd7"; // --line (limestone, N3.2)
 export const CHART_GRID_OPACITY = 0.5;
-// D5.3: follows --fg-tertiary, which was darkened from #a1a1aa (2.56:1)
-// to clear 4.5:1. Axis labels are TEXT a reader has to read, not
-// decoration, so the body threshold applies to them.
-export const CHART_AXIS_COLOR = "#6b6b74"; // --fg-tertiary
+// D5.3: follows --fg-tertiary. Axis labels are TEXT a reader has to read,
+// not decoration, so the body threshold applies to them.
+export const CHART_AXIS_COLOR = "#6b675d"; // --fg-tertiary
 export const CHART_AXIS_FONT_SIZE = 12; // --text-meta
 
 /** Props spread onto <CartesianGrid>. Horizontal only — vertical rules on a

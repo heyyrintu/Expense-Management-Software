@@ -39,42 +39,68 @@
    ========================================================================== */
 
 :root {
-  /* ---- Neutrals: the interface (§5.1) ---- */
-  --bg-app: #fafafa;          /* page background */
-  --bg-surface: #ffffff;      /* cards, tables, sheets */
-  --bg-subtle: #f4f4f5;       /* hover rows, inset panels, disabled fills */
-  --line: #e4e4e7;            /* default hairline */
-  /* D5.3: was #d4d4d8, which measured 1.48:1 on white — WCAG 1.4.11 wants
-     3:1 for the boundary of a UI COMPONENT, and this is the border on every
-     input, checkbox and secondary button. #8a8a94 measures 3.42:1 on surface
-     and 3.11:1 on bg-subtle. `--line` above stays light on purpose: it
-     separates static content (card edges, table rules), which 1.4.11 does
-     not govern. */
-  --line-strong: #8a8a94;     /* inputs, focused containers — a CONTROL edge */
+  /* ---- Neutrals: limestone (N0.1, DESIGN-PLAN-NEOCLASSICAL §2) ----
+     The zinc greys became a warm limestone family in the Ledger Hall
+     redesign. Surface stays PURE WHITE on purpose: it is the slab every
+     contrast claim below is measured against, and warming it would silently
+     shave every ratio in the app. */
+  --bg-app: #f4f2ed;          /* page background — limestone */
+  --bg-surface: #ffffff;      /* cards, tables, sheets — the marble slab */
+  --bg-subtle: #edeae3;       /* hover rows, inset panels, disabled fills */
+  --line: #e2dfd7;            /* default hairline */
+  /* D5.3 established the rule: this is the border on every input, checkbox
+     and secondary button — a UI COMPONENT boundary, which WCAG 1.4.11 holds
+     to 3:1. The limestone equivalent is darker than the old #8a8a94 because
+     the warm surfaces are slightly darker than the zinc ones were: #878279
+     measures 3.82:1 on surface, 3.18:1 on bg-subtle and 3.41:1 on bg-app.
+     `--line` above stays light on purpose: it separates static content
+     (card edges, table rules), which 1.4.11 does not govern. */
+  --line-strong: #878279;     /* inputs, focused containers — a CONTROL edge */
 
-  --fg-primary: #18181b;      /* headings, amounts */
-  --fg-secondary: #52525b;    /* labels, body */
-  /* D5.3: was #a1a1aa — 2.56:1 on white, 2.33:1 on bg-subtle. This is the
-     app's most-used meta colour (timestamps, hints, counts, column
-     sub-labels), so it carries real words and needs 4.5:1, not the 3:1 a
-     decorative tint would. #6b6b74 measures 5.28 / 5.05 / 4.80 across the
-     three surfaces and still sits a clear step below --fg-secondary. */
-  --fg-tertiary: #6b6b74;     /* meta, placeholders, timestamps */
+  --fg-primary: #1e1b16;      /* headings, amounts — warm near-black */
+  --fg-secondary: #54514a;    /* labels, body */
+  /* The D5.3 lesson carries over: this is the app's most-used meta colour
+     (timestamps, hints, counts, column sub-labels), so it carries real words
+     and needs 4.5:1, not the 3:1 a decorative tint would. #6b675d measures
+     5.64 / 5.04 / 4.69 on surface / bg-app / bg-subtle and still sits a
+     clear step below --fg-secondary. */
+  --fg-tertiary: #6b675d;     /* meta, placeholders, timestamps */
   --fg-on-accent: #ffffff;    /* text on a filled accent surface */
 
-  /* ---- Accent: indigo/violet (§5.1) ---- */
-  --accent-base: #6366f1;     /* primary buttons, links, active nav */
-  --accent-hover-base: #4f46e5;
-  --accent-pressed-base: #4338ca;
-  --accent-subtle-base: #eef2ff;   /* selected row, active nav pill, badge bg */
-  --accent-border-base: #c7d2fe;
-  --focus-ring-base: #6366f1;      /* 2px ring, 2px offset — always visible */
-  /* #6366F1 carrying white text measures 4.47:1 — just under AA. Filled
-     controls and accent-coloured text therefore use this one shade darker
-     (white on it: 6.29:1; on accent-subtle: 5.62:1). The brand indigo above
-     is still the border, icon and chart colour. */
-  --accent-solid-base: #4f46e5;    /* filled buttons bearing white text */
-  --accent-text-base: #4f46e5;     /* links and accent text */
+  /* ---- Accent: laurel green (N0.1, DESIGN-PLAN-NEOCLASSICAL §3) ----
+     Laurel replaced the indigo one-for-one across the same base/solid/text
+     split, so every call site re-skinned itself without an edit. Unlike the
+     old indigo (4.47:1), the base now PASSES AA with white text (7.15:1) —
+     the solid/text seam is kept anyway: it is a working architectural joint,
+     hover and pressed still need their own steps, and collapsing it would
+     couple every filled control to the border/icon/chart colour again. */
+  --accent-base: #35604f;     /* primary buttons, links, active nav */
+  --accent-hover-base: #2c5142;
+  --accent-pressed-base: #244337;
+  --accent-subtle-base: #e9f0ea;   /* selected row, active nav pill, badge bg */
+  --accent-border-base: #b9cec2;
+  --focus-ring-base: #35604f;      /* 2px ring, 2px offset — 6.39:1 on bg-app */
+  --accent-solid-base: #2f5747;    /* filled buttons bearing white text — 8.15:1 */
+  --accent-text-base: #2f5747;     /* links and accent text — 8.15:1 on white */
+
+  /* ---- Gilt: bronze, ceremonial (N0.1, DESIGN-PLAN-NEOCLASSICAL §3) ----
+     THE USAGE LAW — gilt may appear in exactly three places:
+       1. the ledger's closing balance (the <Amount> display variant) —
+          moved here from "the dashboard's hero balance" in N2.2, because no
+          dashboard KPI is finished money and the law must not bend for its
+          own first application. The dashboard hero keeps the Bodoni face,
+          in ink,
+       2. the SEAL badge — terminal money states, Paid and Settled,
+       3. the wordmark rule on the auth screens.
+     Never on buttons, never on links, never on nav, and in charts only as
+     the single "reimbursed" series. Gilt marks money that is FINISHED;
+     laurel marks where you act. A fourth use goes through the token
+     exception process in this file's header, not through a call site.
+     Measured: gilt-base as a fill 4.03:1 on white / 3.60:1 on bg-app (≥3:1,
+     1.4.11); gilt-text 6.77 / 6.05 / 5.90 on white / bg-app / gilt-subtle. */
+  --gilt-base: #a5761f;       /* fills, rules, the one chart series — never small text */
+  --gilt-text: #7a5410;       /* glyphs on white, bg-app or gilt-subtle */
+  --gilt-subtle: #f6efdd;     /* seal badge background */
 
   /* ---- Semantic: status only, never decoration (§5.1) ----
      Two shades per status, and the distinction matters:
@@ -87,11 +113,14 @@
      text — e.g. #D97706 on #FFFBEB is 3.07:1 — so badges keep the brand fill
      and darken only the glyphs. See CONTRAST_CONTRACT for the numbers. */
   --status-success: #059669;  --status-success-subtle: #ecfdf5;  --status-success-text: #047857;
-  /* D5.3: warning nudged from #d97706 to #ce7008. As a FILL on bg-subtle —
-     the flagged-row edge on a hovered row — it measured 2.90:1 against the
-     3:1 floor for meaningful graphics. The shift is small enough to keep the
-     PRD's amber and large enough to clear 1.4.11 on every surface. */
-  --status-warning: #ce7008;  --status-warning-subtle: #fffbeb;  --status-warning-text: #b45309;
+  /* D5.3 nudged warning from #d97706 to #ce7008 for the same reason this
+     N0.1 nudge exists: the amber pair lives closest to the thresholds, and
+     the limestone surfaces are slightly darker than the zinc ones were, so
+     the D-series values failed again on the new ground — the fill at 2.94:1
+     on bg-subtle (3:1 floor), the text at 4.18:1 (4.5 floor). #c46a08
+     measures 3.23–3.88 as a fill and #a84d08 measures 4.69–5.63 as text
+     across every surface. Still amber, now with margin. */
+  --status-warning: #c46a08;  --status-warning-subtle: #fffbeb;  --status-warning-text: #a84d08;
   --status-danger: #dc2626;   --status-danger-subtle: #fef2f2;   --status-danger-text: #b91c1c;
   --status-info: #2563eb;     --status-info-subtle: #eff6ff;     --status-info-text: #1d4ed8;
   --status-neutral: #71717a;  --status-neutral-subtle: #f4f4f5;  --status-neutral-text: #52525b;
@@ -173,6 +202,11 @@
   --color-accent-solid: var(--accent-solid-base);
   --color-accent-text: var(--accent-text-base);
 
+  /* Gilt is ceremonial — see the usage law where the raw values live. */
+  --color-gilt: var(--gilt-base);
+  --color-gilt-text: var(--gilt-text);
+  --color-gilt-subtle: var(--gilt-subtle);
+
   --color-status-success: var(--status-success);
   --color-status-success-subtle: var(--status-success-subtle);
   --color-status-warning: var(--status-warning);
@@ -191,19 +225,37 @@
 
   --color-scrim: var(--scrim);
 
-  /* ---- Typography (§5.3). Inter, variable, via next/font. ---- */
+  /* ---- Typography (§5.3 · N0.3). Two faces, strict jurisdiction:
+     Inter (via next/font) for UI, body and ALL tabular data — its tnum
+     wiring in `.tabular`/`.amount` is load-bearing for every money column.
+     Bodoni Moda (via next/font, optical sizing) for text-display, text-h1
+     and the auth wordmark ONLY. Tailwind's --text-* namespace carries no
+     family, so display/h1 call sites pair the size utility with
+     `font-display` — the PageHeader component (N2) is the enforcement
+     point. Bodoni Moda has no tabular figures: it must never touch a
+     column of numbers. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* The tail falls back to INTER, not to a system serif. A display face is
+     only ever asked to set a page title or a hero figure, and Bodoni Moda's
+     latin subset does not cover ₹ — so with a serif tail the rupee sign in a
+     Bodoni amount was resolved from Georgia while its digits came from
+     Bodoni, mixing two faces inside one number. Falling through to the
+     app's own body face keeps that glyph consistent with every other amount
+     on the screen. The serif names stay last for the no-webfont case. */
+  --font-display: var(--font-bodoni), var(--font-inter), "Bodoni MT", Didot,
+    Georgia, serif;
 
-  /* Display — amount hero, ledger balance */
+  /* Display — amount hero, ledger balance. Didones self-tighten; the old
+     −0.02em tracking clogs their hairlines, so it relaxes to −0.01em. */
   --text-display: 32px;
   --text-display--line-height: 38px;
-  --text-display--font-weight: 600;
-  --text-display--letter-spacing: -0.02em;
-  /* H1 — page title */
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.01em;
+  /* H1 — page title (font-display at the call site, per the note above) */
   --text-h1: 24px;
   --text-h1--line-height: 32px;
-  --text-h1--font-weight: 600;
-  --text-h1--letter-spacing: -0.015em;
+  --text-h1--font-weight: 700;
+  --text-h1--letter-spacing: -0.005em;
   /* H2 — section */
   --text-h2: 18px;
   --text-h2--line-height: 26px;
@@ -236,15 +288,24 @@
   --text-micro--line-height: 14px;
   --text-micro--font-weight: 600;
   --text-micro--letter-spacing: 0.02em;
+  /* Eyebrow — the Roman-capitals line above page titles and StatCard
+     labels (N0.3). Wide-tracked capitals need Inter, not Bodoni: faux
+     small caps in a Didone fall apart at 11px. Pairs with the `eyebrow`
+     utility below, which adds the uppercase transform. */
+  --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 16px;
+  --text-eyebrow--font-weight: 600;
+  --text-eyebrow--letter-spacing: 0.14em;
 
   /* ---- Spacing (§5.4): 4px base. Steps in use: 1 2 3 4 5 6 8 10 12 16
      (= 4 8 12 16 20 24 32 40 48 64px). Nothing off-scale. ---- */
   --spacing: 4px;
 
-  /* ---- Radius (§5.4) ---- */
-  --radius-sm: 6px;    /* badges, inputs */
-  --radius-md: 8px;    /* buttons, dropdowns */
-  --radius-lg: 12px;   /* cards, sheets */
+  /* ---- Radius (§5.4 · N0.1: one notch sharper — rectilinear
+     neoclassicism. Same three names, so no call site changed.) ---- */
+  --radius-sm: 4px;    /* badges, inputs */
+  --radius-md: 6px;    /* buttons, dropdowns */
+  --radius-lg: 8px;    /* cards, sheets */
 
   /* ---- Elevation (§5.4) ---- */
   --shadow-flat: var(--elevation-flat);
@@ -398,6 +459,35 @@
   color: var(--fg-primary);
 }
 
+/* The engraved plate rule (N0.4) — the redesign's ONE sanctioned ornamental
+   line: two 1px hairlines, 3px apart, like the ruled head of an engraved
+   plate. A standalone 4px element (border-box: top border at 0, bottom at
+   3px) rather than a pseudo-element trick, so it costs no layout shift and
+   works anywhere: under a page header, as a StatCard's top edge, as the top
+   bar's bottom edge. Those three positions are the ONLY sanctioned ones —
+   tables and cards keep their single hairlines. Mark it aria-hidden; it is
+   punctuation, not content. */
+@utility plate-rule {
+  height: 4px;
+  /* Its own variable rather than --line directly, so print can lighten the
+     ornament without lightening the table rules that carry data. */
+  border-top: 1px solid var(--plate-line, var(--line));
+  border-bottom: 1px solid var(--plate-line, var(--line));
+}
+
+/* The eyebrow (N0.4) — Roman capitals above a page title or StatCard label.
+   Composes the --text-eyebrow scale entry with the uppercase transform so a
+   call site cannot apply the tracking and forget the capitals (wide-tracked
+   lowercase is just loose type). Colour stays at the call site: usually
+   text-text-tertiary. */
+@utility eyebrow {
+  font-size: var(--text-eyebrow);
+  line-height: var(--text-eyebrow--line-height);
+  font-weight: var(--text-eyebrow--font-weight);
+  letter-spacing: var(--text-eyebrow--letter-spacing);
+  text-transform: uppercase;
+}
+
 @layer base {
   /* Motion is a courtesy, not a requirement: with reduced motion requested,
      transforms and springs go away and only opacity remains (§4.4). */
@@ -506,14 +596,40 @@
 @media print {
   :root {
     /* Kill every tint at the source: one override here beats a `print:`
-       variant on each of forty elements, and nothing can be missed. */
+       variant on each of forty elements, and nothing can be missed.
+       N3.3 fix: these overrode --text-* — names that DON'T EXIST in the
+       token layer (the ink tokens are --fg-*), so printed text kept its
+       screen colours for four milestones and nobody noticed because the
+       screen ink is nearly black anyway. The names now match. */
     --bg-app: #ffffff;
     --bg-surface: #ffffff;
     --bg-subtle: #ffffff;
-    --text-primary: #000000;
-    --text-secondary: #000000;
-    --text-tertiary: #333333;
+    --fg-primary: #000000;
+    --fg-secondary: #000000;
+    --fg-tertiary: #333333;
     --line: #000000;
+
+    /* The ceremonial family prints as ink. A printed ledger is evidence, and
+       the Paid total (text-gilt-text) plus every Paid/Settled seal would
+       otherwise come out of a monochrome printer as pale grey — the lightest
+       marks on the page carrying the figures that matter most. Gilt says
+       "this money is finished" on screen; on paper the label already says it. */
+    --gilt-base: #000000;
+    --gilt-text: #000000;
+    --gilt-subtle: #ffffff;
+
+    /* Same reasoning for the accent: a laurel link or a filled control that
+       prints as mid-grey is harder to read than one that prints black. */
+    --accent-base: #000000;
+    --accent-text-base: #000000;
+    --accent-solid-base: #000000;
+    --accent-subtle-base: #ffffff;
+    --accent-border-base: #000000;
+
+    /* The engraved rule is ORNAMENT, so it must not print at the same ink
+       weight as the table rules that separate data. It is the one element
+       here that gets grey rather than black. */
+    --plate-line: #cccccc;
   }
 
   body {

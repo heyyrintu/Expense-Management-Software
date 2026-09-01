@@ -27,6 +27,13 @@
 
 generator client {
   provider = "prisma-client-js"
+  // The query engine is a NATIVE binary, and the musl build (Alpine, which
+  // the Dockerfile uses) is a different artifact from the glibc one. Left
+  // to autodetect, `prisma generate` emits only the engine for the machine
+  // that ran it, so an image built on a glibc host starts and then fails on
+  // the first query with "Query engine library for current platform could
+  // not be found". Listing both makes the generate step produce both.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -186,8 +193,8 @@ model User {
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  department   Department?  @relation(fields: [departmentId], references: [id])
-  approver     User?        @relation("UserApprover", fields: [approverId], references: [id])
+  department   Department?  @relation(fields: [orgId, departmentId], references: [orgId, id])
+  approver     User?        @relation("UserApprover", fields: [orgId, approverId], references: [orgId, id])
   reportsTo    User[]       @relation("UserApprover")
 
   expenses       Expense[]
@@ -214,6 +221,7 @@ model User {
   @@unique([orgId, email])
   @@index([orgId, role])
   @@index([orgId, departmentId])
+  @@unique([orgId, id])
   @@map("users")
 }
 
@@ -228,6 +236,7 @@ model Department {
   users        User[]
 
   @@unique([orgId, name])
+  @@unique([orgId, id])
   @@map("departments")
 }
 
@@ -245,6 +254,7 @@ model Project {
 
   @@unique([orgId, code])
   @@index([orgId, name])
+  @@unique([orgId, id])
   @@map("projects")
 }
 
@@ -341,10 +351,11 @@ model AccountingExport {
   totalMinor   Int              @map("total_minor")
 
   organization Organization             @relation(fields: [orgId], references: [id])
-  exportedBy   User                     @relation(fields: [exportedById], references: [id])
+  exportedBy   User                     @relation(fields: [orgId, exportedById], references: [orgId, id])
   reports      AccountingExportReport[]
 
   @@index([orgId, target, exportedAt])
+  @@unique([orgId, id])
   @@map("accounting_exports")
 }
 
@@ -364,8 +375,8 @@ model AccountingExportReport {
   reportId String @map("report_id") @db.Uuid
 
   organization Organization     @relation(fields: [orgId], references: [id])
-  export       AccountingExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
-  report       ExpenseReport    @relation(fields: [reportId], references: [id])
+  export       AccountingExport @relation(fields: [orgId, exportId], references: [orgId, id], onDelete: Cascade)
+  report       ExpenseReport    @relation(fields: [orgId, reportId], references: [orgId, id])
 
   @@unique([orgId, exportId, reportId])
   /// THE double-export guard's lookup.
@@ -410,6 +421,7 @@ model PerDiemRate {
   // rate lookup, which filters by name and orders by effectiveFrom desc.
   @@index([orgId, name, effectiveFrom])
   @@index([orgId, active])
+  @@unique([orgId, id])
   @@map("per_diem_rates")
 }
 
@@ -429,6 +441,7 @@ model Category {
   recurringTemplates RecurringTemplate[]
 
   @@unique([orgId, name])
+  @@unique([orgId, id])
   @@map("categories")
 }
 
@@ -470,14 +483,14 @@ model Expense {
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
   organization Organization   @relation(fields: [orgId], references: [id])
-  user         User           @relation(fields: [userId], references: [id])
-  report       ExpenseReport? @relation(fields: [reportId], references: [id])
-  category     Category       @relation(fields: [categoryId], references: [id])
-  project      Project?       @relation(fields: [projectId], references: [id])
-  perDiemRate  PerDiemRate?   @relation(fields: [perDiemRateId], references: [id])
+  user         User           @relation(fields: [orgId, userId], references: [orgId, id])
+  report       ExpenseReport? @relation(fields: [orgId, reportId], references: [orgId, id])
+  category     Category       @relation(fields: [orgId, categoryId], references: [orgId, id])
+  project      Project?       @relation(fields: [orgId, projectId], references: [orgId, id])
+  perDiemRate  PerDiemRate?   @relation(fields: [orgId, perDiemRateId], references: [orgId, id])
   receipts     Receipt[]
   cardTransaction CardTransaction?
-  client       Client?        @relation(fields: [clientId], references: [id])
+  client       Client?        @relation(fields: [orgId, clientId], references: [orgId, id])
   splits       ExpenseSplit[]
   whatsappInbound WhatsAppInbound[]
 
@@ -486,6 +499,7 @@ model Expense {
   @@index([orgId, reportId])
   @@index([orgId, categoryId, date])
   @@index([orgId, status])
+  @@unique([orgId, id])
   @@map("expenses")
 }
 
@@ -501,7 +515,7 @@ model Receipt {
   createdAt  DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  expense      Expense      @relation(fields: [expenseId], references: [id])
+  expense      Expense      @relation(fields: [orgId, expenseId], references: [orgId, id])
 
   @@index([orgId, expenseId])
   @@map("receipts")
@@ -519,7 +533,7 @@ model ExpenseReport {
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
   organization  Organization   @relation(fields: [orgId], references: [id])
-  user          User           @relation(fields: [userId], references: [id])
+  user          User           @relation(fields: [orgId, userId], references: [orgId, id])
   expenses       Expense[]
   approvals      Approval[]
   reimbursements Reimbursement[]
@@ -529,6 +543,7 @@ model ExpenseReport {
 
   @@index([orgId, userId, status])
   @@index([orgId, status, submittedAt])
+  @@unique([orgId, id])
   @@map("expense_reports")
 }
 
@@ -543,8 +558,8 @@ model Approval {
   actedAt    DateTime       @default(now()) @map("acted_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
-  report       ExpenseReport @relation(fields: [reportId], references: [id])
-  approver     User          @relation("ApprovalApprover", fields: [approverId], references: [id])
+  report       ExpenseReport @relation(fields: [orgId, reportId], references: [orgId, id])
+  approver     User          @relation("ApprovalApprover", fields: [orgId, approverId], references: [orgId, id])
 
   @@index([orgId, reportId])
   @@index([orgId, approverId, actedAt])
@@ -568,15 +583,16 @@ model Reimbursement {
   createdAt  DateTime      @default(now()) @map("created_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
-  report       ExpenseReport @relation(fields: [reportId], references: [id])
-  batch        PaymentBatch? @relation(fields: [batchId], references: [id])
-  paidBy       User          @relation("ReimbursementPaidBy", fields: [paidById], references: [id])
+  report       ExpenseReport @relation(fields: [orgId, reportId], references: [orgId, id])
+  batch        PaymentBatch? @relation(fields: [orgId, batchId], references: [orgId, id])
+  paidBy       User          @relation("ReimbursementPaidBy", fields: [orgId, paidById], references: [orgId, id])
   bankLine     BankStatementLine?
   complaints   Complaint[]
 
   @@index([orgId, reportId])
   @@index([orgId, paidAt])
   @@index([orgId, batchId])
+  @@unique([orgId, id])
   @@map("reimbursements")
 }
 
@@ -591,10 +607,11 @@ model PaymentBatch {
   createdAt   DateTime      @default(now()) @map("created_at")
 
   organization Organization    @relation(fields: [orgId], references: [id])
-  createdBy    User            @relation("PaymentBatchCreatedBy", fields: [createdById], references: [id])
+  createdBy    User            @relation("PaymentBatchCreatedBy", fields: [orgId, createdById], references: [orgId, id])
   payments     Reimbursement[]
 
   @@index([orgId, paidAt])
+  @@unique([orgId, id])
   @@map("payment_batches")
 }
 
@@ -630,7 +647,7 @@ model Notification {
   createdAt DateTime  @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [orgId, userId], references: [orgId, id])
 
   @@index([orgId, userId, readAt])
   @@index([orgId, userId, createdAt])
@@ -688,11 +705,12 @@ model CardTransaction {
   createdAt        DateTime @default(now()) @map("created_at")
 
   organization   Organization @relation(fields: [orgId], references: [id])
-  matchedExpense Expense?     @relation(fields: [matchedExpenseId], references: [id])
+  matchedExpense Expense?     @relation(fields: [orgId, matchedExpenseId], references: [orgId, id])
 
   @@index([orgId, matchedExpenseId])
   @@index([orgId, importedBatch])
   @@index([orgId, date])
+  @@unique([orgId, matchedExpenseId])
   @@map("card_transactions")
 }
 
@@ -707,8 +725,8 @@ model ReportComment {
   createdAt DateTime @default(now()) @map("created_at")
 
   organization Organization  @relation(fields: [orgId], references: [id])
-  report       ExpenseReport @relation(fields: [reportId], references: [id])
-  author       User          @relation(fields: [authorId], references: [id])
+  report       ExpenseReport @relation(fields: [orgId, reportId], references: [orgId, id])
+  author       User          @relation(fields: [orgId, authorId], references: [orgId, id])
 
   @@index([orgId, reportId, createdAt])
   @@map("report_comments")
@@ -768,8 +786,8 @@ model Advance {
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User         @relation("AdvanceOwner", fields: [userId], references: [id])
-  approvedBy   User?        @relation("AdvanceApprovedBy", fields: [approvedById], references: [id])
+  user         User         @relation("AdvanceOwner", fields: [orgId, userId], references: [orgId, id])
+  approvedBy   User?        @relation("AdvanceApprovedBy", fields: [orgId, approvedById], references: [orgId, id])
 
   @@index([orgId, userId, status])
   @@index([orgId, status])
@@ -790,6 +808,7 @@ model Client {
 
   @@unique([orgId, code])
   @@unique([orgId, name])
+  @@unique([orgId, id])
   @@map("clients")
 }
 
@@ -806,9 +825,9 @@ model ExpenseSplit {
   amount     Int // minor units
 
   organization Organization @relation(fields: [orgId], references: [id])
-  expense      Expense      @relation(fields: [expenseId], references: [id])
-  category     Category     @relation(fields: [categoryId], references: [id])
-  project      Project?     @relation(fields: [projectId], references: [id])
+  expense      Expense      @relation(fields: [orgId, expenseId], references: [orgId, id])
+  category     Category     @relation(fields: [orgId, categoryId], references: [orgId, id])
+  project      Project?     @relation(fields: [orgId, projectId], references: [orgId, id])
 
   @@index([orgId, expenseId])
   @@index([orgId, categoryId])
@@ -841,8 +860,8 @@ model RecurringTemplate {
   updatedAt  DateTime         @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
-  category     Category     @relation(fields: [categoryId], references: [id])
+  user         User         @relation(fields: [orgId, userId], references: [orgId, id])
+  category     Category     @relation(fields: [orgId, categoryId], references: [orgId, id])
 
   @@index([orgId, userId])
   @@index([orgId, active])
@@ -860,8 +879,8 @@ model Delegation {
   createdAt   DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  delegate     User         @relation("DelegationDelegate", fields: [delegateId], references: [id])
-  principal    User         @relation("DelegationPrincipal", fields: [principalId], references: [id])
+  delegate     User         @relation("DelegationDelegate", fields: [orgId, delegateId], references: [orgId, id])
+  principal    User         @relation("DelegationPrincipal", fields: [orgId, principalId], references: [orgId, id])
 
   @@unique([orgId, delegateId, principalId])
   @@index([orgId, delegateId, active])
@@ -905,10 +924,11 @@ model BankStatementImport {
   createdAt    DateTime  @default(now()) @map("created_at")
 
   organization Organization        @relation(fields: [orgId], references: [id])
-  importedBy   User                @relation("BankImportImportedBy", fields: [importedById], references: [id])
+  importedBy   User                @relation("BankImportImportedBy", fields: [orgId, importedById], references: [orgId, id])
   lines        BankStatementLine[]
 
   @@index([orgId, createdAt])
+  @@unique([orgId, id])
   @@map("bank_statement_imports")
 }
 
@@ -925,11 +945,12 @@ model BankStatementLine {
   matchType              BankMatchType? @map("match_type")
 
   organization Organization        @relation(fields: [orgId], references: [id])
-  import       BankStatementImport @relation(fields: [importId], references: [id])
-  matchedReimbursement Reimbursement? @relation(fields: [matchedReimbursementId], references: [id])
+  import       BankStatementImport @relation(fields: [orgId, importId], references: [orgId, id])
+  matchedReimbursement Reimbursement? @relation(fields: [orgId, matchedReimbursementId], references: [orgId, id])
 
   @@index([orgId, importId])
   @@index([orgId, date])
+  @@unique([orgId, matchedReimbursementId])
   @@map("bank_statement_lines")
 }
 
@@ -973,15 +994,16 @@ model Complaint {
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   organization  Organization       @relation(fields: [orgId], references: [id])
-  raisedBy      User               @relation("ComplaintRaisedBy", fields: [raisedById], references: [id])
-  assignedTo    User?              @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id])
-  report        ExpenseReport?     @relation(fields: [reportId], references: [id])
-  reimbursement Reimbursement?     @relation(fields: [reimbursementId], references: [id])
+  raisedBy      User               @relation("ComplaintRaisedBy", fields: [orgId, raisedById], references: [orgId, id])
+  assignedTo    User?              @relation("ComplaintAssignedTo", fields: [orgId, assignedToId], references: [orgId, id])
+  report        ExpenseReport?     @relation(fields: [orgId, reportId], references: [orgId, id])
+  reimbursement Reimbursement?     @relation(fields: [orgId, reimbursementId], references: [orgId, id])
   messages      ComplaintMessage[]
 
   @@index([orgId, status, createdAt])
   @@index([orgId, raisedById, createdAt])
   @@index([orgId, assignedToId, status])
+  @@unique([orgId, id])
   @@map("complaints")
 }
 
@@ -995,8 +1017,8 @@ model ComplaintMessage {
   createdAt   DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  complaint    Complaint    @relation(fields: [complaintId], references: [id])
-  author       User         @relation("ComplaintMessageAuthor", fields: [authorId], references: [id])
+  complaint    Complaint    @relation(fields: [orgId, complaintId], references: [orgId, id])
+  author       User         @relation("ComplaintMessageAuthor", fields: [orgId, authorId], references: [orgId, id])
 
   @@index([orgId, complaintId, createdAt])
   @@map("complaint_messages")
@@ -1044,10 +1066,11 @@ model WhatsAppLink {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User         @relation(fields: [userId], references: [id])
+  user         User         @relation(fields: [orgId, userId], references: [orgId, id])
 
   @@unique([orgId, phoneE164])
   @@index([orgId, verifiedAt])
+  @@unique([orgId, userId])
   @@map("whatsapp_links")
 }
 
@@ -1082,8 +1105,8 @@ model WhatsAppInbound {
   createdAt     DateTime              @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User?        @relation(fields: [userId], references: [id])
-  expense      Expense?     @relation(fields: [expenseId], references: [id])
+  user         User?        @relation(fields: [orgId, userId], references: [orgId, id])
+  expense      Expense?     @relation(fields: [orgId, expenseId], references: [orgId, id])
 
   @@index([orgId, status, receivedAt])
   @@index([orgId, fromPhone, receivedAt])
@@ -1124,7 +1147,7 @@ model WhatsAppOutbound {
   updatedAt    DateTime               @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [orgId], references: [id])
-  user         User?        @relation(fields: [userId], references: [id])
+  user         User?        @relation(fields: [orgId, userId], references: [orgId, id])
 
   @@index([orgId, status, createdAt])
   @@index([orgId, userId, createdAt])

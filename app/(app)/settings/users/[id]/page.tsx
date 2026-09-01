@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/page-header";
 import { requireRole } from "@/lib/auth/guard";
 import { scopedDb } from "@/lib/db/scoped";
 import { ManageUserPanel } from "./manage-user-panel";
@@ -37,10 +38,11 @@ export default async function ManageUserPage({
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{user.name}</h1>
-        <p className="text-text-tertiary text-sm">{user.email} · {user.status}</p>
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "Users", href: "/settings/users" }, { label: user.name }]}
+        title={user.name}
+        description={`${user.email} · ${user.status}`}
+      />
       <ManageUserPanel
         user={{
           id: user.id,

@@ -1,6 +1,17 @@
 "use client";
 
-// Desktop sidebar (D0.4, §5.5): 240px, collapsible to a 64px icon rail.
+// Desktop sidebar (D0.4, §5.5 · N1.1): 240px, collapsible to a 64px icon rail.
+//
+// STONE PANEL (N1.1, DESIGN-PLAN-NEOCLASSICAL §6). The panel sits on
+// bg-subtle — limestone — with the content area on bg-app beside it, split
+// by the usual hairline. That forced a rethink of the row states, because
+// the D-series treatment (accent-subtle pill, bg-subtle hover) was designed
+// for a white panel: measured against the stone, accent-subtle is 1.03:1 —
+// an invisible fill — and bg-subtle hover is the panel itself. The stone
+// scheme is inlay instead: the ACTIVE row is a white surface tile carrying
+// laurel text (1.20:1 against the panel, the same prominence the old pill
+// had against white), and hover is that tile at 60% — a half-cut inlay.
+// Still one signal, no left bar, no bold.
 //
 // MOTION NOTE — why the collapse does not animate.
 // Width is a layout property, and DESIGN-PRD §4.4 allows exactly one
@@ -19,6 +30,7 @@ import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { BrandMark } from "./brand-mark";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/lib/auth/roles";
 import { isActiveHref, visibleSections } from "./nav";
@@ -42,7 +54,7 @@ export function Sidebar({
       data-slot="app-sidebar"
       data-collapsed={collapsed ? "" : undefined}
       className={cn(
-        "border-line bg-bg-surface fixed inset-y-0 left-0 z-30 hidden flex-col border-r md:flex print:hidden",
+        "border-line bg-bg-subtle fixed inset-y-0 left-0 z-30 hidden flex-col border-r md:flex print:hidden",
         collapsed ? "w-sidebar-rail" : "w-sidebar"
       )}
     >
@@ -53,10 +65,10 @@ export function Sidebar({
           href="/dashboard"
           className={cn(
             "flex items-center gap-2 rounded-md outline-none",
-            "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface"
+            "focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-subtle"
           )}
         >
-          <Mark />
+          <BrandMark />
           <span className={cn("text-h3 text-text-primary truncate", collapsed && "sr-only")}>
             {orgName}
           </span>
@@ -102,9 +114,9 @@ export function Sidebar({
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "text-text-secondary hover:bg-bg-subtle hover:text-text-primary flex h-11 w-full items-center gap-3 rounded-md px-3",
+            "text-text-secondary hover:bg-bg-surface/60 hover:text-text-primary flex h-11 w-full items-center gap-3 rounded-md px-3",
             "transition-colors duration-instant ease-out",
-            "outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface",
+            "outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-subtle",
             collapsed && "justify-center px-0"
           )}
         >
@@ -121,8 +133,10 @@ export function Sidebar({
 }
 
 /**
- * One nav row. Active state is the §5.5 treatment: an accent-subtle pill
- * with accent text — no left bar, no bold, no second signal.
+ * One nav row. Active state is the stone-panel inlay (N1.1): a white
+ * surface tile with laurel text — no left bar, no bold, no second signal.
+ * (The §5.5 accent-subtle pill was designed for a white panel and measures
+ * 1.03:1 against the stone; see the header note.)
  *
  * 44px tall, which satisfies the touch target and gives the comfortable
  * density §5.4 asks for. In the rail the label becomes a tooltip rather
@@ -148,10 +162,10 @@ function NavLink({
       className={cn(
         "flex h-11 items-center gap-3 rounded-md px-3 text-label",
         "transition-colors duration-instant ease-out",
-        "outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-surface",
+        "outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-bg-subtle",
         active
-          ? "bg-accent-subtle text-accent-text"
-          : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
+          ? "bg-bg-surface text-accent-text"
+          : "text-text-secondary hover:bg-bg-surface/60 hover:text-text-primary",
         collapsed && "justify-center px-0"
       )}
     >
@@ -170,22 +184,5 @@ function NavLink({
   );
 }
 
-/** Geometric brand mark — a receipt fold. No illustration set (§3). */
-function Mark() {
-  return (
-    <span
-      aria-hidden="true"
-      className="bg-accent-solid text-text-on-accent grid size-7 shrink-0 place-items-center rounded-md"
-    >
-      <svg viewBox="0 0 16 16" fill="none" className="size-4">
-        <path
-          d="M4 2.5h8v11l-2-1.2-2 1.2-2-1.2-2 1.2v-11Z"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinejoin="round"
-        />
-        <path d="M6.5 6h3M6.5 8.5h3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
-}
+// The brand mark moved to ./brand-mark.tsx (N4.1) so the auth pediment can
+// draw the same receipt fold without importing the whole sidebar.

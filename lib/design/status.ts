@@ -15,7 +15,13 @@ export type StatusEntry = {
   /** Label shown in the badge — status is never colour alone (§5.1). */
   label: string;
   tone: StatusTone;
-  /** A solid dot marks a terminal money state (§5.2: Reimbursed). */
+  /**
+   * A terminal money state (§5.2: Reimbursed, Settled). Under the D-series
+   * this drew a solid dot; under the Ledger Hall (N2.3) it is the SEAL —
+   * the badge renders in gilt, the redesign's "money is finished" mark and
+   * gilt's second sanctioned use. The flag's meaning is unchanged: money
+   * has actually moved and the state cannot progress further.
+   */
   solidDot?: boolean;
 };
 
@@ -106,3 +112,14 @@ export const TONE_CLASSES: Record<StatusTone, { chip: string; dot: string; text:
     text: "text-status-neutral-text",
   },
 };
+
+/**
+ * The seal (N2.3) — gilt classes for terminal money states (`solidDot`).
+ * Gilt's second sanctioned use; StatusBadge is its only consumer, exactly as
+ * TONE_CLASSES has one consumer. Measured: gilt-text on gilt-subtle 5.90:1,
+ * the gilt dot on gilt-subtle 3.51:1.
+ */
+export const SEAL_CLASSES = {
+  chip: "bg-gilt-subtle text-gilt-text",
+  dot: "bg-gilt",
+} as const;

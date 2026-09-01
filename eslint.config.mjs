@@ -12,7 +12,10 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: ["node_modules/**", ".next/**", "out/**", "next-env.d.ts"],
+    // .claude/** holds agent-managed git worktrees (full repo checkouts with
+    // their own node_modules/.next) — linting them floods the gate with
+    // thousands of findings from code that isn't this checkout's source.
+    ignores: ["node_modules/**", ".next/**", "out/**", "next-env.d.ts", ".claude/**"],
   },
 ];
 

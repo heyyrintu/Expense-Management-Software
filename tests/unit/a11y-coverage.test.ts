@@ -34,6 +34,10 @@ const SPEC = "tests/e2e/a11y.spec.ts";
  */
 const EXCLUDED: Record<string, string> = {
   "/": "A redirect that resolves to /dashboard or /login before anything paints.",
+  "/settings":
+    "Redirect-only (redirect to /settings/organization). Next implements it " +
+    "with a meta refresh, which axe flags as a critical meta-refresh " +
+    "violation on markup nobody authored — the destination is scanned instead.",
   "/design-system":
     "A dev surface that quotes bad copy and unfinished components on purpose — it would fail by design.",
   "/super": "A separate auth realm; the a11y run holds a tenant session, not a platform one.",

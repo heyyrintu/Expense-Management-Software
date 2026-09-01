@@ -8,8 +8,15 @@
 // loaded state within the same second.
 //
 // So the pieces below are built from the same tokens the real components use:
-// `PageHeaderSkeleton` mirrors PageHeader's `grid gap-2 pb-6` and its h1/body
-// line heights, `TableSkeleton` mirrors the DataTable's `h-row`, and so on.
+// `PageHeaderSkeleton` mirrors PageHeader's `grid gap-2 pb-6`, its eyebrow /
+// h1 / body line boxes AND its trailing plate rule, `TableSkeleton` mirrors
+// the DataTable's `h-row`, and so on.
+//
+// That rot is not hypothetical: the Neoclassical redesign (N2.1) added an
+// eyebrow row and a plate rule to PageHeader and did not touch this file, so
+// for one milestone every one of the ~34 routes with a loading.tsx
+// under-reserved its header by ~36px and jumped when content landed — while
+// the comment above still promised a mirror. Change one, change both.
 // A route's loading.tsx composes them in the order its page composes the real
 // components, and CLS stays near zero without anyone measuring pixels.
 //
@@ -26,20 +33,39 @@ import { cn } from "@/lib/utils";
 export function PageHeaderSkeleton({
   hasDescription = true,
   hasAction = false,
+  hasEyebrow = true,
+  hasBreadcrumbs = false,
 }: {
   hasDescription?: boolean;
   hasAction?: boolean;
+  /**
+   * PageHeader derives an eyebrow from the nav model, so nearly every route
+   * has one — hence the default. Pass false for routes outside the nav
+   * (/profile, /notifications) and for any screen whose eyebrow would repeat
+   * its title, since PageHeader suppresses it in both cases.
+   */
+  hasEyebrow?: boolean;
+  /** Breadcrumbs replace the eyebrow on detail routes (PageHeader hides it). */
+  hasBreadcrumbs?: boolean;
 }) {
   return (
     <div className="grid gap-2 pb-6">
+      {/* Breadcrumbs and eyebrow are both a 16px line box, and PageHeader
+          renders at most one of them: breadcrumbs win, and the eyebrow is
+          suppressed beneath them. */}
+      {hasBreadcrumbs || hasEyebrow ? <Skeleton className="h-4 w-24" /> : null}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid min-w-0 gap-1">
-          {/* text-h1 is 30px/36px — h-9 is the same 36px line box. */}
-          <Skeleton className="h-9 w-56" />
+          {/* text-h1 is 24px/32px — h-8 is the same 32px line box. */}
+          <Skeleton className="h-8 w-56" />
           {hasDescription ? <Skeleton className="h-5 w-80 max-w-full" /> : null}
         </div>
         {hasAction ? <Skeleton className="h-9 w-32 shrink-0" /> : null}
       </div>
+      {/* The real header ends in the engraved rule. It is 6px in the box
+          model (4px + two 1px borders), and omitting it cost every route
+          with a loading.tsx a visible jump when content landed. */}
+      <div aria-hidden="true" className="plate-rule" />
     </div>
   );
 }

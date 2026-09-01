@@ -25,18 +25,28 @@ afterAll(async () => {
 });
 
 describe("app shell chrome reads", () => {
-  it("B asking for A's organization gets its OWN, never A's", async () => {
-    // Not null — and that is deliberate. For Organization, scope-args pins
-    // `where.id` to the session's org, so the caller's id is overwritten
-    // rather than ANDed. The session always wins over the request, which is
-    // the safe direction: B cannot address A's row at all.
+  it("B asking for A's organization gets nothing", async () => {
+    // This used to assert that B got its OWN org back, because scope-args
+    // OVERWROTE where.id with the session org. B never saw A's data either
+    // way, but "read org A" silently became "read org B" and returned a
+    // row — an answer to a question nobody asked, and one that would hide
+    // a mis-scoped id instead of surfacing it. The scope is now ANDed on,
+    // so a foreign id matches nothing.
     const row = (await scopedDb(B.orgId).organization.findUnique({
       where: { id: A.orgId },
       select: { name: true },
     })) as { name: string } | null;
 
+    expect(row).toBeNull();
+  });
+
+  it("B asking for its own organization still gets it", async () => {
+    const row = (await scopedDb(B.orgId).organization.findUnique({
+      where: { id: B.orgId },
+      select: { name: true },
+    })) as { name: string } | null;
+
     expect(row?.name).toBe("Isolation shell-b");
-    expect(row?.name).not.toBe("Isolation shell-a");
   });
 
   it("B listing organizations by A's id gets nothing", async () => {

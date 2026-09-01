@@ -143,7 +143,11 @@ export function LedgerTable({
               <span className="flex flex-wrap items-baseline justify-end gap-x-6 gap-y-2">
                 <TotalItem label="Requested" value={totals.requested} currency={currency} />
                 <TotalItem label="Approved" value={totals.approved} currency={currency} />
-                <TotalItem label="Paid" value={totals.paid} currency={currency} />
+                {/* Paid is the ledger's finished money — gilt's first
+                    sanctioned use (N3.3). Colour only, no Bodoni: one Didone
+                    figure among four inline totals would be noise, and the
+                    display face stays a lone-figure treatment. */}
+                <TotalItem label="Paid" value={totals.paid} currency={currency} seal />
                 <TotalItem
                   label="Outstanding"
                   value={totals.outstanding}
@@ -187,11 +191,14 @@ function TotalItem({
   value,
   currency,
   emphasis = false,
+  seal = false,
 }: {
   label: string;
   value: number;
   currency: string;
   emphasis?: boolean;
+  /** Gilt figure — money that is finished (the Paid total only). */
+  seal?: boolean;
 }) {
   return (
     <span className="grid justify-items-end gap-0.5">
@@ -202,6 +209,7 @@ function TotalItem({
         align="right"
         className={cn(
           "font-semibold",
+          seal && "text-gilt-text",
           // Outstanding is the figure the screen exists to produce, and a
           // negative one is money flowing the other way.
           emphasis && value < 0 && "text-status-danger-text"

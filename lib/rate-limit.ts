@@ -1,6 +1,20 @@
 // Per-org / per-key sliding-window rate limiter (noisy-neighbor guard,
-// PRD §10). In-memory — fine for the v1 single-region deployment; swap for
-// Redis when scaling out. Injectable clock for unit tests.
+// PRD §10). Injectable clock for unit tests.
+//
+// ── READ THIS BEFORE SCALING OUT ─────────────────────────────────────────
+// The counters live in THIS PROCESS's memory. That is correct for exactly
+// one long-lived instance and wrong for anything else:
+//
+//   - N instances behind a load balancer => roughly N x every limit here,
+//     because each keeps its own count and none of them agree.
+//   - On serverless (Vercel, Lambda) instances are created and destroyed
+//     per burst of traffic, so a fresh process starts at zero. The login
+//     limit of 10/min is then close to no limit at all, which matters:
+//     it is the only thing rate-limiting password guessing.
+//
+// Moving to a shared store is a real change, not a config flag — see
+// docs/PRODUCTION-CHECKLIST.md. Until then, run ONE instance, or treat
+// these numbers as advisory and put the real limit in front of the app.
 
 type Bucket = { timestamps: number[] };
 

@@ -2,9 +2,15 @@
 // list length always equals the leaderboard count.
 import Link from "next/link";
 
-import { asFlags, FlagChips } from "@/components/flag-chips";
+import { FlagChips } from "@/components/flag-chips";
+// asFlags comes from the DOMAIN module, not the client component that
+// re-exports it: importing it from "@/components/flag-chips" in a server
+// component turns a pure function into a client reference, and calling it
+// on the server throws "Attempted to call asFlags() from the server".
+import { asFlags } from "@/lib/domain/policy-flags";
 import { Amount } from "@/components/ui/amount";
 import { DateCell } from "@/components/ui/date-cell";
+import { PageHeader } from "@/components/ui/page-header";
 import { fetchSpendRows } from "@/lib/analytics";
 import { flaggedRows } from "@/lib/analytics/aggregate";
 import { requireRole } from "@/lib/auth/guard";
@@ -32,15 +38,15 @@ export default async function ViolationsPage({
 
   return (
     <section className="grid gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Flagged expenses</h1>
-        <p className="text-text-tertiary text-sm">
-          {flagged.length} expense{flagged.length === 1 ? "" : "s"}
-          {rule ? ` · rule: ${rule}` : ""}
-          {userId ? ` · one user` : ""} ·{" "}
+      <PageHeader
+        title="Flagged expenses"
+        description={`${flagged.length} expense${flagged.length === 1 ? "" : "s"}${
+          rule ? ` · rule: ${rule}` : ""
+        }${userId ? ` · one user` : ""}`}
+        action={
           <Link href="/analytics" className="underline">back to analytics</Link>
-        </p>
-      </div>
+        }
+      />
       <ul className="grid gap-2">
         {flagged.map((e) => (
           <li key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">

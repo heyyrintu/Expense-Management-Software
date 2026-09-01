@@ -16,7 +16,7 @@ export default async function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Sign in</CardTitle>
+        <CardTitle as="h1" className="text-h2">Sign in</CardTitle>
         <CardDescription>
           Enter your organization and credentials.
         </CardDescription>
