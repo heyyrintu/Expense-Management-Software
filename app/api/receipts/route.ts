@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  if (!checkRateLimit("upload", ctx.orgId)) {
+  if (!(await checkRateLimit("upload", ctx.orgId))) {
     return NextResponse.json(
       { ok: false, error: rateLimitedMessage },
       { status: 429 }

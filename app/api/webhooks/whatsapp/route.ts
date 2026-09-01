@@ -123,7 +123,7 @@ async function handleMessage(
   provider: WhatsAppProvider
 ): Promise<void> {
   // Cheap flood guard per sending number, before any database write.
-  if (!checkRateLimit("whatsappInbound", `${orgId}:${message.from}`)) {
+  if (!(await checkRateLimit("whatsappInbound", `${orgId}:${message.from}`))) {
     console.warn("[whatsapp] rate limited", message.from);
     return;
   }
@@ -142,7 +142,7 @@ async function handleMessage(
   if (!link || link.user.status !== "active") {
     // One canned reply per number per window — never say whether the number
     // exists elsewhere, and store nothing.
-    if (checkRateLimit("whatsappReply", `${orgId}:${message.from}`)) {
+    if (await checkRateLimit("whatsappReply", `${orgId}:${message.from}`)) {
       await provider.sendText(message.from, NOT_LINKED_REPLY);
     }
     return;

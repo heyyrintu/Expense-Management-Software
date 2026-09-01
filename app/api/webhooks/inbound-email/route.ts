@@ -90,7 +90,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const db = scopedDb(org.id);
-  if (!checkRateLimit("upload", org.id)) {
+  if (!(await checkRateLimit("upload", org.id))) {
     await deadLetter(db, org.id, email.from, email.subject, "rate limited");
     return NextResponse.json({ ok: true });
   }

@@ -47,7 +47,7 @@ export async function startWhatsAppLinkAction(formData: FormData): Promise<Resul
     const ctx = await requireSession();
     const parsed = normalizePhone(String(formData.get("phone") ?? ""));
     if (!parsed.ok) return err(parsed.error);
-    if (!checkRateLimit("whatsappOtp", `${ctx.orgId}:${ctx.userId}`)) {
+    if (!(await checkRateLimit("whatsappOtp", `${ctx.orgId}:${ctx.userId}`))) {
       return err(rateLimitedMessage);
     }
 

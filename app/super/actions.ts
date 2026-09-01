@@ -18,7 +18,7 @@ const orgActionSchema = z.object({ orgId: z.string().uuid() });
 export async function superLoginAction(input: unknown): Promise<Result> {
   const parsed = superLoginSchema.safeParse(input);
   if (!parsed.success) return err(userErrors.validation);
-  if (!checkRateLimit("login", `super:${parsed.data.email.toLowerCase()}`)) {
+  if (!(await checkRateLimit("login", `super:${parsed.data.email.toLowerCase()}`))) {
     return err(rateLimitedMessage);
   }
   try {

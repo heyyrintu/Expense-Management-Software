@@ -109,13 +109,15 @@ Take a backup immediately before every deploy that includes a migration.
 
 ## 4. Known limitations to size before you scale
 
-**The rate limiter is in-process** (`lib/rate-limit.ts`). Each instance keeps
-its own counters, so N instances mean roughly N times the intended limit, and
-on serverless — where instances are created and destroyed constantly — it is
-close to no limit at all. It is correct for a single long-lived instance and
-nothing else. See the note at the top of that file before scaling out.
+**The rate limiter is shared** (`lib/rate-limit.ts`), so scaling out is safe:
+counters live in Postgres, keyed by (scope, key, window), and every instance
+reads the same number. There is nothing to provision. Two things to know:
+the counters are a weighted sliding-window APPROXIMATION, accurate to within
+a fraction of the limit at window boundaries; and each guarded call costs one
+extra statement, which is why the counter is one row per window rather than
+one row per request.
 
-**There is no error reporting.** `docs/PRODUCTION-CHECKLIST.md` tracks it.
+**There is still no metrics or tracing.** `docs/PRODUCTION-CHECKLIST.md` tracks it.
 Until it exists, failures are visible only in container logs.
 
 ---
