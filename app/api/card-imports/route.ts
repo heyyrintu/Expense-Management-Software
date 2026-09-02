@@ -30,7 +30,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: ctx ? 403 : 401 }
     );
   }
-  if (!checkRateLimit("upload", ctx.orgId)) {
+  if (!(await checkRateLimit("upload", ctx.orgId))) {
     return NextResponse.json({ ok: false, error: rateLimitedMessage }, { status: 429 });
   }
 

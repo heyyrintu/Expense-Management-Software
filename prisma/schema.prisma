@@ -1153,3 +1153,24 @@ model WhatsAppOutbound {
   @@index([orgId, userId, createdAt])
   @@map("whatsapp_outbound")
 }
+
+/// Shared rate-limit counters (PRD §10).
+///
+/// NOT a tenant table, deliberately: the login and signup limits are keyed by
+/// IP and exist BEFORE any session, so there is no org to scope them to. It
+/// carries no org_id, has no RLS, and is listed in FORBIDDEN_MODELS so it can
+/// never be reached through scopedDb.
+///
+/// One row per (scope, key, window) rather than one per request: the counters
+/// are read on every guarded call, and a row per request would make the
+/// limiter more expensive than the work it protects.
+model RateLimitCounter {
+  scope       String
+  key         String
+  windowStart DateTime @map("window_start")
+  count       Int      @default(0)
+
+  @@id([scope, key, windowStart])
+  @@index([windowStart])
+  @@map("rate_limit_counters")
+}

@@ -40,7 +40,7 @@ async function clientIp(): Promise<string> {
 export async function loginAction(input: unknown): Promise<Result> {
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) return err(userErrors.validation);
-  if (!checkRateLimit("login", `${parsed.data.slug}:${await clientIp()}`)) {
+  if (!(await checkRateLimit("login", `${parsed.data.slug}:${await clientIp()}`))) {
     return err(rateLimitedMessage);
   }
   try {
@@ -58,7 +58,7 @@ export async function loginAction(input: unknown): Promise<Result> {
 export async function signupAction(input: unknown): Promise<Result> {
   const parsed = signupSchema.safeParse(input);
   if (!parsed.success) return err(userErrors.validation);
-  if (!checkRateLimit("signup", await clientIp())) {
+  if (!(await checkRateLimit("signup", await clientIp()))) {
     return err(rateLimitedMessage);
   }
   const { orgName, slug, name, email, password } = parsed.data;

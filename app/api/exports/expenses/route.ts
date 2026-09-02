@@ -56,7 +56,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!checkRateLimit("export", ctx.orgId)) {
+  if (!(await checkRateLimit("export", ctx.orgId))) {
     return new NextResponse(rateLimitedMessage, { status: 429 });
   }
 

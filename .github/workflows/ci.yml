@@ -158,10 +158,38 @@ jobs:
         # and nothing else.
         run: npm run seed
 
+      # The browser suites sign up four orgs between them, and in CI every
+      # request comes from localhost — so they all share ONE signup bucket
+      # (5/hour/IP) that the isolation suite has also been writing to. That
+      # is an artifact of the test environment, not a property under test:
+      # the limiter's behaviour is proven by tests/isolation/rate-limit.test.ts,
+      # which asserts the count lives in Postgres and is shared.
+      #
+      # Clearing the table is NOT disabling the limiter — the suites below
+      # run against it normally, from zero.
+      # The counters are SHARED now (that is the fix), and in CI every request
+      # comes from localhost — so all three suites draw on one signup bucket
+      # of 5/hour. `npm run test:e2e` runs every spec in tests/e2e, which is
+      # ~3 signups, and the a11y step then re-runs its own 2: exactly at the
+      # limit, with the weighted previous window able to tip it over. Each
+      # suite therefore starts from zero.
+      #
+      # This is NOT disabling the limiter. The suites run against it
+      # normally; its behaviour is proved by tests/isolation/rate-limit.test.ts,
+      # which asserts the count lives in Postgres and is shared. Sharing one
+      # IP is an artifact of the runner, not a property under test.
+      - name: Clear rate-limit counters
+        run: |
+          PGPASSWORD=expense psql -h localhost -U expense -d expense_dev             -c 'DELETE FROM rate_limit_counters;'
+
       - name: E2E happy path (signup → submit → approve → reimburse)
         # Playwright starts the dev server itself (see playwright.config.ts
         # `webServer`), so there is no separate start step to keep in sync.
         run: npm run test:e2e
+
+      - name: Clear rate-limit counters (again — see above)
+        run: |
+          PGPASSWORD=expense psql -h localhost -U expense -d expense_dev             -c 'DELETE FROM rate_limit_counters;'
 
       - name: Accessibility suite (axe, WCAG 2.1 AA)
         run: npm run test:a11y

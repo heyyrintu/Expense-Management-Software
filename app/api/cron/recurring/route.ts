@@ -5,6 +5,8 @@
 // occurrence (lib/domain/recurring), so re-runs and missed days are safe.
 import { NextResponse } from "next/server";
 import { bearerMatches } from "@/lib/auth/bearer";
+import { pruneRateLimits } from "@/lib/rate-limit";
+import { reportError } from "@/lib/observability/report";
 import { computeExpenseFlags } from "@/lib/domain/policy-eval";
 import { isDue, type Cadence } from "@/lib/domain/recurring";
 import { prisma } from "@/lib/db/client";
@@ -122,5 +124,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ ok: true, data: { orgs: orgs.length, checked, drafted } });
+  // Housekeeping, not part of the drafting run. The limiter prunes each key
+  // it touches, which bounds ACTIVE keys to two rows; this clears the ones
+  // that went quiet — an IP that signed up once and never came back. It is
+  // deliberately not fatal: a failed sweep must not fail the job that drafts
+  // people's expenses.
+  let prunedRateLimits = 0;
+  try {
+    prunedRateLimits = await pruneRateLimits();
+  } catch (e) {
+    reportError(e, { at: "route:/api/cron/recurring", meta: { step: "pruneRateLimits" } });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    data: { orgs: orgs.length, checked, drafted, prunedRateLimits },
+  });
 }

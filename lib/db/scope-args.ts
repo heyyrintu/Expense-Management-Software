@@ -47,7 +47,7 @@ export const TENANT_MODELS = [
 const ORG_MODEL = "Organization";
 
 /** Platform-only models — never reachable through a tenant scope. */
-const FORBIDDEN_MODELS = ["SuperAdmin"] as const;
+const FORBIDDEN_MODELS = ["SuperAdmin", "RateLimitCounter"] as const;
 
 /** Operations whose `where` accepts a unique input plus extra filters. */
 const UNIQUE_WHERE_OPS = new Set([

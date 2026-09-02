@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: 401 }
     );
   }
-  if (!checkRateLimit("mutation", ctx.orgId)) {
+  if (!(await checkRateLimit("mutation", ctx.orgId))) {
     return NextResponse.json({ ok: false, error: rateLimitedMessage }, { status: 429 });
   }
 
