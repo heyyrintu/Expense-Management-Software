@@ -202,19 +202,17 @@ form; destructive confirmations naming the exact entity. ✅
 
 ---
 
-## 5. Screenshot baseline — **not captured** ❌
+## 5. Screenshot baseline — **captured** ✅
 
-`tests/e2e/screenshots.spec.ts` captures 12 screens × 2 widths (1440 desktop,
-390 mobile) into `docs/screenshots/`, with a freshly provisioned org and three
-real expenses so the baseline records working screens rather than empty states.
-Wired to `npm run screenshots`.
+`tests/e2e/screenshots.spec.ts` captures 14 screens × 2 widths (1280×900
+desktop, 390×844 mobile, 2× DPR) into `docs/screenshots/`, with a freshly
+provisioned org and three real expenses so the baseline records working screens
+rather than empty states. Wired to `npm run screenshots`.
 
-**It has never been run.** No browser has been connectable in any session of
-this build, and the dev server on this machine dies with
-`RangeError: Array buffer allocation failed` before serving a page — the same
-blocker that stopped the axe suite (D5.3) and Lighthouse (D5.4).
-
-`docs/screenshots/` therefore contains a README and no PNGs.
+**Run 2026-08-28 (public routes) and 2026-09-01 (the 12 tenant screens)** on the
+Windows host against the docker-compose stack, once the dependency tree was
+repaired (`docs/VERIFICATION-RUNBOOK.md` §0). All 28 PNGs are committed; the
+README in that directory is the index.
 
 The spec deliberately captures rather than asserts: `toHaveScreenshot` fails on
 antialiasing differences between machines, and a visual test that cries wolf
@@ -224,16 +222,19 @@ gets muted within a month.
 
 ## Verification gaps carried out of D5
 
-Three environment-blocked items, unchanged since D5.3, listed together so they
-are not lost between documents:
+Status as of 2026-09-02. The environment blockers are gone (Docker and the
+build both work on the host, and CI runs the browser suites on every push);
+what remains is the manual work.
 
-| Gap | Harness ready? | Command |
+| Gap | Status | Command |
 |---|---|---|
-| axe accessibility suite never executed | ✅ | `npm run test:a11y` |
-| Lighthouse ≥90 / CLS <0.05 / INP <200ms unmeasured | — | `npx lighthouse` on `/dashboard`, `/expenses`, `/expenses/new` |
-| Screenshot baseline not captured | ✅ | `npm run screenshots` |
-| Responsive walkthrough at 5 widths not performed | partial (screenshots cover 2) | manual |
-| Keyboard + screen-reader passes not performed | — | manual |
+| axe accessibility suite | ✅ runs green in CI on every push (34 routes + 2 overlays) | `npm run test:a11y` |
+| Lighthouse on `/login`, `/signup` | ✅ a11y 100 / 100, CLS 0 / 0 (`docs/lh-*.json`) | `npx lighthouse` |
+| Lighthouse ≥90 / CLS <0.05 on `/dashboard`, `/expenses`, `/expenses/new` | see `docs/VERIFICATION-RUNBOOK.md` results table | `npx lighthouse` with a session cookie |
+| INP <200ms | ❌ needs a DevTools interaction trace, not a lab run | manual |
+| Screenshot baseline | ✅ 28 PNGs committed | `npm run screenshots` |
+| Responsive walkthrough at 5 widths | partial (screenshots cover 2) | manual |
+| Keyboard + screen-reader passes | ❌ not performed | manual |
 
 ### A note on the build machine
 

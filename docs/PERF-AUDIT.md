@@ -16,19 +16,39 @@ single worst offender and its most-visited page at the same time.
 
 ---
 
-## 1. Lighthouse — **not run**
+## 1. Lighthouse — **run 2026-09-02**
 
-The DoD asks for Lighthouse ≥90 / CLS <0.05 / INP <200ms on three routes, with
-before/after numbers. **None of those numbers exist**, because Lighthouse
-needs a browser and none has been connectable in any session of this build.
-Worse, the dev server on this machine dies with
-`RangeError: Array buffer allocation failed` before serving a page — the same
-blocker that stopped the axe suite in D5.3, retried here with a 4 GB heap and
-the same result.
+Lighthouse 13.4.1 against `next build && next start` on the Windows host, the
+docker-compose database, signed in as the seeded `finance_admin@acme.test`
+(the heaviest dashboard variant). Default preset = simulated slow-4G, 4× CPU
+slowdown, 412px viewport. Raw reports are in `docs/lh-*.json`.
 
-So this audit reports what it can actually measure — **bundle sizes from
-`next build`, which are real numbers from a real production build** — and is
-explicit that the three Lighthouse targets are **unverified**.
+| Route | Preset | Performance | Accessibility | CLS | LCP | TBT | Script transfer |
+|---|---|---|---|---|---|---|---|
+| `/login` | mobile | **91** | **100** | **0** | — | — | — |
+| `/signup` | mobile | 80 | **100** | **0** | — | — | — |
+| `/dashboard` | mobile | **62** ❌ | **100** | **0** | 6.5 s | 320 ms | 608 KB |
+| `/expenses` | mobile | **72** ❌ | **100** | **0** | 5.8 s | 40 ms | 508 KB |
+| `/expenses/new` | mobile | **72** ❌ | **100** | **0** | 5.4 s | 30 ms | 544 KB |
+| `/dashboard` | desktop | **98** ✅ | **100** | 0.002 | 1.0 s | 0 ms | 608 KB |
+
+**What the numbers say.** Accessibility and CLS meet their targets on every
+route, and the dashboard is well over 90 on the desktop preset. The three
+tenant routes MISS the ≥90 target on the mobile preset, and the reason is one
+thing: on a simulated slow-4G link, 500–600 KB of JavaScript takes 3.4 s to
+first paint before any of it runs. TTFB is 80–140 ms and TBT is negligible on
+two of the three, so the server and the main thread are not the problem;
+transfer size is. Lighthouse's own opportunities:
+
+- `unused-javascript`: 161–213 KB estimated savings per route.
+- `unminified-javascript`: 70 KB on every route — unexpected in a production
+  build; one chunk is shipping unminified and should be identified.
+
+**INP is not in this table** because Lighthouse cannot measure it in a lab
+run (see the note below); it still needs a DevTools interaction trace.
+
+The bundle work below is what made the desktop number possible — the numbers
+in the Headline table are real, from a real production build.
 
 What the fixes below should do to those metrics, as a prediction to check
 against rather than a claim:
@@ -199,8 +219,11 @@ counts, and 50 rows a page never needs it.
 
 ## Follow-ups
 
-1. **Run Lighthouse** on `/dashboard`, `/expenses`, `/expenses/new` and record
-   the numbers here. The three targets are currently unverified.
+1. **Get the mobile-preset Performance score over 90** on `/dashboard`,
+   `/expenses` and `/expenses/new` (62 / 72 / 72 on 2026-09-02). Start with the
+   70 KB `unminified-javascript` finding — find which chunk skips minification
+   — then the 161–213 KB of `unused-javascript` per route. Re-run Lighthouse
+   with the same command and update §1.
 2. **Walk the six screens at five widths.** The static audit found nothing,
    but it cannot see overlap.
 3. **Generate receipt thumbnails at upload time** (e.g. a 320px WebP beside

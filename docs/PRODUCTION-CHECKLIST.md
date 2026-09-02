@@ -28,6 +28,8 @@ and verified, not when it is planned.
 | Critical axe violation: `role="tablist"` with non-tab children and no tabpanel | now a radiogroup; 35 axe scans green |
 | The e2e and axe suites had **never run anywhere** — axe never even executed (rejected page context), and every scan waited on a `networkidle` that `next dev` can never satisfy | both green in CI |
 | **CI had never passed once** in the repository's history | green end to end: install → lint → build → unit → 2× migration replay → RLS role → isolation → e2e → axe |
+| `scripts/check-rls-state.mjs` went RED on every correctly-migrated database: its hand-written table list included `organizations`, the tenant root, which has no `org_id` and no policy — so step 1 of the deploy checklist could never be ticked | the list is now derived from `org_id` columns and also checks for a policy, the same rule as `tests/isolation/rls.test.ts`; green against the remote database, 34 tenant tables |
+| The isolation suite would run against whatever `DATABASE_URL` the developer's `.env` supplied — including a remote server — because `tests/isolation/setup.ts` only defaulted with `??=` | `tests/isolation/database-url.ts`: a non-local URL is redirected to the docker-compose database and reported; `ISOLATION_DATABASE_URL` is the explicit opt-in. `tests/unit/isolation-database-url.test.ts` (8 cases) |
 
 ## Open
 
