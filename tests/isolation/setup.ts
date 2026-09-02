@@ -1,11 +1,20 @@
-// Loads .env for local runs (CI sets env directly) and provides
-// docker-compose defaults so `npm run test:isolation` just works.
+// Loads .env for local runs (CI sets env directly) and pins the suite to a
+// LOCAL database unless the caller opts in explicitly — see database-url.ts
+// for why an ambient .env must never be able to aim this suite at a shared
+// server.
 import { config } from "dotenv";
+
+import { resolveIsolationDatabaseEnv } from "./database-url";
 
 config();
 
-process.env.DATABASE_URL ??=
-  "postgresql://expense_app:expense_app@localhost:5432/expense_dev?schema=public";
-process.env.DIRECT_DATABASE_URL ??=
-  "postgresql://expense:expense@localhost:5432/expense_dev?schema=public";
+const resolved = resolveIsolationDatabaseEnv(process.env);
+process.env.DATABASE_URL = resolved.DATABASE_URL;
+process.env.DIRECT_DATABASE_URL = resolved.DIRECT_DATABASE_URL;
+if (resolved.redirected.length > 0) {
+  console.warn(
+    `[isolation] ${resolved.redirected.join(", ")} pointed at a non-local host; ` +
+      "using the docker-compose database instead. Set ISOLATION_DATABASE_URL to run elsewhere on purpose."
+  );
+}
 process.env.AUTH_SECRET ??= "isolation-test-secret";
