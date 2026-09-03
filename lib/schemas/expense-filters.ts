@@ -11,12 +11,16 @@
 // a filtered view can be refreshed, bookmarked and pasted into chat. Anything
 // unparseable is dropped rather than throwing: a hand-edited or truncated URL
 // should degrade to a wider list, never to an error page.
-import { z } from "zod";
-
+//
+// NO ZOD HERE, deliberately. This module is imported by `useUrlFilters`, which
+// runs in the browser on every list screen and on the dashboard, and it was
+// the only thing putting the whole zod runtime (25 KB gzipped — more than
+// every Radix primitive combined) into those pages' critical path. The
+// contract is four regular expressions and an enum, checked field by field;
+// a schema object added nothing but the dependency. The entity schemas in
+// this folder still use zod, because a FORM needs zod's error messages and
+// `zodResolver`; a query string only needs "keep or drop".
 import { toDateString } from "@/lib/date-range";
-
-const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const uuidList = z.array(z.string().uuid());
 
 export const EXPENSE_STATUSES = [
   "draft",
@@ -26,19 +30,19 @@ export const EXPENSE_STATUSES = [
   "reimbursed",
 ] as const;
 
-export const expenseFilterSchema = z.object({
-  /** Free-text merchant search. */
-  q: z.string().trim().min(1).max(120).optional(),
-  from: dateStr.optional(),
-  to: dateStr.optional(),
-  status: z.array(z.enum(EXPENSE_STATUSES)).default([]),
-  categoryId: uuidList.default([]),
-  projectId: uuidList.default([]),
-  departmentId: uuidList.default([]),
-  userId: uuidList.default([]),
-});
+export type ExpenseStatusFilter = (typeof EXPENSE_STATUSES)[number];
 
-export type ExpenseFilters = z.infer<typeof expenseFilterSchema>;
+export type ExpenseFilters = {
+  /** Free-text merchant search. */
+  q?: string;
+  from?: string;
+  to?: string;
+  status: ExpenseStatusFilter[];
+  categoryId: string[];
+  projectId: string[];
+  departmentId: string[];
+  userId: string[];
+};
 
 export const EMPTY_EXPENSE_FILTERS: ExpenseFilters = {
   status: [],
@@ -47,6 +51,23 @@ export const EMPTY_EXPENSE_FILTERS: ExpenseFilters = {
   departmentId: [],
   userId: [],
 };
+
+/** `YYYY-MM-DD` by shape. Reality (2026-13-45) is the ledger's problem, not the list's: the list treats a nonsense date as an empty range. */
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * RFC 9562 UUID, the same test zod 4's `z.uuid()` applies: version nibble
+ * 1–8, variant 8–b, plus the nil and max UUIDs. Kept identical so a URL that
+ * parsed before this module dropped zod still parses the same way.
+ */
+const UUID_RE =
+  /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/i;
+
+const Q_MAX = 120;
+
+export function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
 
 type RawParams = Record<string, string | string[] | undefined>;
 
@@ -64,6 +85,10 @@ function single(raw: RawParams, key: string): string | undefined {
   return typeof v === "string" && v !== "" ? v : undefined;
 }
 
+function isStatus(value: string): value is ExpenseStatusFilter {
+  return (EXPENSE_STATUSES as readonly string[]).includes(value);
+}
+
 /**
  * Parse search params into filters, dropping anything invalid FIELD BY FIELD.
  *
@@ -74,25 +99,22 @@ function single(raw: RawParams, key: string): string | undefined {
 export function parseExpenseFilters(raw: RawParams): ExpenseFilters {
   const out: ExpenseFilters = { ...EMPTY_EXPENSE_FILTERS };
 
-  const q = expenseFilterSchema.shape.q.safeParse(single(raw, "q"));
-  if (q.success && q.data) out.q = q.data;
+  const q = single(raw, "q")?.trim();
+  if (q && q.length <= Q_MAX) out.q = q;
 
-  const from = dateStr.safeParse(single(raw, "from"));
-  if (from.success) out.from = from.data;
-  const to = dateStr.safeParse(single(raw, "to"));
-  if (to.success) out.to = to.data;
+  const from = single(raw, "from");
+  if (from && DATE_RE.test(from)) out.from = from;
+  const to = single(raw, "to");
+  if (to && DATE_RE.test(to)) out.to = to;
 
   // A reversed range is a typo, not an instruction to return nothing.
   if (out.from && out.to && out.from > out.to) {
     [out.from, out.to] = [out.to, out.from];
   }
 
-  out.status = list(raw, "status").filter(
-    (s): s is (typeof EXPENSE_STATUSES)[number] =>
-      (EXPENSE_STATUSES as readonly string[]).includes(s)
-  );
+  out.status = list(raw, "status").filter(isStatus);
   for (const key of ["categoryId", "projectId", "departmentId", "userId"] as const) {
-    out[key] = list(raw, key).filter((v) => z.string().uuid().safeParse(v).success);
+    out[key] = list(raw, key).filter(isUuid);
   }
 
   return out;
