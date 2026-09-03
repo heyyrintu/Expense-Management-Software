@@ -4,6 +4,13 @@
 // the grid classes are imported from layout-grid.ts rather than retyped — so
 // "matches the final layout" is structural, not a claim someone checked once.
 //
+// Two exports because the page streams in two parts. `DashboardBodySkeleton`
+// is the Suspense fallback under a header that has ALREADY painted — the
+// title and description are real text by then, so a skeleton bar in their
+// place would be a step backwards. `DashboardSkeleton` is the whole thing,
+// for route-level loading.tsx during a client-side navigation, when nothing
+// of the page exists yet.
+//
 // Deliberately NOT animated beyond the skeleton's own opacity pulse: a
 // loading screen that slides or fades in makes the wait feel longer, and the
 // content that replaces it would then animate twice.
@@ -21,6 +28,35 @@ import {
   DASH_STACK,
 } from "./layout-grid";
 
+export function DashboardBodySkeleton() {
+  return (
+    <div className={DASH_STACK}>
+      {/* Filter bar row. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Skeleton className="h-11 w-40" />
+        <Skeleton className="h-11 w-32" />
+        <Skeleton className="h-11 w-32" />
+      </div>
+
+      <div className={DASH_KPI_GRID}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className={`${DASH_KPI_HEIGHT} rounded-lg`} />
+        ))}
+      </div>
+
+      <div className={DASH_CHART_GRID}>
+        <Skeleton className={`${DASH_CHART_MAIN} ${DASH_CHART_HEIGHT} rounded-lg`} />
+        <Skeleton className={`${DASH_CHART_SIDE} ${DASH_CHART_HEIGHT} rounded-lg`} />
+      </div>
+
+      <div className={DASH_PANEL_GRID}>
+        <Skeleton className={`${DASH_PANEL_HALF} ${DASH_PANEL_HEIGHT} rounded-lg`} />
+        <Skeleton className={`${DASH_PANEL_HALF} ${DASH_PANEL_HEIGHT} rounded-lg`} />
+      </div>
+    </div>
+  );
+}
+
 export function DashboardSkeleton() {
   return (
     <>
@@ -29,31 +65,7 @@ export function DashboardSkeleton() {
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-5 w-96 max-w-full" />
       </div>
-
-      <div className={DASH_STACK}>
-        {/* Filter bar row. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Skeleton className="h-11 w-40" />
-          <Skeleton className="h-11 w-32" />
-          <Skeleton className="h-11 w-32" />
-        </div>
-
-        <div className={DASH_KPI_GRID}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className={`${DASH_KPI_HEIGHT} rounded-lg`} />
-          ))}
-        </div>
-
-        <div className={DASH_CHART_GRID}>
-          <Skeleton className={`${DASH_CHART_MAIN} ${DASH_CHART_HEIGHT} rounded-lg`} />
-          <Skeleton className={`${DASH_CHART_SIDE} ${DASH_CHART_HEIGHT} rounded-lg`} />
-        </div>
-
-        <div className={DASH_PANEL_GRID}>
-          <Skeleton className={`${DASH_PANEL_HALF} ${DASH_PANEL_HEIGHT} rounded-lg`} />
-          <Skeleton className={`${DASH_PANEL_HALF} ${DASH_PANEL_HEIGHT} rounded-lg`} />
-        </div>
-      </div>
+      <DashboardBodySkeleton />
     </>
   );
 }
