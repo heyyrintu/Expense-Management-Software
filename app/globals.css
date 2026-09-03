@@ -234,15 +234,19 @@
      `font-display` — the PageHeader component (N2) is the enforcement
      point. Bodoni Moda has no tabular figures: it must never touch a
      column of numbers. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), var(--font-inter-symbols), ui-sans-serif, system-ui, sans-serif;
   /* The tail falls back to INTER, not to a system serif. A display face is
      only ever asked to set a page title or a hero figure, and Bodoni Moda's
      latin subset does not cover ₹ — so with a serif tail the rupee sign in a
      Bodoni amount was resolved from Georgia while its digits came from
      Bodoni, mixing two faces inside one number. Falling through to the
      app's own body face keeps that glyph consistent with every other amount
-     on the screen. The serif names stay last for the no-webfont case. */
-  --font-display: var(--font-bodoni), var(--font-inter), "Bodoni MT", Didot,
+     on the screen. The serif names stay last for the no-webfont case.
+     --font-inter-symbols is the one-glyph companion that actually holds ₹
+     (see app/layout.tsx); it sits right after Inter in both stacks so the
+     sign never triggers a subset download. */
+  --font-display: var(--font-bodoni), var(--font-inter), var(--font-inter-symbols),
+    "Bodoni MT", Didot,
     Georgia, serif;
 
   /* Display — amount hero, ledger balance. Didones self-tighten; the old
