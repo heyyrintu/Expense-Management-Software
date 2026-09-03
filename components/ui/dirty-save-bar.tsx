@@ -17,7 +17,7 @@
 // MOTION: slides up 8px and fades, 200ms ease-out, exiting with ease-in.
 // Transform and opacity only, so it never triggers layout — the reserved
 // space below is permanent, and the bar moves within it.
-import { AnimatePresence, m } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { DURATION, EASE, seconds } from "@/lib/motion";
@@ -42,7 +42,7 @@ export function DirtySaveBar({
   return (
     <AnimatePresence>
       {dirty ? (
-        <m.div
+        <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
@@ -74,7 +74,7 @@ export function DirtySaveBar({
               </Button>
             </span>
           </div>
-        </m.div>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   );

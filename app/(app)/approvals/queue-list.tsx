@@ -13,7 +13,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, m } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 
 import { PolicyFlagChips } from "@/components/ui/policy-flag-chip";
@@ -213,7 +213,7 @@ export function QueueList({
       <ul className="grid gap-2">
         <AnimatePresence initial={false}>
           {visible.map((item) => (
-            <m.li
+            <motion.li
               key={item.id}
               variants={collapseRow}
               initial="visible"
@@ -232,7 +232,7 @@ export function QueueList({
                 onSendBack={() => setDialog({ kind: "send_back", item })}
                 onReject={() => setDialog({ kind: "reject", item })}
               />
-            </m.li>
+            </motion.li>
           ))}
         </AnimatePresence>
       </ul>

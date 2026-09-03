@@ -16,17 +16,6 @@ All durations and curves come from `lib/motion.ts` (`DURATION`, `EASE`,
 `SPRING`) or its CSS mirror (`--dur-*`, `--ease-*`). A component writing its
 own numbers has opted out of the design system.
 
-**Runtime (2026-09-03).** Components render `m.*` from framer-motion, never
-`motion.*`, and `MotionProvider` wraps the tree in `LazyMotion strict` with
-the feature bundle (`domMax`, because Tabs and SegmentedControl use
-`layoutId`) loaded from `lib/motion-features.ts` as its own chunk after
-hydration. `motion.div` carried the whole animation runtime — 39 KB gzipped
-— into every route; `m.div` carries none. Nothing in the inventory below
-changed: an element renders at its `initial` values and animates once the
-features land, which on a warm cache is before anyone looks. An ESLint
-`no-restricted-imports` rule refuses the `motion` import, and `strict`
-throws in development if one slips through by another path.
-
 ---
 
 ## Inventory

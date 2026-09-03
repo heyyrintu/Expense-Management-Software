@@ -8,7 +8,7 @@
 // rows with is a trap.
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { m } from "framer-motion";
+import { motion } from "framer-motion";
 import { SlidersHorizontal } from "lucide-react";
 import type { Table } from "@tanstack/react-table";
 
@@ -43,7 +43,7 @@ export function ColumnVisibilityMenu<TData>({ table }: { table: Table<TData> }) 
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="end" sideOffset={6} asChild>
-          <m.div
+          <motion.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -70,7 +70,7 @@ export function ColumnVisibilityMenu<TData>({ table }: { table: Table<TData> }) 
                 );
               })}
             </ul>
-          </m.div>
+          </motion.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

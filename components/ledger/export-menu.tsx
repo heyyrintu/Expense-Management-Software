@@ -13,7 +13,7 @@
 // of those, and it means the exports still work if this component never
 // hydrates.
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { m } from "framer-motion";
+import { motion } from "framer-motion";
 import { Download, FileSpreadsheet, FileText, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export function ExportMenu({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="end" sideOffset={6} asChild>
-          <m.div
+          <motion.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -90,7 +90,7 @@ export function ExportMenu({
                 </span>
               </button>
             </div>
-          </m.div>
+          </motion.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

@@ -4,7 +4,7 @@
 // trigger via origin-popover (§4.4).
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { m } from "framer-motion";
+import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ export function FacetSelect({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="start" sideOffset={6} asChild>
-          <m.div
+          <motion.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -85,7 +85,7 @@ export function FacetSelect({
                 </li>
               ))}
             </ul>
-          </m.div>
+          </motion.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

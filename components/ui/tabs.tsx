@@ -8,7 +8,7 @@
 // plain swap.
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { m } from "framer-motion";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { DURATION, EASE, seconds } from "@/lib/motion";
@@ -70,7 +70,7 @@ function TabsTrigger({
       {/* Rendered only for the active tab; the shared layoutId is what makes
           it slide rather than jump. */}
       <span className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 group-data-[state=inactive]:hidden">
-        <m.span
+        <motion.span
           layoutId={`${groupId}-tab-indicator`}
           className="bg-accent block size-full rounded-full"
           transition={{ duration: seconds(DURATION.base), ease: [...EASE.out] }}

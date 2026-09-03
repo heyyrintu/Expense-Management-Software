@@ -10,7 +10,7 @@
 // that reflows the table on every selection change would move the row you
 // were about to click.
 import * as React from "react";
-import { AnimatePresence, m } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 import { DURATION, EASE, seconds } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function BulkActionBar({
   return (
     <AnimatePresence>
       {count > 0 ? (
-        <m.div
+        <motion.div
           // Transform and opacity only. y is a transform, so this costs
           // nothing to animate and reduced motion drops it to a fade.
           initial={{ opacity: 0, y: 16 }}
@@ -70,7 +70,7 @@ export function BulkActionBar({
             </Button>
             {children ? <span className="flex items-center gap-2">{children}</span> : null}
           </div>
-        </m.div>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   );

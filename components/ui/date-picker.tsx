@@ -9,7 +9,7 @@
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { DayPicker } from "react-day-picker";
-import { m } from "framer-motion";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { formatDate, toDateInputValue } from "@/lib/format";
@@ -90,7 +90,7 @@ function DatePicker({
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="start" sideOffset={6} asChild>
           {/* Scales from the trigger — animation anchored to its origin. */}
-          <m.div
+          <motion.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -127,7 +127,7 @@ function DatePicker({
                 root: "relative",
               }}
             />
-          </m.div>
+          </motion.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
