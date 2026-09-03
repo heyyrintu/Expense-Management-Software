@@ -4,7 +4,7 @@
 // content fades and scales from its origin using the shared variant.
 import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { fadeScale } from "@/lib/motion";
@@ -22,7 +22,7 @@ function TooltipContent({
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content sideOffset={sideOffset} asChild {...props}>
-        <motion.div
+        <m.div
           variants={fadeScale}
           initial="hidden"
           animate="visible"
@@ -32,7 +32,7 @@ function TooltipContent({
           )}
         >
           {children}
-        </motion.div>
+        </m.div>
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

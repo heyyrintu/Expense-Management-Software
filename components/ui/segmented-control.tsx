@@ -13,7 +13,7 @@
 // bottom rule, because a segmented control is a choice among peers and a
 // tab strip is a set of destinations.
 import * as React from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { DURATION, EASE, seconds } from "@/lib/motion";
@@ -70,7 +70,7 @@ export function SegmentedControl<T extends string>({
             )}
           >
             {active ? (
-              <motion.span
+              <m.span
                 layoutId={`${groupId}-segment`}
                 className="bg-bg-surface border-line absolute inset-0 rounded-sm border shadow-xs"
                 transition={{ duration: seconds(DURATION.base), ease: [...EASE.out] }}

@@ -15,7 +15,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { FilePlus2, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -113,7 +113,7 @@ export function AddToReport({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="end" side="top" sideOffset={8} asChild>
-          <motion.div
+          <m.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -215,7 +215,7 @@ export function AddToReport({
                 {error}
               </p>
             ) : null}
-          </motion.div>
+          </m.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

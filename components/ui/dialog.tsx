@@ -6,7 +6,7 @@
 // On mobile a bottom Sheet is the better surface — see components/ui/sheet.
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { DURATION, EASE, seconds } from "@/lib/motion";
@@ -50,7 +50,7 @@ function DialogContent({
         asChild
         {...props}
       >
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{
             opacity: 1,
@@ -85,7 +85,7 @@ function DialogContent({
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           ) : null}
-        </motion.div>
+        </m.div>
       </DialogPrimitive.Content>
     </DialogPortal>
   );

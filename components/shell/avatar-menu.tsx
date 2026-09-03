@@ -9,7 +9,7 @@
 import * as React from "react";
 import Link from "next/link";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Building2, LogOut, User } from "lucide-react";
 
 import { fadeScale } from "@/lib/motion";
@@ -47,7 +47,7 @@ export function AvatarMenu({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="end" sideOffset={6} asChild>
-          <motion.div
+          <m.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -92,7 +92,7 @@ export function AvatarMenu({
                 Sign out
               </button>
             </form>
-          </motion.div>
+          </m.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

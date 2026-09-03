@@ -7,7 +7,7 @@
 // deliberately spammable: every variant must survive being interrupted
 // mid-flight, and clicking fast is how you check.
 import * as React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -61,7 +61,7 @@ function FadeScaleDemo() {
     >
       <AnimatePresence mode="wait">
         {open ? (
-          <motion.div
+          <m.div
             key="panel"
             variants={fadeScale}
             initial="hidden"
@@ -71,7 +71,7 @@ function FadeScaleDemo() {
             className="border-line bg-bg-surface shadow-raised text-body text-text-secondary rounded-md border px-4 py-3"
           >
             Menu panel
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
     </Demo>
@@ -93,7 +93,7 @@ function CollapseRowDemo() {
       <ul className="w-full max-w-72">
         <AnimatePresence initial={false}>
           {rows.map((row) => (
-            <motion.li
+            <m.li
               key={row}
               variants={collapseRow}
               initial="visible"
@@ -109,7 +109,7 @@ function CollapseRowDemo() {
                 <span>{row}</span>
                 <span className="text-meta text-text-tertiary">Remove</span>
               </button>
-            </motion.li>
+            </m.li>
           ))}
         </AnimatePresence>
       </ul>

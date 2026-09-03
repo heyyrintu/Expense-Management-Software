@@ -9,7 +9,7 @@
 // It reports a SAVE THAT ACTUALLY HAPPENED. It is driven by the save
 // completing, never by a timer that fires hopefully.
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Check } from "lucide-react";
 
 import { DURATION, EASE, seconds } from "@/lib/motion";
@@ -41,7 +41,7 @@ export function SavedIndicator({
   return (
     <AnimatePresence>
       {visible ? (
-        <motion.span
+        <m.span
           initial={{ opacity: 0 }}
           animate={{
             opacity: 1,
@@ -63,7 +63,7 @@ export function SavedIndicator({
         >
           <Check aria-hidden="true" className="size-3" />
           {label}
-        </motion.span>
+        </m.span>
       ) : null}
     </AnimatePresence>
   );

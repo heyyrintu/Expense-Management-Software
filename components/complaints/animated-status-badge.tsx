@@ -20,7 +20,7 @@
 // (a fade IS the reduced-motion fallback). AnimatePresence with mode="wait"
 // would double the duration to 300ms; "popLayout" crossfades in place, and
 // the wrapper reserves the box so nothing beside it shifts.
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 
 import { ComplaintStatusBadge } from "@/components/sla-badge";
 import type { ComplaintStatus } from "@/lib/domain/complaint";
@@ -30,7 +30,7 @@ export function AnimatedStatusBadge({ status }: { status: ComplaintStatus }) {
   return (
     <span className="relative inline-grid">
       <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
+        <m.span
           key={status}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -43,7 +43,7 @@ export function AnimatedStatusBadge({ status }: { status: ComplaintStatus }) {
           className="col-start-1 row-start-1"
         >
           <ComplaintStatusBadge status={status} />
-        </motion.span>
+        </m.span>
       </AnimatePresence>
     </span>
   );

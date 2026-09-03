@@ -9,7 +9,7 @@
 // preset, so the shorthand survives in the UI without living in the URL.
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ export function DateRangeSelect({
 
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content align="start" sideOffset={6} asChild>
-          <motion.div
+          <m.div
             variants={fadeScale}
             initial="hidden"
             animate="visible"
@@ -115,7 +115,7 @@ export function DateRangeSelect({
                 </Button>
               ) : null}
             </div>
-          </motion.div>
+          </m.div>
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>

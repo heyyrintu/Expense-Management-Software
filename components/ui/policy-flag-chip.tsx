@@ -16,7 +16,7 @@
 // from the status tokens, and the rule text moves out of a `title` attribute
 // (invisible to keyboard users) into a real Tooltip.
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -72,7 +72,7 @@ export function PolicyFlagChips({
   return (
     <AnimatePresence initial={false}>
       {flags.length > 0 ? (
-        <motion.span
+        <m.span
           key="flags"
           initial={{ opacity: 0 }}
           animate={{
@@ -91,7 +91,7 @@ export function PolicyFlagChips({
           {flags.map((flag, i) => (
             <PolicyFlagChip key={`${flag.rule}-${i}`} flag={flag} />
           ))}
-        </motion.span>
+        </m.span>
       ) : null}
     </AnimatePresence>
   );
