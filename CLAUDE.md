@@ -141,6 +141,7 @@ In practice:
 - `MotionProvider` (in the root layout) sets the default transition and `reducedMotion="user"`. `app/globals.css` handles the CSS side. Both are required.
 - `collapseRow` is the **only** sanctioned exception to transform/opacity-only: removing a row from a list has to animate height so the rows below close the gap. Nothing else may.
 - If an animation doesn't communicate state, direction, or origin — delete it, don't tune it.
+- **Components use `motion.*`, never framer's `LazyMotion` + `m.*`.** The lazy split was tried for the mobile bundle (2026-09-03, `docs/PERF-AUDIT.md` §1) and reverted for two reasons that will not change: `m` elements render at their `initial` style until the feature chunk lands, and almost every animated element here is an overlay whose initial state is hidden — a menu opened on a slow connection was invisible; and the feature load is a root-level context change, which makes React discard and client-render any streamed Suspense boundary still pending, so the login form briefly existed twice and the e2e sign-in failed. 16 KB gzipped is not worth either.
 
 ## Skills
 

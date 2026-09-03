@@ -102,11 +102,14 @@ as `docs/lh-*.json`.
 
 | Route | Before (2026-09-02) | After (median, n) | FCP | LCP | TBT | CLS |
 |---|---|---|---|---|---|---|
-| `/dashboard` | 62 | **92** (99, 92, 92, 89, 92; n=5) | 2.0 s | 3.2 s | 34 ms | 0 |
-| `/expenses` | 72 | **88** (90, 88, 88; n=3) | 2.0 s | 3.6 s | 30 ms | 0 |
-| `/expenses/new` | 72 | **87** (87, 91, 87; n=3) | 2.0 s | 3.8 s | 43 ms | 0 |
+| `/dashboard` | 62 | **88** (87, 88, 88, 88, 90; n=5) | 2.0 s | 3.7 s | 41 ms | 0 |
+| `/expenses` | 72 | **87** (87, 87, 87; n=3) | 2.0 s | 3.8 s | 28 ms | 0 |
+| `/expenses/new` | 72 | **86** (86, 86, 88; n=3) | 2.0 s | 4.0 s | 56 ms | 0 |
 
 Desktop preset on `/dashboard` was 98 before and is not the constraint.
+First-load JS: `/dashboard` 237 → 213 kB, `/expenses` 272 → 248,
+`/expenses/new` 243 → 242 (the capture form keeps its zod and
+react-hook-form). Script a phone downloads on the dashboard: 392 → 296 KB.
 
 **A correction first.** The 2026-09-02 note blamed "70 KB of unminified
 JavaScript" in the app. It was not the app: the unminified script was
@@ -120,29 +123,41 @@ What actually moved the numbers, in the order it was found (bundle sizes
 are gzipped, from `ANALYZE=true npm run build` → `.next/analyze/client.json`,
 now wired into `next.config.ts`):
 
-1. **framer-motion shipped its full runtime on every route — 39 KB.**
-   Components imported `motion.div`, which carries every animation feature
-   inline. They now import `m.div`, and `MotionProvider` wraps the tree in
-   `LazyMotion` with the features (`domMax`, because Tabs and
-   SegmentedControl use `layoutId`) loaded from `lib/motion-features.ts` as
-   their own 27 KB chunk after hydration. Initial cost is now 5 KB of
-   framer-motion plus 17 KB of `motion-dom` core, which is what `m` needs to
-   exist. An ESLint `no-restricted-imports` rule refuses `motion` so it
-   cannot creep back.
+1. **framer-motion's full runtime (39 KB) on every route — TRIED, REVERTED.**
+   Components import `motion.div`, which carries every animation feature
+   inline; the textbook fix is `m.div` plus `LazyMotion` loading `domMax`
+   (needed for the `layoutId` indicators) as a 27 KB chunk after hydration,
+   leaving ~22 KB of `m` core in the initial bundle. It was built, measured
+   (dashboard median 92) and reverted, for two reasons that do not depend on
+   tuning. First, `m` elements render at their `initial` style until the
+   feature chunk lands, and almost every animated element in this app is an
+   overlay whose initial state is hidden (`fadeScale` menus, the dialog, the
+   bulk bar, policy chips) — on a slow connection a menu opened in that
+   window is invisible, which is the "stuck state" the motion rules forbid.
+   Second, applying the loaded features is a root-level context change, and
+   React's rule for a context change reaching a streamed Suspense boundary
+   that is still pending is to discard its server HTML and client-render it:
+   the login form existed twice for ~200 ms in about half of all loads
+   (0 of 12 on master, 5 of 12 with LazyMotion, measured with a 25 ms DOM
+   sampler), and the e2e sign-in, which locates the Organization field in
+   strict mode, failed on the pair. Wrapping the update in `startTransition`
+   did not change it, because the boundary has nothing to hydrate yet. The
+   rule now lives in CLAUDE.md's motion section. Net: 16 KB gzipped left on
+   the table, on purpose.
 2. **zod was on the dashboard — 25 KB — for a URL parser.**
    `lib/schemas/expense-filters.ts` is imported by `useUrlFilters` on every
    list screen and the dashboard, and it built a zod schema to check four
    regular expressions and an enum. It is now zod-free; the entity schemas
    still use zod, because a form needs its messages and `zodResolver`.
-   `/dashboard` first-load JS: 237 → 189 kB. `/expenses` 272 → 224.
-   `/expenses/new` 243 → 218.
+   This is the whole of the first-load reduction on `/dashboard` and
+   `/expenses`.
 3. **Recharts (103 KB) downloaded at hydration on a phone that could not
    see a chart.** `next/dynamic` fetches the moment the boundary renders.
    `components/charts/lazy.tsx` now watches its own box with an
    IntersectionObserver and requests the chunk within 200px of the viewport.
    Desktop, where the charts are in view on load, is unchanged; a phone
-   that never scrolls never downloads it. Script transfer on the mobile
-   dashboard load: 392 → 272 KB.
+   that never scrolls never downloads it. This is most of the drop in script
+   a phone downloads on the dashboard (392 → 296 KB).
 4. **The rupee sign fetched 109 KB of fonts.** `next/font/google` preloads
    the `latin` subset and declares every other subset with a
    `unicode-range`; ₹ (U+20B9) is in `latin-ext`, so the first amount on
@@ -164,13 +179,14 @@ now wired into `next.config.ts`):
    unthrottled, the dashboard paragraph now paints at FCP (144 ms) instead
    of ~130 ms after it.
 
-**What is left, and why the two expense routes sit under 90.** The mobile
+**What is left, and why all three routes sit just under 90.** The mobile
 profile is 1.6 Mbps with a 150 ms RTT and a 4× CPU slowdown. On it the
 fixed cost is now: 15 KB of HTML, 13 KB of render-blocking CSS, 94 KB of
-preloaded fonts, and 139 KB of React plus the Next runtime that every route
-pays. `/expenses/new` adds react-hook-form (13 KB) and the entity zod
-schemas (25 KB), which the form genuinely uses. The remaining levers, none
-of them free:
+preloaded fonts, 139 KB of React plus the Next runtime that every route
+pays, and 39 KB of framer-motion kept deliberately (item 1).
+`/expenses/new` adds react-hook-form (13 KB) and the entity zod schemas
+(25 KB), which the form genuinely uses. The remaining levers, none of them
+free:
 
 - **Fonts.** `display: optional` would stop the swap from ever costing a
   repaint on a slow connection, at the price of the system font for that

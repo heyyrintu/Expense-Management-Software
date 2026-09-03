@@ -207,9 +207,9 @@ Fill this in as each is run. An empty cell means not run — never assume.
 | Lighthouse `/dashboard` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** (mobile preset), **100 / 0.002** (desktop) | 2026-09-02 |
 | Lighthouse `/expenses` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** | 2026-09-02 |
 | Lighthouse `/expenses/new` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** | 2026-09-02 |
-| Lighthouse `/dashboard` — Performance | ≥90 | **98** desktop preset; **92** mobile preset (median of 5; was 62 — see PERF-AUDIT §1 update of 2026-09-03: framer-motion, zod, Recharts, latin-ext fonts, header streaming) | 2026-09-03 |
-| Lighthouse `/expenses` — Performance | ≥90 | **88** mobile preset (median of 3; was 72) — under by the fonts and the fixed React/Next cost, levers listed in PERF-AUDIT §1 | 2026-09-03 |
-| Lighthouse `/expenses/new` — Performance | ≥90 | **87** mobile preset (median of 3; was 72) — the form's react-hook-form and zod are load-bearing; remaining levers in PERF-AUDIT §1 | 2026-09-03 |
+| Lighthouse `/dashboard` — Performance | ≥90 | **98** desktop preset; **88** mobile preset ❌ (median of 5; was 62 — see PERF-AUDIT §1 update of 2026-09-03: zod, Recharts, latin-ext fonts, header streaming; the LazyMotion split that reached 92 was reverted for breaking streamed boundaries) | 2026-09-03 |
+| Lighthouse `/expenses` — Performance | ≥90 | **87** mobile preset ❌ (median of 3; was 72) — under by the fonts, framer-motion and the fixed React/Next cost, levers listed in PERF-AUDIT §1 | 2026-09-03 |
+| Lighthouse `/expenses/new` — Performance | ≥90 | **86** mobile preset ❌ (median of 3; was 72) — the form's react-hook-form and zod are load-bearing; remaining levers in PERF-AUDIT §1 | 2026-09-03 |
 | RLS state on the remote database (`scripts/check-rls-state.mjs`) | green | **green** — 34 tenant tables enabled, forced, policied, connected as `expense_app` | 2026-09-02 |
 | INP (DevTools, interaction trace) | <200ms | — | |
 | Keyboard walkthrough — 3 flows | pass | — | |
