@@ -7,8 +7,17 @@
 // rejected" assertion resolves instead of rejecting and the suite fails in a
 // way that looks like a code regression.
 //
+// The table list is DERIVED: every table in `public` with an `org_id` column
+// is a tenant table and must have RLS enabled, forced, and carry a policy —
+// the same rule tests/isolation/rls.test.ts asserts. It used to be a
+// hand-written list of five names that included `organizations`, which is the
+// tenant ROOT (it has no org_id and no policy), so the script went red on
+// every correctly-migrated database and the deploy checklist could never be
+// ticked.
+//
 // Run this before debugging an isolation failure that says "promise resolved
-// instead of rejecting". Diagnostic only; it writes nothing.
+// instead of rejecting", and as step 1 of docs/DEPLOY.md. Diagnostic only; it
+// writes nothing.
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
@@ -19,18 +28,29 @@ const [who] = await db.$queryRawUnsafe(
 );
 
 const tables = await db.$queryRawUnsafe(
-  `select relname as "table", relrowsecurity as "rls", relforcerowsecurity as "forced"
-     from pg_class
-    where relkind = 'r'
-      and relnamespace = 'public'::regnamespace
-      and relname in ('expenses','organizations','expense_reports','complaints','reimbursements')
-    order by relname`
+  `select c.relname as "table",
+          c.relrowsecurity as "rls",
+          c.relforcerowsecurity as "forced",
+          exists (select 1 from pg_policy p where p.polrelid = c.oid) as "policy"
+     from pg_class c
+     join pg_attribute a
+       on a.attrelid = c.oid and a.attname = 'org_id' and not a.attisdropped
+    where c.relkind = 'r'
+      and c.relnamespace = 'public'::regnamespace
+    order by c.relname`
 );
 
 console.log(`connected as: ${who.user}  superuser: ${who.superuser}`);
 console.table(tables);
 
-const off = tables.filter((t) => !t.rls || !t.forced);
+if (tables.length === 0) {
+  console.log(
+    "\n✖ No table with an org_id column found — the migrations have not been applied to this database."
+  );
+  process.exit(1);
+}
+
+const off = tables.filter((t) => !t.rls || !t.forced || !t.policy);
 if (who.superuser) {
   console.log(
     "\n✖ RLS is BYPASSED: superusers ignore row security entirely.\n" +
@@ -43,9 +63,9 @@ if (who.superuser) {
 if (off.length > 0) {
   console.log(
     `\n✖ Not enforced on: ${off.map((t) => t.table).join(", ")} — ` +
-      "re-apply the migrations that ENABLE and FORCE row level security."
+      "re-apply the migrations that ENABLE and FORCE row level security and create the tenant_isolation policy."
   );
   process.exit(1);
 }
-console.log("\n✔ RLS enabled and forced on every table checked.");
+console.log(`\n✔ RLS enabled, forced and policied on all ${tables.length} tenant tables.`);
 await db.$disconnect();

@@ -193,10 +193,10 @@ Fill this in as each is run. An empty cell means not run — never assume.
 | `tsc --noEmit` | green | **passes** | 2026-08-28 |
 | design checkers (5) | green | **pass** — tokens, copy voice, motion, contrast (64 pairs), migrations, lockfiles | 2026-08-28 |
 | `eslint .` | green | **fails — environment only.** 358 errors, all inside `.claude/worktrees/<agent-worktree>/`, a duplicate checkout of this repo. Scoped `npx eslint app components lib scripts tests` is clean. Fix: add `.claude/**` to the `ignores` array in `eslint.config.mjs` (one line), or remove the worktree when its task lands. | 2026-08-28 |
-| `npm run test:isolation` | green | **BLOCKED** — see "two blockers" below | |
-| `npm run test:e2e` | green | **BLOCKED** — needs DB | |
-| `npm run test:a11y` | 0 violations | **BLOCKED** — needs DB | |
-| `npm run screenshots` | baseline committed | **BLOCKED** — needs DB | |
+| `npm run test:isolation` | green | **green in CI** on every push since 2026-08-31 (38 files / 233 tests); Blocker 2 below is closed by `tests/isolation/database-url.ts` | 2026-09-02 |
+| `npm run test:e2e` | green | **green in CI** (signup → submit → approve → reimburse) | 2026-09-02 |
+| `npm run test:a11y` | 0 violations | **green in CI**, 34 routes + 2 overlays; one critical finding on the first run (tablist → radiogroup), fixed | 2026-09-02 |
+| `npm run screenshots` | baseline committed | **28 PNGs committed** in `docs/screenshots/` (14 screens × 2 widths) | 2026-09-01 |
 | Lighthouse `/login` — Accessibility | ≥95 | **100** | 2026-08-28 |
 | Lighthouse `/login` — Performance | ≥90 | **91** | 2026-08-28 |
 | Lighthouse `/login` — CLS | <0.05 | **0** | 2026-08-28 |
@@ -204,7 +204,13 @@ Fill this in as each is run. An empty cell means not run — never assume.
 | Lighthouse `/signup` — Performance | ≥90 | 80 (mobile throttling on a loaded dev host; `/login` on the same run scored 91, so treat this as host noise rather than a page defect) | 2026-08-28 |
 | Lighthouse `/signup` — CLS | <0.05 | **0** | 2026-08-28 |
 | Screenshot baseline — public routes | committed | **`docs/screenshots/{login,signup}-{desktop,mobile}.png`** (1280×900 and 390×844, 2× DPR) | 2026-08-28 |
-| Lighthouse `/dashboard`, `/expenses`, `/expenses/new` | ≥90 / ≥95 | **BLOCKED** — auth-gated, needs DB | |
+| Lighthouse `/dashboard` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** (mobile preset), **100 / 0.002** (desktop) | 2026-09-02 |
+| Lighthouse `/expenses` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** | 2026-09-02 |
+| Lighthouse `/expenses/new` — Accessibility / CLS | ≥95 / <0.05 | **100 / 0** | 2026-09-02 |
+| Lighthouse `/dashboard` — Performance | ≥90 | **98** desktop preset; **62** mobile preset ❌ (LCP 6.5 s on simulated slow-4G, 608 KB script) | 2026-09-02 |
+| Lighthouse `/expenses` — Performance | ≥90 | **72** mobile preset ❌ (LCP 5.8 s, 508 KB script) | 2026-09-02 |
+| Lighthouse `/expenses/new` — Performance | ≥90 | **72** mobile preset ❌ (LCP 5.4 s, 544 KB script) | 2026-09-02 |
+| RLS state on the remote database (`scripts/check-rls-state.mjs`) | green | **green** — 34 tenant tables enabled, forced, policied, connected as `expense_app` | 2026-09-02 |
 | INP (DevTools, interaction trace) | <200ms | — | |
 | Keyboard walkthrough — 3 flows | pass | — | |
 | Screen-reader pass — 3 flows | pass | — | |

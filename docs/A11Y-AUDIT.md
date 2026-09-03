@@ -201,10 +201,14 @@ called done.
    when an exclusion has no stated reason. It needs no browser, so it holds
    while everything else here is blocked.
 
-Still outstanding: **the scan itself, and the diagnosis of why the dev server
-dies.** `docs/VERIFICATION-RUNBOOK.md` has both — including a concrete,
-evidence-backed cause (two package managers layered in one `node_modules`) that
-should be repaired before anything else is attempted.
+**Update (2026-09-02) — the scan has now run, and is green.** After the
+dependency-tree repair in `docs/VERIFICATION-RUNBOOK.md` §0, CI executed the
+suite for the first time on 2026-08-31 and it has passed on every push since
+(run 33608277717 on master, 2026-09-02). The first real run surfaced exactly one
+finding, a critical `role="tablist"` with non-tab children on the scope switch,
+now a radiogroup — recorded in `docs/PRODUCTION-CHECKLIST.md`. Lighthouse's
+accessibility category scores **100** on both public routes (`docs/lh-login.json`,
+`docs/lh-signup.json`). Gaps 2 and 3 below are still open.
 
 The dynamic routes remain unscanned — `/expenses/[id]`, `/reports/[id]`,
 `/approvals/[id]`, `/complaints/[id]`, `/settings/users/[id]`,
