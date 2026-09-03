@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 // Security headers. This file was empty, so the app shipped with none of
 // these — no clickjacking defence, no MIME-sniff defence, no HSTS.
@@ -74,4 +75,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// ANALYZE=true npm run build writes .next/analyze/client.json — the per-module
+// breakdown docs/PERF-AUDIT.md §3 is read from. Off by default; costs nothing.
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  analyzerMode: "json",
+  openAnalyzer: false,
+});
+
+export default withBundleAnalyzer(nextConfig);

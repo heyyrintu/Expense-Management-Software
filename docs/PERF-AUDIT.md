@@ -91,6 +91,114 @@ Two notes for whoever runs it, so the numbers mean something:
 
 The results table in the runbook is where these land.
 
+### Update (2026-09-03) — the mobile-preset work
+
+Same command, same machine, same seeded finance-admin session, production
+build via `next start`, `--blocked-url-patterns="*kaspersky*"` (see the
+correction below). Mobile preset. Runs are noisy on this host — the same
+build scored 85 and 99 on consecutive passes — so every figure is the
+MEDIAN of the runs listed, and the raw JSON of each median run is committed
+as `docs/lh-*.json`.
+
+| Route | Before (2026-09-02) | After (median, n) | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|
+| `/dashboard` | 62 | **88** (87, 88, 88, 88, 90; n=5) | 2.0 s | 3.7 s | 41 ms | 0 |
+| `/expenses` | 72 | **87** (87, 87, 87; n=3) | 2.0 s | 3.8 s | 28 ms | 0 |
+| `/expenses/new` | 72 | **86** (86, 86, 88; n=3) | 2.0 s | 4.0 s | 56 ms | 0 |
+
+Desktop preset on `/dashboard` was 98 before and is not the constraint.
+First-load JS: `/dashboard` 237 → 213 kB, `/expenses` 272 → 248,
+`/expenses/new` 243 → 242 (the capture form keeps its zod and
+react-hook-form). Script a phone downloads on the dashboard: 392 → 296 KB.
+
+**A correction first.** The 2026-09-02 note blamed "70 KB of unminified
+JavaScript" in the app. It was not the app: the unminified script was
+`gc.kis.v2.scr.kaspersky-labs.com/…/main.js`, 198 KB injected by the
+antivirus on the measuring machine into every page, and Lighthouse counted
+it against the route. The figures above block it. Anyone measuring on a
+machine with an AV browser hook should do the same, or the audit will chase
+a bundle that does not exist.
+
+What actually moved the numbers, in the order it was found (bundle sizes
+are gzipped, from `ANALYZE=true npm run build` → `.next/analyze/client.json`,
+now wired into `next.config.ts`):
+
+1. **framer-motion's full runtime (39 KB) on every route — TRIED, REVERTED.**
+   Components import `motion.div`, which carries every animation feature
+   inline; the textbook fix is `m.div` plus `LazyMotion` loading `domMax`
+   (needed for the `layoutId` indicators) as a 27 KB chunk after hydration,
+   leaving ~22 KB of `m` core in the initial bundle. It was built, measured
+   (dashboard median 92) and reverted, for two reasons that do not depend on
+   tuning. First, `m` elements render at their `initial` style until the
+   feature chunk lands, and almost every animated element in this app is an
+   overlay whose initial state is hidden (`fadeScale` menus, the dialog, the
+   bulk bar, policy chips) — on a slow connection a menu opened in that
+   window is invisible, which is the "stuck state" the motion rules forbid.
+   Second, applying the loaded features is a root-level context change, and
+   React's rule for a context change reaching a streamed Suspense boundary
+   that is still pending is to discard its server HTML and client-render it:
+   the login form existed twice for ~200 ms in about half of all loads
+   (0 of 12 on master, 5 of 12 with LazyMotion, measured with a 25 ms DOM
+   sampler), and the e2e sign-in, which locates the Organization field in
+   strict mode, failed on the pair. Wrapping the update in `startTransition`
+   did not change it, because the boundary has nothing to hydrate yet. The
+   rule now lives in CLAUDE.md's motion section. Net: 16 KB gzipped left on
+   the table, on purpose.
+2. **zod was on the dashboard — 25 KB — for a URL parser.**
+   `lib/schemas/expense-filters.ts` is imported by `useUrlFilters` on every
+   list screen and the dashboard, and it built a zod schema to check four
+   regular expressions and an enum. It is now zod-free; the entity schemas
+   still use zod, because a form needs its messages and `zodResolver`.
+   This is the whole of the first-load reduction on `/dashboard` and
+   `/expenses`.
+3. **Recharts (103 KB) downloaded at hydration on a phone that could not
+   see a chart.** `next/dynamic` fetches the moment the boundary renders.
+   `components/charts/lazy.tsx` now watches its own box with an
+   IntersectionObserver and requests the chunk within 200px of the viewport.
+   Desktop, where the charts are in view on load, is unchanged; a phone
+   that never scrolls never downloads it. This is most of the drop in script
+   a phone downloads on the dashboard (392 → 296 KB).
+4. **The rupee sign fetched 109 KB of fonts.** `next/font/google` preloads
+   the `latin` subset and declares every other subset with a
+   `unicode-range`; ₹ (U+20B9) is in `latin-ext`, so the first amount on
+   every screen pulled another 84 KB of Inter and 25 KB of Bodoni,
+   discovered only after layout. Both faces are now self-hosted from
+   `app/fonts` (the same latin bytes Google served, still preloaded), and
+   Inter carries a 1.2 KB companion holding only ₹, cut by
+   `scripts/subset-symbol-fonts.mjs`. Fonts on the dashboard: 48 + 46 + 84
+   + 25 KB → 48 + 46 KB. `tests/unit/font-symbols.test.ts` fails if a
+   source file starts rendering a latin-ext glyph the companion lacks.
+5. **The page header streamed with the last byte.** The dashboard's
+   `PageHeader` sat behind the route's `loading.tsx` with the aggregate
+   queries, so the largest text on screen — the description paragraph
+   Lighthouse picks as LCP — arrived after everything, and Lighthouse
+   charged every script the page loads against it. `page.tsx` now resolves
+   the session, acting user and scope, sends the header, and streams the
+   body from `dashboard-body.tsx` behind its own Suspense boundary over
+   `DashboardBodySkeleton`. Same split on `/expenses/new`. Measured
+   unthrottled, the dashboard paragraph now paints at FCP (144 ms) instead
+   of ~130 ms after it.
+
+**What is left, and why all three routes sit just under 90.** The mobile
+profile is 1.6 Mbps with a 150 ms RTT and a 4× CPU slowdown. On it the
+fixed cost is now: 15 KB of HTML, 13 KB of render-blocking CSS, 94 KB of
+preloaded fonts, 139 KB of React plus the Next runtime that every route
+pays, and 39 KB of framer-motion kept deliberately (item 1).
+`/expenses/new` adds react-hook-form (13 KB) and the entity zod schemas
+(25 KB), which the form genuinely uses. The remaining levers, none of them
+free:
+
+- **Fonts.** `display: optional` would stop the swap from ever costing a
+  repaint on a slow connection, at the price of the system font for that
+  page load; dropping Bodoni's `opsz` axis would shrink it. Both are design
+  decisions, not performance ones, and are left to DESIGN-PRD.
+- **`/expenses` deserves the same header split** as the dashboard. Its
+  header carries the scope switcher, so it needs a moment's thought about
+  what the header can know before the query runs.
+- **`vaul` (8 KB) and the Radix dialog stack (10 KB)** are mounted on every
+  route by the mobile tab bar's "More" sheet and the command palette. Both
+  open on interaction only and could load then.
+
 ---
 
 ## 2. Offenders
