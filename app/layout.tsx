@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { CspRuntime } from "@/components/csp-runtime";
 import { MotionProvider } from "@/components/motion-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
@@ -92,6 +93,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${interSymbols.variable} ${bodoni.variable} font-sans antialiased`}
       >
+        <CspRuntime />
         <MotionProvider>
           <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
           <Toaster />
