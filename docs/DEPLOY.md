@@ -103,7 +103,15 @@ write a cross-org reference that the constraint now rejects. If you must go
 back past a migration like that, restore from a backup taken before it and
 accept the data loss window; there is no safe in-place reversal.
 
-Take a backup immediately before every deploy that includes a migration.
+Take a backup immediately before every deploy that includes a migration —
+and prove it restores, or it is not a backup:
+
+```bash
+node scripts/backup-restore-test.mjs      # dumps DIRECT_DATABASE_URL, restores into a scratch DB, compares every table
+```
+
+It exits non-zero unless every table's row count matches after the restore.
+The dump lands in `backups/` (git-ignored: it holds every row).
 
 ---
 

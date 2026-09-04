@@ -13,3 +13,6 @@ npm-debug.log*
 docker-compose.override.yml
 test-results/
 playwright-report/
+
+# database dumps from scripts/backup-restore-test.mjs — every row, secrets included
+backups/

@@ -31,25 +31,28 @@ and verified, not when it is planned.
 | `scripts/check-rls-state.mjs` went RED on every correctly-migrated database: its hand-written table list included `organizations`, the tenant root, which has no `org_id` and no policy — so step 1 of the deploy checklist could never be ticked | the list is now derived from `org_id` columns and also checks for a policy, the same rule as `tests/isolation/rls.test.ts`; green against the remote database, 34 tenant tables |
 | The isolation suite would run against whatever `DATABASE_URL` the developer's `.env` supplied — including a remote server — because `tests/isolation/setup.ts` only defaulted with `??=` | `tests/isolation/database-url.ts`: a non-local URL is redirected to the docker-compose database and reported; `ISOLATION_DATABASE_URL` is the explicit opt-in. `tests/unit/isolation-database-url.test.ts` (8 cases) |
 
+| CSP allowed `'unsafe-inline'` for scripts, so any injected `<script>` ran | `middleware.ts` mints a 16-byte nonce per request; `lib/security/csp.ts` builds `script-src 'self' 'nonce-…' 'strict-dynamic'`; verified in a browser: nonce rotates per response, all 10 of Next's inline scripts carry it, hydration works, zero `securitypolicyviolation` events (zod's `new Function` probe was one — now `jitless`, `lib/zod-csp.ts`); `tests/unit/csp.test.ts` (6 cases) |
+
 ## Open
 
-**1. CSP still allows `'unsafe-inline'` for scripts.** Next's App Router
-inlines its hydration bootstrap; removing it needs a per-request nonce from
-middleware. Everything else in the policy is tight.
-
-**2. No metrics or tracing.** `reportError` gives structured error lines
+**1. No metrics or tracing.** `reportError` gives structured error lines
 that any aggregator can ingest, which is the floor. There is still no
 latency, throughput or saturation signal.
 
-**3. `scripts/check-copy-voice.mjs` only scans props.** It checks
+**2. `scripts/check-copy-voice.mjs` only scans props.** It checks
 `headline`/`description`/`emptyMessage`/`title` and never sees raw JSX text,
 which is how `app/global-error.tsx` shipped saying "Something went wrong"
 and "Please try again" — both banned. That copy is fixed; the gap in the
 checker is not.
 
-**4. Secrets management.** Real R2 and WhatsApp credentials live in a
+**3. Secrets management.** Real R2 and WhatsApp credentials live in a
 plaintext `.env` on a developer machine. They belong in the deploy
 platform's secret store.
 
-**5. Backups are untested.** `docs/DEPLOY.md` says take one before every
-migration. Nobody has restored from one.
+**4. Backups are untested.** `docs/DEPLOY.md` says take one before every
+migration. Nobody has restored from one. The procedure now exists —
+`scripts/backup-restore-test.mjs` dumps a source, restores it into a scratch
+database on the docker-compose Postgres and compares every table's row
+count — but it has not yet been RUN to completion against the remote
+database (2026-09-03: Docker's engine would not start on the workstation).
+The row leaves this file when that run prints its success line.
