@@ -37,6 +37,14 @@ const PROOF: PaymentProof = {
   reportTitle: "August travel — Arjun Mehta",
 };
 
+/** A PDF proof opens in a new tab: the CSP blocks framing the storage host. */
+const PDF_PROOF: PaymentProof = {
+  ...PROOF,
+  id: "proof-pdf",
+  fileName: "neft-confirmation.pdf",
+  mimeType: "application/pdf",
+};
+
 const NO_PROOF: PaymentProof = {
   ...PROOF,
   id: "p2",
@@ -234,6 +242,9 @@ export function FinanceSection() {
           <Row label="Open one">
             <Button size="sm" variant="secondary" onClick={() => setViewing(PROOF)}>
               With proof
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setViewing(PDF_PROOF)}>
+              PDF proof
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setViewing(NO_PROOF)}>
               No proof attached

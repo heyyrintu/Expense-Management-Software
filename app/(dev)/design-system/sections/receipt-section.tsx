@@ -205,8 +205,9 @@ export function ReceiptSection() {
             The image scales inside a fixed-height frame rather than resizing
             the dialog and shoving the controls off-screen. A PDF gets the
             browser&apos;s own viewer, which already has paging, zoom and text
-            selection — reimplementing that badly would be worse than not
-            having it.
+            selection — in a new tab, because the content security policy
+            blocks embedding files from the storage host. Its tile is the
+            labelled PDF card for the same reason.
           </p>
         </Panel>
       </Block>

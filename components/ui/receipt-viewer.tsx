@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { PdfOpenPanel } from "./pdf-open-panel";
 import type { ReceiptItem } from "./receipt-dropzone";
 
 const ZOOM_STEPS = [1, 1.5, 2, 3] as const;
@@ -51,7 +52,9 @@ export function ReceiptViewer({
       <DialogContent className="max-w-3xl gap-3">
         <DialogTitle className="truncate pr-8">{receipt.fileName}</DialogTitle>
         <DialogDescription className="sr-only">
-          Full-size receipt. Use the controls to zoom, rotate or download it.
+          {isPdf
+            ? "A PDF receipt. Open it in a new tab or download it."
+            : "Full-size receipt. Use the controls to zoom, rotate or download it."}
         </DialogDescription>
 
         {/* The image sits in a fixed-height, overflow-hidden frame, so zooming
@@ -60,13 +63,9 @@ export function ReceiptViewer({
         <div className="border-line bg-bg-subtle grid h-96 place-items-center overflow-auto rounded-lg border">
           {isPdf ? (
             // A PDF gets the browser's own viewer, which already has paging,
-            // its own zoom and text selection. Reimplementing that badly
-            // would be worse than not having it.
-            <iframe
-              src={receipt.url}
-              title={`Receipt ${receipt.fileName}`}
-              className="h-full w-full"
-            />
+            // its own zoom and text selection — in a new tab, because the CSP
+            // blocks framing the storage host. See pdf-open-panel.tsx.
+            <PdfOpenPanel url={receipt.url} fileName={receipt.fileName} />
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

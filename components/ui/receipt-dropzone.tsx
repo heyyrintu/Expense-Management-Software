@@ -247,10 +247,12 @@ export function ReceiptDropzone({
 /**
  * One thumbnail.
  *
- * PDFs render their FIRST PAGE through <object> (§6.2). The browser's own
- * viewer does the rendering, so there is no pdf.js in the bundle, and
- * <object>'s native fallback — its children — covers every browser that
- * won't: those readers get a labelled file tile instead of a blank box.
+ * PDFs render as a labelled file tile, not a first-page preview. The preview
+ * was an <object> pointed at the presigned URL, and the CSP's
+ * `object-src 'none'` (lib/security/csp.ts) blocks it — correctly: allowing
+ * plugins from the storage host would pin a host the deploy can change, and
+ * the preview downloaded the whole PDF (up to 10 MB) to draw 96px. Most phone
+ * browsers never drew it anyway. The viewer opens the file in a new tab.
  */
 function ReceiptTile({
   receipt,
@@ -276,19 +278,10 @@ function ReceiptTile({
         )}
       >
         {isPdf ? (
-          <object
-            data={`${receipt.url}#page=1&toolbar=0&navpanes=0&view=FitH`}
-            type="application/pdf"
-            aria-label={`First page of ${receipt.fileName}`}
-            // pointer-events-none so the click lands on the button, not
-            // inside the embedded viewer.
-            className="pointer-events-none h-24 w-full"
-          >
-            <span className="bg-bg-subtle text-text-tertiary flex h-24 items-center justify-center gap-2 text-meta">
-              <FileText aria-hidden="true" className="size-4" />
-              PDF
-            </span>
-          </object>
+          <span className="bg-bg-subtle text-text-tertiary flex h-24 items-center justify-center gap-2 text-meta">
+            <FileText aria-hidden="true" className="size-4" />
+            PDF
+          </span>
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
