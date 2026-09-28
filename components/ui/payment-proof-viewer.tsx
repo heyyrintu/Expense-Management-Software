@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { PdfOpenPanel } from "./pdf-open-panel";
 
 const ZOOM_STEPS = [1, 1.5, 2, 3] as const;
 
@@ -80,7 +81,9 @@ export function PaymentProofViewer({
                 No proof file was attached to this payment.
               </span>
             ) : isPdf ? (
-              <iframe src={proof.url} title="Payment proof" className="h-full w-full" />
+              // New tab, not an iframe: the CSP blocks framing the storage
+              // host. See pdf-open-panel.tsx.
+              <PdfOpenPanel url={proof.url} fileName={proof.fileName} />
             ) : (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img

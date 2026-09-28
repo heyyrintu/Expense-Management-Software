@@ -120,16 +120,24 @@ jobs:
       - name: Start MinIO (receipt store)
         run: |
           set -euo pipefail
-          docker run -d --name minio -p 9000:9000             -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin             minio/minio:latest server /data
+          # minio/minio and minio/mc are no longer pullable from Docker Hub
+          # (anonymous pulls are denied as of 2026-09), which failed this step
+          # on every branch. chainguard/minio is the maintained public build.
+          # Its ENTRYPOINT is the minio binary and it runs as uid 65532 with no
+          # /data volume, so it runs as root here to let minio create /data.
+          docker run -d --name minio -p 9000:9000 --user 0 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            chainguard/minio:latest server /data
           for _ in $(seq 1 60); do
             curl -sf http://localhost:9000/minio/health/live && break
             sleep 1
           done
           curl -sf http://localhost:9000/minio/health/live
-          # --entrypoint sh is required: the minio/mc image sets `mc` as its
-          # ENTRYPOINT, so a bare `sh -c ...` is parsed as an mc subcommand
-          # and fails with "`sh` is not a recognized command".
-          docker run --rm --network host --entrypoint sh minio/mc:latest -c             "mc alias set local http://localhost:9000 minioadmin minioadmin &&              mc mb --ignore-existing local/receipts"
+          # The bucket is made with the AWS CLI that ships on the runner image,
+          # rather than a second container that could vanish the same way.
+          AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin \
+          AWS_DEFAULT_REGION=us-east-1 \
+            aws --endpoint-url http://localhost:9000 s3 mb s3://receipts
 
       - name: Tenant isolation suite (red build on any cross-tenant access)
         run: npm run test:isolation

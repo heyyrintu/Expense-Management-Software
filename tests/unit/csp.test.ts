@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { STATIC_SECURITY_HEADERS, buildCsp } from "@/lib/security/csp";
@@ -37,6 +39,15 @@ describe("buildCsp", () => {
     expect(directive(csp, "img-src")).toContain("https:");
   });
 
+  it("embeds nothing from the storage host: no plugins, no cross-origin frames", () => {
+    const csp = buildCsp({ nonce: NONCE, dev: false });
+    expect(directive(csp, "object-src")).toBe("'none'");
+    // No frame-src of its own, so frames fall back to default-src 'self' —
+    // a presigned receipt URL on MinIO or R2 can never be framed.
+    expect(csp.split("; ").some((d) => d.startsWith("frame-src "))).toBe(false);
+    expect(directive(csp, "default-src")).toBe("'self'");
+  });
+
   it("refuses a nonce too short to be unguessable", () => {
     expect(() => buildCsp({ nonce: "abc", dev: false })).toThrow(/nonce/);
   });
@@ -52,5 +63,33 @@ describe("buildCsp", () => {
     expect(STATIC_SECURITY_HEADERS.map((h) => h.key)).toEqual(
       expect.arrayContaining(["X-Content-Type-Options", "X-Frame-Options", "Strict-Transport-Security"])
     );
+  });
+});
+
+// The policy above blocks <object>/<embed> outright and every cross-origin
+// <iframe>. A component that renders one anyway ships a box that silently
+// stays empty — which is how PDF receipt previews and both PDF viewers broke
+// when the CSP landed (they now open the file in a new tab; see
+// components/ui/pdf-open-panel.tsx). So any new one fails here instead.
+describe("markup the CSP would block", () => {
+  function* sources(dir: string): Generator<string> {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) yield* sources(full);
+      else if (full.endsWith(".tsx")) yield full;
+    }
+  }
+
+  it("no component renders <object>, <embed> or <iframe>", () => {
+    const offenders: string[] = [];
+    for (const root of ["app", "components"]) {
+      for (const file of sources(root)) {
+        const code = readFileSync(file, "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/\/\/.*$/gm, "");
+        if (/<(object|embed|iframe)[\s>]/.test(code)) offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
