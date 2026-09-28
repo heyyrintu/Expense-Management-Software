@@ -1,0 +1,4 @@
+# Binary formats whose byte offsets matter. With core.autocrlf=true, git
+# would rewrite LF to CRLF in a PDF on a Windows checkout and break its
+# cross-reference table (see public/design-system/sample-payment-proof.pdf).
+*.pdf binary
