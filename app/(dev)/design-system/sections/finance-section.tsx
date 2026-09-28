@@ -37,10 +37,16 @@ const PROOF: PaymentProof = {
   reportTitle: "August travel — Arjun Mehta",
 };
 
-/** A PDF proof opens in a new tab: the CSP blocks framing the storage host. */
+/**
+ * A PDF proof opens in a new tab: the CSP blocks framing the storage host.
+ * Its url is a real one-page PDF served from public/, so "Open PDF" opens a
+ * PDF — not the PNG it would inherit from PROOF, and not a data: URL, which
+ * browsers refuse to open as a top-level tab.
+ */
 const PDF_PROOF: PaymentProof = {
   ...PROOF,
   id: "proof-pdf",
+  url: "/design-system/sample-payment-proof.pdf",
   fileName: "neft-confirmation.pdf",
   mimeType: "application/pdf",
 };
